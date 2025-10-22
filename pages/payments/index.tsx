@@ -43,12 +43,17 @@ const METHODS = [
   { value: 'cash', label: 'Cash' },
   { value: 'card', label: 'Card' },
   { value: 'mobile', label: 'Mobile Money' },
+  { value: 'e_birr', label: 'E-birr' },
+  { value: 'cbe', label: 'CBE Transfer' },
+  { value: 'cbe_birr', label: 'CBEbirr Wallet' },
   { value: 'bank_transfer', label: 'Bank Transfer' },
 ];
 
+const METHOD_LABEL_MAP = new Map(METHODS.map(m => [m.value, m.label]));
+
 const STATUSES = [
   { value: 'paid', label: 'Paid' },
-  { value: 'unpaid', label: 'Unpaid' }, 
+  { value: 'unpaid', label: 'Unpaid' },
   { value: 'refunded', label: 'Refunded' },
   { value: 'failed', label: 'Failed' },
 ];
@@ -280,7 +285,7 @@ function PaymentsTab({
                   <td className="px-4 py-3">{p.booking?.guest?.name}</td>
                   <td className="px-4 py-3">{p.booking?.room?.number} — {p.booking?.room?.type}</td>
                   <td className="px-4 py-3">${p.amount.toFixed(2)}</td>
-                  <td className="px-4 py-3 capitalize">{p.method.replace('_',' ')}</td>
+                  <td className="px-4 py-3">{METHOD_LABEL_MAP.get(p.method) ?? p.method.replace('_', ' ')}</td>
                   <td className="px-4 py-3 capitalize">{p.status}</td>
                   <td className="px-4 py-3">
                     {p.description
