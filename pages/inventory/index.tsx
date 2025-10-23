@@ -1,4 +1,4 @@
-import { useEffect, useMemo, useState } from 'react';
+import { useCallback, useEffect, useMemo, useState } from 'react';
 import Layout from '@/components/Layout';
 import RequireAuth from '@/components/RequireAuth';
 import axios from '@/utils/axiosInstance';
@@ -23,7 +23,7 @@ type Movement = {
   createdAt: string;
 };
 
-function Badge({ children, color }: { children: any; color: 'amber' | 'emerald' | 'gray' | 'red' }) {
+function Badge({ children, color }: { children: any; color: 'amber' | 'emerald' | 'gray' | 'red'; }) {
   const map: any = {
     amber: 'bg-amber-100 text-amber-800',
     emerald: 'bg-emerald-100 text-emerald-800',
@@ -95,12 +95,12 @@ function NewItemModal({
         <div className="mt-4 grid gap-3 sm:grid-cols-2">
           <div className="sm:col-span-2">
             <label className="mb-1 block text-sm font-medium text-gray-700">Name</label>
-            <input className="w-full rounded border px-3 py-2" value={name} onChange={(e)=>setName(e.target.value)} />
+            <input className="w-full rounded border px-3 py-2" value={name} onChange={(e) => setName(e.target.value)} />
           </div>
 
           <div>
             <label className="mb-1 block text-sm font-medium text-gray-700">Category</label>
-            <input className="w-full rounded border px-3 py-2" value={category} onChange={(e)=>setCategory(e.target.value)} placeholder="e.g., Grocery, Bar, Housekeeping" />
+            <input className="w-full rounded border px-3 py-2" value={category} onChange={(e) => setCategory(e.target.value)} placeholder="e.g., Grocery, Bar, Housekeeping" />
           </div>
 
           <div>
@@ -108,7 +108,7 @@ function NewItemModal({
             <select
               className="w-full rounded border px-3 py-2"
               value={unit}
-              onChange={(e)=>setUnit(e.target.value as 'pcs' | 'kg' | 'L')}
+              onChange={(e) => setUnit(e.target.value as 'pcs' | 'kg' | 'L')}
             >
               <option value="pcs">pcs</option>
               <option value="kg">kg</option>
@@ -118,7 +118,7 @@ function NewItemModal({
 
           <div>
             <label className="mb-1 block text-sm font-medium text-gray-700">SKU (optional)</label>
-            <input className="w-full rounded border px-3 py-2" value={sku} onChange={(e)=>setSku(e.target.value)} />
+            <input className="w-full rounded border px-3 py-2" value={sku} onChange={(e) => setSku(e.target.value)} />
           </div>
 
           <div>
@@ -128,7 +128,7 @@ function NewItemModal({
               min={0}
               className="w-full rounded border px-3 py-2"
               value={quantity}
-              onChange={(e)=>setQuantity(e.target.value===''? '' : Number(e.target.value))}
+              onChange={(e) => setQuantity(e.target.value === '' ? '' : Number(e.target.value))}
             />
           </div>
 
@@ -139,7 +139,7 @@ function NewItemModal({
               min={0}
               className="w-full rounded border px-3 py-2"
               value={minThreshold}
-              onChange={(e)=>setMinThreshold(e.target.value===''? '' : Number(e.target.value))}
+              onChange={(e) => setMinThreshold(e.target.value === '' ? '' : Number(e.target.value))}
             />
           </div>
         </div>
@@ -221,13 +221,13 @@ function StockModal({
               min={kind === 'adjust' ? 0 : 1}
               className="w-full rounded border px-3 py-2"
               value={qty}
-              onChange={(e)=>setQty(e.target.value===''? '' : Number(e.target.value))}
-              placeholder={kind==='adjust' ? 'Set absolute quantity' : 'Enter amount to add/remove'}
+              onChange={(e) => setQty(e.target.value === '' ? '' : Number(e.target.value))}
+              placeholder={kind === 'adjust' ? 'Set absolute quantity' : 'Enter amount to add/remove'}
             />
           </div>
           <div>
             <label className="mb-1 block text-sm font-medium text-gray-700">Reason (optional)</label>
-            <textarea className="w-full rounded border px-3 py-2" rows={3} value={reason} onChange={(e)=>setReason(e.target.value)} />
+            <textarea className="w-full rounded border px-3 py-2" rows={3} value={reason} onChange={(e) => setReason(e.target.value)} />
           </div>
         </div>
 
@@ -371,7 +371,7 @@ function ItemActionsModal({
             <button className="rounded bg-orange-600 px-3 py-2 text-white hover:bg-orange-700" onClick={onSubtract}>Subtract</button>
             <button className="rounded bg-indigo-600 px-3 py-2 text-white hover:bg-indigo-700" onClick={onAdjust}>Adjust</button>
             <button className="rounded border px-3 py-2 hover:bg-gray-50" onClick={onHistory}>History</button>
-            <button className="col-span-2 rounded border border-red-300 px-3 py-2 text-red-700 hover:bg-red-50" onClick={()=>setConfirming(true)}>Remove Item</button>
+            <button className="col-span-2 rounded border border-red-300 px-3 py-2 text-red-700 hover:bg-red-50" onClick={() => setConfirming(true)}>Remove Item</button>
           </div>
         ) : (
           <div className="mt-5 rounded-lg border border-red-200 bg-red-50 p-3">
@@ -381,7 +381,7 @@ function ItemActionsModal({
               <button className="rounded bg-red-600 px-3 py-2 text-white hover:bg-red-700 disabled:opacity-60" disabled={loading} onClick={doRemove}>
                 {loading ? 'Removing…' : 'Confirm Remove'}
               </button>
-              <button className="rounded border px-3 py-2" disabled={loading} onClick={()=>setConfirming(false)}>Cancel</button>
+              <button className="rounded border px-3 py-2" disabled={loading} onClick={() => setConfirming(false)}>Cancel</button>
             </div>
           </div>
         )}
@@ -409,23 +409,24 @@ function InventoryInner() {
   // Add: actions item state
   const [actionsItem, setActionsItem] = useState<Item | null>(null);
 
-  const fetchRows = async () => {
+  const fetchRows = useCallback(async () => {
     setLoading(true);
     try {
-      const res = await axios.get('/inventory', { params: {
-        q: q || undefined,
-        category: category || undefined,
-        low: onlyLow ? 'true' : undefined,
-      }});
+      const res = await axios.get('/inventory', {
+        params: {
+          q: q || undefined,
+          category: category || undefined,
+          low: onlyLow ? 'true' : undefined,
+        }
+      });
       const arr = Array.isArray(res.data) ? res.data : res.data.inventory ?? res.data;
       setRows(arr.map((r: Item) => ({ ...r, minThreshold: r.minThreshold ?? 0 })));
     } finally {
       setLoading(false);
     }
-  };
+  }, [q, category, onlyLow]);
 
-  useEffect(() => { fetchRows(); /* eslint-disable-next-line */ });//, []);
-  useEffect(() => { fetchRows(); /* eslint-disable-next-line */ }, [onlyLow]);
+  useEffect(() => { fetchRows(); }, [fetchRows]);
 
   const categories = useMemo(() => {
     const set = new Set<string>();
@@ -465,17 +466,17 @@ function InventoryInner() {
             className="w-64 rounded border px-3 py-2"
             placeholder="Search name, SKU, category…"
             value={q}
-            onChange={(e)=>setQ(e.target.value)}
+            onChange={(e) => setQ(e.target.value)}
           />
-          <select className="rounded border px-3 py-2" value={category} onChange={(e)=>setCategory(e.target.value)}>
+          <select className="rounded border px-3 py-2" value={category} onChange={(e) => setCategory(e.target.value)}>
             <option value="">All categories</option>
             {categories.map(c => <option key={c} value={c}>{c}</option>)}
           </select>
           <label className="flex items-center gap-2 text-sm">
-            <input type="checkbox" checked={onlyLow} onChange={(e)=>setOnlyLow(e.target.checked)} />
+            <input type="checkbox" checked={onlyLow} onChange={(e) => setOnlyLow(e.target.checked)} />
             Low stock only
           </label>
-          <button className="rounded bg-indigo-600 px-4 py-2 font-semibold text-white" onClick={()=>setNewOpen(true)}>
+          <button className="rounded bg-indigo-600 px-4 py-2 font-semibold text-white" onClick={() => setNewOpen(true)}>
             New Item
           </button>
         </div>
@@ -533,31 +534,31 @@ function InventoryInner() {
 
       <NewItemModal
         open={newOpen}
-        onClose={()=>setNewOpen(false)}
-        onCreated={(it)=>setRows(prev=>[it, ...prev])}
+        onClose={() => setNewOpen(false)}
+        onCreated={(it) => setRows(prev => [it, ...prev])}
       />
       <StockModal
         open={!!stockItem}
-        onClose={()=>setStockItem(null)}
-        onDone={(it)=>setRows(prev=>prev.map(p=>p.id===it.id? it : p))}
+        onClose={() => setStockItem(null)}
+        onDone={(it) => setRows(prev => prev.map(p => p.id === it.id ? it : p))}
         item={stockItem}
         kind={stockKind}
       />
       <HistoryModal
         open={!!historyItem}
-        onClose={()=>setHistoryItem(null)}
+        onClose={() => setHistoryItem(null)}
         item={historyItem}
       />
       {/* Add: actions modal */}
       <ItemActionsModal
         open={!!actionsItem}
-        onClose={()=>setActionsItem(null)}
+        onClose={() => setActionsItem(null)}
         item={actionsItem}
-        onAdd={()=>{ if (actionsItem) { setStockItem(actionsItem); setStockKind('in'); setActionsItem(null); } }}
-        onSubtract={()=>{ if (actionsItem) { setStockItem(actionsItem); setStockKind('out'); setActionsItem(null); } }}
-        onAdjust={()=>{ if (actionsItem) { setStockItem(actionsItem); setStockKind('adjust'); setActionsItem(null); } }}
-        onHistory={()=>{ if (actionsItem) { setHistoryItem(actionsItem); setActionsItem(null); } }}
-        onRemove={async ()=>{ if (actionsItem) await removeItem(actionsItem.id); }}
+        onAdd={() => { if (actionsItem) { setStockItem(actionsItem); setStockKind('in'); setActionsItem(null); } }}
+        onSubtract={() => { if (actionsItem) { setStockItem(actionsItem); setStockKind('out'); setActionsItem(null); } }}
+        onAdjust={() => { if (actionsItem) { setStockItem(actionsItem); setStockKind('adjust'); setActionsItem(null); } }}
+        onHistory={() => { if (actionsItem) { setHistoryItem(actionsItem); setActionsItem(null); } }}
+        onRemove={async () => { if (actionsItem) await removeItem(actionsItem.id); }}
       />
     </Layout>
   );
@@ -565,7 +566,7 @@ function InventoryInner() {
 
 export default function InventoryPage() {
   return (
-    <RequireAuth roles={['admin','manager','store','barista','reception']}>
+    <RequireAuth roles={['admin', 'manager', 'store', 'barista', 'reception']}>
       <InventoryInner />
     </RequireAuth>
   );
