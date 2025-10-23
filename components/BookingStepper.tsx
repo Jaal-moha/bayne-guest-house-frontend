@@ -2,6 +2,7 @@ import { useEffect, useMemo, useState } from 'react';
 import Modal from '@/components/Modal';
 import GuestForm, { GuestInput } from '@/components/forms/GuestForm';
 import axios from '@/utils/axiosInstance';
+import { useToast } from './Toast';
 
 type Step = 0 | 1 | 2;
 
@@ -28,6 +29,8 @@ export default function BookingStepper({ open, onClose, onCreated }: {
 
     const [err, setErr] = useState('');
     const [loadingCreate, setLoadingCreate] = useState(false);
+
+    const { push } = useToast();
 
     useEffect(() => { if (!open) { reset(); } }, [open]);
 
@@ -96,10 +99,14 @@ export default function BookingStepper({ open, onClose, onCreated }: {
                 guestId, roomId, checkIn: new Date(checkIn), checkOut: new Date(checkOut),
             });
             onCreated?.(res.data);
+            // show success toast
+            try { push('Booking created successfully', 'success'); } catch (e) { /* noop */ }
             onClose();
             reset();
         } catch (e: any) {
-            setErr(e?.response?.data?.message || e?.message || 'Failed to create booking');
+            const msg = e?.response?.data?.message || e?.message || 'Failed to create booking';
+            setErr(msg);
+            try { push(msg, 'error'); } catch (er) { /* noop */ }
         } finally { setLoadingCreate(false); }
     };
 
@@ -132,15 +139,15 @@ export default function BookingStepper({ open, onClose, onCreated }: {
 
                                 <div>
                                     <label className="mb-1 block text-sm text-gray-600">Select guest</label>
-                                                        <select className="w-full rounded border px-3 py-2" value={guestId ?? ''} onChange={(e) => {
-                                                            const id = e.target.value ? Number(e.target.value) : null;
-                                                            setGuestId(id);
-                                                            const sel = guests.find(g => g.id === id) ?? null;
-                                                            if (sel) setGuest({ name: sel.name, phone: sel.phone, email: sel.email ?? undefined });
-                                                        }}>
-                                                            <option value="">Select guest…</option>
-                                                            {filteredGuests.map(g => <option key={g.id} value={g.id}>{g.name} — {g.phone}</option>)}
-                                                        </select>
+                                    <select className="w-full rounded border px-3 py-2" value={guestId ?? ''} onChange={(e) => {
+                                        const id = e.target.value ? Number(e.target.value) : null;
+                                        setGuestId(id);
+                                        const sel = guests.find(g => g.id === id) ?? null;
+                                        if (sel) setGuest({ name: sel.name, phone: sel.phone, email: sel.email ?? undefined });
+                                    }}>
+                                        <option value="">Select guest…</option>
+                                        {filteredGuests.map(g => <option key={g.id} value={g.id}>{g.name} — {g.phone}</option>)}
+                                    </select>
                                 </div>
 
                                 <div className="flex justify-end">
@@ -166,7 +173,7 @@ export default function BookingStepper({ open, onClose, onCreated }: {
 
                         <div>
                             <label className="mb-1 block text-sm text-gray-600">Available rooms</label>
-                                                <select className="w-full rounded border px-3 py-2" value={roomId} onChange={(e) => setRoomId(e.target.value ? Number(e.target.value) : '')}>
+                            <select className="w-full rounded border px-3 py-2" value={roomId} onChange={(e) => setRoomId(e.target.value ? Number(e.target.value) : '')}>
                                 <option value="">Select room…</option>
                                 {rooms.map(r => <option key={r.id} value={r.id}>{r.number} — {r.type} — ${Number(r.price).toFixed(2)}</option>)}
                             </select>

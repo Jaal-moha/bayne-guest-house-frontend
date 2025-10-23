@@ -2,9 +2,10 @@ import { useEffect, useMemo, useState } from 'react';
 import Layout from '@/components/Layout';
 import RequireAuth from '@/components/RequireAuth';
 import axios from '@/utils/axiosInstance';
+import { useToast } from '@/components/Toast';
 
-type Guest = { id: number; name: string; phone: string; email?: string | null };
-type Room  = { id: number; number: string; type: string; price: number };
+type Guest = { id: number; name: string; phone: string; email?: string | null; };
+type Room = { id: number; number: string; type: string; price: number; };
 type Booking = {
   id: number;
   guest: Guest;
@@ -29,6 +30,7 @@ function CreateBookingModal({
   const [checkOut, setCheckOut] = useState('');
   const [loading, setLoading] = useState(false);
   const [err, setErr] = useState('');
+  const { push } = useToast();
 
   // Load guests once when modal opens
   useEffect(() => {
@@ -63,16 +65,18 @@ function CreateBookingModal({
     if (!guestId) return setErr('Select a guest');
     if (!checkIn || !checkOut) return setErr('Select check-in and check-out');
     if (!roomId) return setErr('Select a room');
-
     try {
       setLoading(true);
       const res = await axios.post('/bookings', {
         guestId, roomId, checkIn: new Date(checkIn), checkOut: new Date(checkOut),
       });
       onCreated(res.data);
+      try { push('Booking created successfully', 'success'); } catch (e) { /* noop */ }
       onClose();
     } catch (e: any) {
-      setErr(e?.response?.data?.message || e?.message || 'Failed to create booking');
+      const msg = e?.response?.data?.message || e?.message || 'Failed to create booking';
+      setErr(msg);
+      try { push(msg, 'error'); } catch (er) { /* noop */ }
     } finally {
       setLoading(false);
     }
@@ -92,7 +96,7 @@ function CreateBookingModal({
             <select
               className="w-full rounded border px-3 py-2"
               value={guestId}
-              onChange={(e)=>setGuestId(Number(e.target.value))}
+              onChange={(e) => setGuestId(Number(e.target.value))}
             >
               <option value="">Select guest…</option>
               {guests.map(g => <option key={g.id} value={g.id}>{g.name} — {g.phone}</option>)}
@@ -105,7 +109,7 @@ function CreateBookingModal({
               type="date"
               className="w-full rounded border px-3 py-2"
               value={checkIn}
-              onChange={(e)=>setCheckIn(e.target.value)}
+              onChange={(e) => setCheckIn(e.target.value)}
             />
           </div>
           <div>
@@ -114,7 +118,7 @@ function CreateBookingModal({
               type="date"
               className="w-full rounded border px-3 py-2"
               value={checkOut}
-              onChange={(e)=>setCheckOut(e.target.value)}
+              onChange={(e) => setCheckOut(e.target.value)}
               min={checkIn || undefined}
             />
           </div>
@@ -126,7 +130,7 @@ function CreateBookingModal({
             <select
               className="w-full rounded border px-3 py-2"
               value={roomId}
-              onChange={(e)=>setRoomId(Number(e.target.value))}
+              onChange={(e) => setRoomId(Number(e.target.value))}
               disabled={!checkIn || !checkOut || rooms.length === 0}
             >
               {!checkIn || !checkOut ? (
@@ -199,12 +203,12 @@ function BookingsInner() {
         <div className="ml-auto flex gap-2">
           <input
             value={q}
-            onChange={(e)=>setQ(e.target.value)}
+            onChange={(e) => setQ(e.target.value)}
             placeholder="Search by guest, room, date…"
             className="w-64 rounded border px-3 py-2"
           />
           <button
-            onClick={()=>setModal(true)}
+            onClick={() => setModal(true)}
             className="rounded bg-indigo-600 px-4 py-2 font-semibold text-white"
           >
             Create Booking
@@ -252,8 +256,8 @@ function BookingsInner() {
 
       <CreateBookingModal
         open={modal}
-        onClose={()=>setModal(false)}
-        onCreated={(b)=>setRows(prev => [b, ...prev])}
+        onClose={() => setModal(false)}
+        onCreated={(b) => setRows(prev => [b, ...prev])}
       />
     </Layout>
   );
@@ -261,7 +265,7 @@ function BookingsInner() {
 
 export default function BookingsPage() {
   return (
-    <RequireAuth roles={['admin','reception','manager']}>
+    <RequireAuth roles={['admin', 'reception', 'manager']}>
       <BookingsInner />
     </RequireAuth>
   );
