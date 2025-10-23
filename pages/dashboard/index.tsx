@@ -2,7 +2,9 @@
 import { useEffect, useState, useCallback } from 'react';
 import Layout from '@/components/Layout';
 import RequireAuth from '@/components/RequireAuth';
+import { useAuth } from '@/context/AuthContext';
 import axios from '@/utils/axiosInstance';
+import BookingStepper from '@/components/BookingStepper';
 
 type Stats = {
   guests: number;
@@ -15,7 +17,7 @@ type Stats = {
   revenue: number; // normalized to number in code below
 };
 
-function StatCard({ label, value }: { label: string; value: number | string }) {
+function StatCard({ label, value }: { label: string; value: number | string; }) {
   return (
     <div className="rounded-xl bg-white p-5 shadow">
       <div className="text-sm text-gray-500">{label}</div>
@@ -32,14 +34,14 @@ function normalizeStats(raw: unknown): Stats {
   };
   const r = raw as Record<string, unknown> | null | undefined;
   return {
-    guests:    n(r?.guests),
-    bookings:  n(r?.bookings),
-    rooms:     n(r?.rooms),
-    payments:  n(r?.payments),
-    staff:     n(r?.staff),
+    guests: n(r?.guests),
+    bookings: n(r?.bookings),
+    rooms: n(r?.rooms),
+    payments: n(r?.payments),
+    staff: n(r?.staff),
     inventory: n(r?.inventory),
-    laundry:   n(r?.laundry),
-    revenue:   n(r?.revenue),
+    laundry: n(r?.laundry),
+    revenue: n(r?.revenue),
   };
 }
 
@@ -52,6 +54,9 @@ function DashboardInner() {
   const [stats, setStats] = useState<Stats | null>(null);
   const [loading, setLoading] = useState(true);
   const [errMsg, setErrMsg] = useState<string | null>(null);
+  const [showStepper, setShowStepper] = useState(false);
+
+  const { user, loading: authLoading } = useAuth();
 
   // date range state (ISO yyyy-mm-dd)
   const [startDate, setStartDate] = useState<string | undefined>(undefined);
@@ -59,12 +64,12 @@ function DashboardInner() {
 
   // helper to extract readable error message
   const getErrMsg = (e: unknown) =>
-    (e as { response?: { data?: { message?: string } }; message?: string })?.response?.data?.message
-    || (e as { message?: string })?.message
+    (e as { response?: { data?: { message?: string; }; }; message?: string; })?.response?.data?.message
+    || (e as { message?: string; })?.message
     || 'Failed to load stats';
 
   // fetch overview, optional range object with start/end (yyyy-mm-dd)
-  const fetchOverview = useCallback(async (range?: { start?: string; end?: string }) => {
+  const fetchOverview = useCallback(async (range?: { start?: string; end?: string; }) => {
     setLoading(true);
     setErrMsg(null);
     try {
@@ -103,7 +108,18 @@ function DashboardInner() {
 
   return (
     <Layout>
-      <h1 className="mb-4 text-2xl font-bold text-gray-800">Dashboard</h1>
+      <div className="mb-4 flex items-center gap-3">
+        <h1 className="text-2xl font-bold text-gray-800">Dashboard</h1>
+        <div className="ml-auto">
+          {/* Only allow receptionists and managers to create bookings from dashboard */}
+          {(!authLoading && (user?.role === 'reception' || user?.role === 'manager')) && (
+            <button onClick={() => setShowStepper(true)} className="rounded bg-indigo-600 px-3 py-1 text-white">New Booking</button>
+          )}
+        </div>
+      </div>
+
+      <BookingStepper open={showStepper} onClose={() => setShowStepper(false)} onCreated={async (b) => { await fetchOverview(); }} />
+
 
       {/* Range controls */}
       <div className="mb-4 flex flex-wrap items-center gap-2">
@@ -143,14 +159,14 @@ function DashboardInner() {
         <div className="text-gray-600">No stats available.</div>
       ) : (
         <div className="grid gap-4 sm:grid-cols-2 lg:grid-cols-4">
-          <StatCard label="Guests"           value={integer(stats.guests)} />
-          <StatCard label="Bookings"         value={integer(stats.bookings)} />
-          <StatCard label="Rooms"            value={integer(stats.rooms)} />
-          <StatCard label="Payments"         value={integer(stats.payments)} />
-          <StatCard label="Staff"            value={integer(stats.staff)} />
-          <StatCard label="Inventory Items"  value={integer(stats.inventory)} />
-          <StatCard label="Laundry"          value={integer(stats.laundry)} />
-          <StatCard label="Revenue"          value={money(stats.revenue)} />
+          <StatCard label="Guests" value={integer(stats.guests)} />
+          <StatCard label="Bookings" value={integer(stats.bookings)} />
+          <StatCard label="Rooms" value={integer(stats.rooms)} />
+          <StatCard label="Payments" value={integer(stats.payments)} />
+          <StatCard label="Staff" value={integer(stats.staff)} />
+          <StatCard label="Inventory Items" value={integer(stats.inventory)} />
+          <StatCard label="Laundry" value={integer(stats.laundry)} />
+          <StatCard label="Revenue" value={money(stats.revenue)} />
         </div>
       )}
     </Layout>
@@ -159,7 +175,7 @@ function DashboardInner() {
 
 export default function DashboardPage() {
   return (
-    <RequireAuth roles={['admin','manager','reception','finance']}>
+    <RequireAuth roles={['admin', 'manager', 'reception', 'finance']}>
       <DashboardInner />
     </RequireAuth>
   );
