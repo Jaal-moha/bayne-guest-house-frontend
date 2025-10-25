@@ -50,7 +50,7 @@ export default function Layout({ children }: { children: ReactNode }) {
   return (
     <div className="flex h-screen">
       <aside className="flex w-64 flex-col bg-gray-800 text-white">
-        <div className="border-b border-gray-700 p-4 text-xl font-bold">🏨 GuestHouse</div>
+        <div className="border-b border-gray-700 p-4 text-xl font-bold">Almis Hotel</div>
 
         <nav className="flex-1 space-y-2 overflow-y-auto p-2">
           {visibleItems.map(item => (

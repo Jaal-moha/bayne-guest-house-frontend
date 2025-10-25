@@ -15,7 +15,7 @@ const links = [
 export default function Sidebar() {
   return (
     <div className="w-64 bg-white border-r shadow-md p-4">
-      <h2 className="text-xl font-bold mb-6">🏨 Guest House</h2>
+      <h2 className="text-xl font-bold mb-6">Almis Hotel</h2>
       <ul className="space-y-2">
         {links.map(link => (
           <li key={link.name}>
