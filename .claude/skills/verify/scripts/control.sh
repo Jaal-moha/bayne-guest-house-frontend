@@ -7,17 +7,18 @@ SELF="$ROOT/.claude/skills/verify/scripts/control.sh"
 SPECS="$ROOT/.claude/skills/verify/specs"
 BACKEND_DIR="${BACKEND_DIR:-$(cd "$ROOT/.." && pwd)/bayne-guest-house-backend}"
 BACKEND_CTL="$BACKEND_DIR/.claude/skills/verify/scripts/control.sh"
-RUN_DIR="$ROOT/.verify/run"
+VERIFY_ID="${VERIFY_ID:-frontend}"
+RUN_DIR="$ROOT/.verify/run-$VERIFY_ID"
 STATE="$RUN_DIR/state.env"
 EVIDENCE_ROOT="$ROOT/.verify/evidence"
 TOOLS="$ROOT/.verify/tools"
-PORT_FILE="$ROOT/.verify/web-port"
+PORT_FILE="$ROOT/.verify/web-port-$VERIFY_ID"
 
 die() { echo "FAIL $*"; exit 1; }
-backend() { VERIFY_ID=frontend "$BACKEND_CTL" "$@"; }
+backend() { VERIFY_ID="$VERIFY_ID" "$BACKEND_CTL" "$@"; }
 
 load_state() {
-  [[ -f "$STATE" ]] || die "no-instance run 'control.sh up' first"
+  [[ -f "$STATE" ]] || die "no-instance run 'control.sh up' first (VERIFY_ID=$VERIFY_ID)"
   source "$STATE"
 }
 

@@ -17,7 +17,7 @@ S=.claude/skills/verify/scripts/control.sh   # run from the repo root
 $S up
 ```
 
-`up` installs `node_modules` if `next` is missing and puts `playwright-core` in `.verify/tools/`. It then starts the backend through the backend repo's own verify skill, under `VERIFY_ID=frontend`, with CORS opened for the web origin. Last, it starts `next dev --turbopack` on `127.0.0.1` with `NEXT_PUBLIC_API_BASE` and `NEXT_PUBLIC_API_BASE_URL` pointed at that backend. The first run takes about 20 seconds, and later runs reuse the backend build.
+`up` installs `node_modules` if `next` is missing and puts `playwright-core` in `.verify/tools/`. It then starts the backend through the backend repo's own verify skill, under the same `VERIFY_ID` (default `frontend`), with CORS opened for the web origin. Last, it starts `next dev --turbopack` on `127.0.0.1` with `NEXT_PUBLIC_API_BASE` and `NEXT_PUBLIC_API_BASE_URL` pointed at that backend. The first run takes about 20 seconds, and later runs reuse the backend build.
 
 | First line | Meaning | Do this |
 | --- | --- | --- |
@@ -28,7 +28,7 @@ $S up
 | `FAIL cors …` | The reused backend allows a different origin. | `$S down && $S up` |
 | `FAIL npm-ci`, `install-playwright`, `web-exited`, `web-timeout`, `no-chromium` | A local setup step failed. | Read the `log=` file it names, or set `CHROMIUM=<binary>`. |
 
-`up` is idempotent. A healthy instance prints `READY` again. The web port is kept in `.verify/web-port` so the backend's CORS origin stays valid across restarts. `next dev` hot-reloads, so code edits need no restart. Only one web instance can run per checkout, because `.next` can't be shared.
+`up` is idempotent. A healthy instance prints `READY` again. The web port is kept in `.verify/web-port-$VERIFY_ID` so the backend's CORS origin stays valid across restarts. Give each worktree its own `VERIFY_ID`, such as `VERIFY_ID=owner-ux-1`, so instances in separate worktrees get separate backends, databases and ports. Every subcommand reads it, so export it once per shell. `next dev` hot-reloads, so code edits need no restart. Only one web instance can run per checkout, because `.next` can't be shared.
 
 ## Doctor
 
@@ -104,7 +104,7 @@ A proof needs all of these.
 $S down
 ```
 
-It kills only the process group recorded at `up`, after checking that its cwd is this repo and its cmdline is `next dev`. It runs the backend skill's `down`, which stops Postgres and deletes the database, then removes `.verify/run/` and prints `DOWN ok evidence=<dir>`. Evidence survives. It's safe to run when nothing is up and prints `DOWN nothing-running`. Run it at the end of every session, including after a failed `up`.
+It kills only the process group recorded at `up`, after checking that its cwd is this repo and its cmdline is `next dev`. It runs the backend skill's `down`, which stops Postgres and deletes the database, then removes `.verify/run-$VERIFY_ID/` and prints `DOWN ok evidence=<dir>`. Evidence survives. It's safe to run when nothing is up and prints `DOWN nothing-running`. Run it at the end of every session, including after a failed `up`.
 
 ## Helpers
 
