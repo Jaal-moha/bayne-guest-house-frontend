@@ -1,0 +1,11 @@
+{
+  "name": "nav-roles-finance",
+  "role": "finance",
+  "steps": [
+    { "goto": "/dashboard" },
+    { "expectVisible": { "role": "link", "name": "Payments" } },
+    { "expectHidden": { "role": "link", "name": "Staff" } },
+    { "goto": "/staff" },
+    { "expectUrl": "/dashboard" }
+  ]
+}

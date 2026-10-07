@@ -1,0 +1,15 @@
+{
+  "name": "guests-create",
+  "role": "reception",
+  "steps": [
+    { "goto": "/guests" },
+    { "click": { "role": "button", "name": "Add Guest" } },
+    { "fill": { "label": "Full name" }, "value": "Walk-in ${RUN}" },
+    { "fill": { "label": "Phone" }, "value": "0911556677" },
+    { "fill": { "label": "Email" }, "value": "walkin-${RUN}@example.com" },
+    { "click": { "role": "button", "name": "Add Guest" } },
+    { "expectApi": "POST /guests 201" },
+    { "expectText": "Walk-in ${RUN}" },
+    { "apiCheck": { "as": "reception", "path": "/guests", "jq": "any(.[]; .name == \"Walk-in ${RUN}\")" } }
+  ]
+}

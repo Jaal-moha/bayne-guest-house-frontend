@@ -1,0 +1,15 @@
+{
+  "name": "rooms-create",
+  "role": "manager",
+  "steps": [
+    { "goto": "/rooms" },
+    { "click": { "role": "button", "name": "Add Room" } },
+    { "fill": { "placeholder": "Number" }, "value": "R${RUN}" },
+    { "fill": { "placeholder": "Type (Single/Double/Suite…)" }, "value": "suite" },
+    { "fill": { "placeholder": "Price (e.g. 75)" }, "value": "3200" },
+    { "click": { "role": "button", "name": "Add Room" } },
+    { "expectApi": "POST /rooms 201" },
+    { "expectText": "R${RUN}" },
+    { "apiCheck": { "as": "manager", "path": "/rooms", "jq": "any(.[]; .number == \"R${RUN}\" and .price == 3200)" } }
+  ]
+}

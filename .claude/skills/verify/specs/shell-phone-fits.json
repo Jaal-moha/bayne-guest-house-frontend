@@ -1,0 +1,10 @@
+{
+  "name": "shell-phone-fits",
+  "role": "reception",
+  "viewport": "phone",
+  "knownBug": "The fixed-width sidebar pushes the header and table actions off-screen on a phone.",
+  "steps": [
+    { "goto": "/bookings" },
+    { "expectFits": true }
+  ]
+}
