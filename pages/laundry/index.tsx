@@ -301,7 +301,7 @@ export default function LaundryPage() {
   }
 
   return (
-    <RequireAuth roles={['admin', 'housekeeping', 'reception', 'manager']}>
+    <RequireAuth>
       <Layout>
         <div className="mb-4 flex flex-wrap items-center gap-3">
           <h1 className="text-2xl font-bold text-teal-700">Laundry</h1>

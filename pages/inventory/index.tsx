@@ -566,7 +566,7 @@ function InventoryInner() {
 
 export default function InventoryPage() {
   return (
-    <RequireAuth roles={['admin', 'manager', 'store', 'barista', 'reception']}>
+    <RequireAuth>
       <InventoryInner />
     </RequireAuth>
   );
