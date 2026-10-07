@@ -1,9 +1,9 @@
 {
   "name": "root-is-app",
   "role": "admin",
-  "knownBug": "src/app/page.tsx serves the create-next-app starter page at /.",
   "steps": [
     { "goto": "/" },
+    { "expectUrl": "/dashboard" },
     { "expectNoText": "Get started by editing" }
   ]
 }

@@ -4,7 +4,7 @@ The shell is the sidebar, the header with the user's name and Logout, and the co
 
 ## Sub-features
 
-- `root-url` should show the app or redirect into it. Today `/` serves the create-next-app starter page from `src/app/page.tsx`.
+- `root-url` redirects `/` to `/login` when signed out and to `/dashboard` when signed in. `pages/index.tsx` does the redirect.
 - `phone-layout` should fit a 390px screen. Today the fixed `w-64` sidebar pushes Logout and table actions off-screen.
 
 ## How to get to it (user POV)
@@ -18,7 +18,7 @@ Preconditions:
 
 - The baseline from the README holds.
 
-- **Root URL.** Run `$S drive root-is-app`. It reports `RESULT XFAIL` while the page contains `Get started by editing`.
+- **Root URL.** Run `$S drive root-is-app`. It reports `RESULT PASS` when admin lands on `/dashboard` and the create-next-app starter text is absent.
 - **Phone width.** Run `$S drive shell-phone-fits`. It reports `RESULT XFAIL` with `page is <n>px wide in a 390px viewport` while the layout overflows.
 
 ## Gotchas
