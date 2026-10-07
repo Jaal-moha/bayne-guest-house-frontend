@@ -3,6 +3,7 @@ import Head from 'next/head';
 import Link from 'next/link';
 import { useRouter } from 'next/router';
 import { useAuth } from '@/context/AuthContext';
+import { landingFor } from '@/lib/permissions';
 
 export default function LoginPage() {
   const router = useRouter();
@@ -13,9 +14,8 @@ export default function LoginPage() {
   const [loading, setLoading] = useState(false);
   const [err, setErr] = useState('');
 
-  // If already logged in, bounce to dashboard
   useEffect(() => {
-    if (user) router.replace('/dashboard');
+    if (user) router.replace(landingFor(user.role) ?? '/');
   }, [user, router]);
 
   const onSubmit = async (e: FormEvent) => {
@@ -24,8 +24,6 @@ export default function LoginPage() {
     setLoading(true);
     try {
       await login(email.trim(), password);
-      // AuthContext.login already routes to /dashboard; this is just a safety net:
-      router.replace('/dashboard');
     } catch (e: any) {
       const msg =
         e?.response?.data?.message ||

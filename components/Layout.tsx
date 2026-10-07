@@ -1,51 +1,19 @@
 // components/Layout.tsx
-import { ReactNode, useMemo } from 'react';
+import { ReactNode } from 'react';
 import Link from 'next/link';
 import { useRouter } from 'next/router'; // If you migrate to App Router, use: import { usePathname } from 'next/navigation'
 import { useAuth } from '@/context/AuthContext';
-
-type Role =
-  | 'admin'
-  | 'manager'
-  | 'reception'
-  | 'housekeeping'
-  | 'barista'
-  | 'security'
-  | 'finance'
-  | 'store';
-
-type AppRole = Role | 'guest';
-
-type MenuItem = { name: string; path: string; roles: Role[] };
-
-const menuItems: MenuItem[] = [
-  { name: 'Dashboard',  path: '/dashboard', roles: ['admin','manager','reception','finance'] },
-  { name: 'Bookings',   path: '/bookings',  roles: ['admin','reception','manager'] },
-  { name: 'Laundry',    path: '/laundry',   roles: ['admin','manager','reception'] },
-  { name: 'Attendance', path: '/attendance',roles: ['admin','manager','reception'] },
-  { name: 'Payments',   path: '/payments',  roles: ['admin','finance','manager','reception'] },
-  { name: 'Inventory',  path: '/inventory', roles: ['admin','store','manager','barista'] }, // deduped 'store'
-  { name: 'Rooms',      path: '/rooms',     roles: ['admin','reception','manager'] },
-  { name: 'Staff',      path: '/staff',     roles: ['admin','manager'] },
-  { name: 'Guests',     path: '/guests',    roles: ['admin','reception','manager'] },
-];
+import { pagesFor } from '@/lib/permissions';
 
 export default function Layout({ children }: { children: ReactNode }) {
   const router = useRouter(); // App Router alt: const pathname = usePathname();
   const { user, logout } = useAuth();
 
-  // Normalize role safely
-  const role: AppRole = (user?.role as Role) ?? 'guest';
-
   // Active checker that works for nested paths
   const isActive = (path: string) =>
     router.pathname === path || router.pathname.startsWith(path + '/'); // App Router: pathname === path || pathname.startsWith(path + '/')
 
-  // Only show items the role can see
-  const visibleItems = useMemo(
-    () => menuItems.filter(item => item.roles.includes(role as Role)),
-    [role]
-  );
+  const visibleItems = user ? pagesFor(user.role) : [];
 
   return (
     <div className="flex h-screen">
@@ -55,11 +23,11 @@ export default function Layout({ children }: { children: ReactNode }) {
         <nav className="flex-1 space-y-2 overflow-y-auto p-2">
           {visibleItems.map(item => (
             <Link
-              key={item.name}
+              key={item.path}
               href={item.path}
               className={`block rounded p-2 hover:bg-gray-700 ${isActive(item.path) ? 'bg-gray-700' : ''}`}
             >
-              {item.name}
+              {item.label}
             </Link>
           ))}
         </nav>
