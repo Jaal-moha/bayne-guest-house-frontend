@@ -1,0 +1,14 @@
+{
+  "name": "login-admin",
+  "role": "anon",
+  "steps": [
+    { "goto": "/login" },
+    { "fill": { "placeholder": "you@example.com" }, "value": "admin@example.com" },
+    { "fill": { "placeholder": "••••••••" }, "value": "admin123" },
+    { "click": { "role": "button", "name": "Sign in" } },
+    { "expectApi": "POST /auth/login 201" },
+    { "expectUrl": "/dashboard" },
+    { "expectText": "Welcome, Admin" },
+    { "expectVisible": { "role": "link", "name": "Staff" } }
+  ]
+}

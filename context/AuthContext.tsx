@@ -1,8 +1,9 @@
 import { createContext, useContext, useEffect, useState } from 'react';
 import axios from '@/utils/axiosInstance';
 import { useRouter } from 'next/router';
+import type { Role } from '@/lib/permissions';
 
-type User = { userId: number; role: string; name: string };
+type User = { userId: number; role: Role; name: string };
 
 type AuthState = {
   user: User | null;
@@ -53,7 +54,6 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
     setToken(t);
     setTokenHeader(t);
     await refresh();
-    router.push('/dashboard');
   };
 
   const logout = () => {

@@ -396,7 +396,7 @@ export default function GuestsPageInner() {
   };
 
   return (
-    <RequireAuth roles={['admin', 'manager', 'reception']}>
+    <RequireAuth>
       <Layout>
         <div className="mb-4 flex items-center gap-3">
           <h1 className="text-2xl font-bold text-gray-800">Guests</h1>

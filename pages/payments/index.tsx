@@ -502,7 +502,7 @@ function PaymentsInner() {
 
 export default function PaymentsPage() {
   return (
-    <RequireAuth roles={['admin','finance','reception','manager']}>
+    <RequireAuth>
       <PaymentsInner />
     </RequireAuth>
   );

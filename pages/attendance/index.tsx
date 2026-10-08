@@ -1,5 +1,6 @@
 import { useEffect, useMemo, useState } from 'react';
 import Layout from '@/components/Layout';
+import RequireAuth from '@/components/RequireAuth';
 import axios from '@/utils/axiosInstance';
 
 type Attendance = {
@@ -34,7 +35,7 @@ const apiUrl = (path: string) => {
   return `${base}${path}`;
 };
 
-export default function AttendancePage() {
+function AttendanceInner() {
   const [rowsAll, setRowsAll] = useState<Attendance[]>([]);
   const [loading, setLoading] = useState(true);
   const [q, setQ] = useState('');
@@ -151,5 +152,13 @@ export default function AttendancePage() {
         )}
       </div>
     </Layout>
+  );
+}
+
+export default function AttendancePage() {
+  return (
+    <RequireAuth>
+      <AttendanceInner />
+    </RequireAuth>
   );
 }

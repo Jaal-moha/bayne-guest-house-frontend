@@ -1,0 +1,9 @@
+{
+  "name": "root-is-app",
+  "role": "admin",
+  "steps": [
+    { "goto": "/" },
+    { "expectUrl": "/dashboard" },
+    { "expectNoText": "Get started by editing" }
+  ]
+}

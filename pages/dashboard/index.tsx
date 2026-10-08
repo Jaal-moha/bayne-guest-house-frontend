@@ -175,7 +175,7 @@ function DashboardInner() {
 
 export default function DashboardPage() {
   return (
-    <RequireAuth roles={['admin', 'manager', 'reception', 'finance']}>
+    <RequireAuth>
       <DashboardInner />
     </RequireAuth>
   );

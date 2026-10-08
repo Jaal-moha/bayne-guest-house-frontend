@@ -877,7 +877,7 @@ function StaffPageInner() {
 
 export default function StaffPage() {
   return (
-    <RequireAuth roles={['admin', 'manager']}>
+    <RequireAuth>
       <StaffPageInner />
     </RequireAuth>
   );

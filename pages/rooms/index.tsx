@@ -185,7 +185,7 @@ function RoomsInner() {
 
 export default function RoomsPage() {
   return (
-    <RequireAuth roles={['admin', 'reception', 'manager']}>
+    <RequireAuth>
       <RoomsInner />
     </RequireAuth>
   );

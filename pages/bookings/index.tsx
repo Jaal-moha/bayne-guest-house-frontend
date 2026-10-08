@@ -464,7 +464,7 @@ function BookingsInner() {
 
 export default function BookingsPage() {
   return (
-    <RequireAuth roles={['admin', 'reception', 'manager']}>
+    <RequireAuth>
       <BookingsInner />
     </RequireAuth>
   );
