@@ -56,7 +56,11 @@ function AddStaffModal({
   const [emergencyContact, setEmergencyContact] = useState('');
   const [err, setErr] = useState('');
   const [loading, setLoading] = useState(false);
-  const [createdCreds, setCreatedCreds] = useState<{ email: string; password: string; id?: number } | null>(null);
+  // Set once POST /staff succeeds, so a retry after a failed account step never posts the staff record again.
+  const [created, setCreated] = useState<Staff | null>(null);
+  const [createdCreds, setCreatedCreds] = useState<{ email: string; password: string; id: number } | null>(null);
+  const [copy, setCopy] = useState<'idle' | 'copied' | 'failed'>('idle');
+  const [savedConfirmed, setSavedConfirmed] = useState(false);
 
   // New: two-step flow + toggle to create account
   const [createAccount, setCreateAccount] = useState(true);
@@ -71,7 +75,10 @@ function AddStaffModal({
       setPhone('');
       setEmergencyContact('');
       setErr('');
+      setCreated(null);
       setCreatedCreds(null);
+      setCopy('idle');
+      setSavedConfirmed(false);
       setCreateAccount(true);
       setStep(1);
       setEmail('');
@@ -80,6 +87,21 @@ function AddStaffModal({
   }, [open]);
 
   if (!open) return null;
+
+  const close = () => {
+    if (created) onCreated(created);
+    onClose();
+  };
+
+  const copyCreds = async () => {
+    if (!createdCreds) return;
+    try {
+      await navigator.clipboard.writeText(`Email: ${createdCreds.email}\nPassword: ${createdCreds.password}`);
+      setCopy('copied');
+    } catch {
+      setCopy('failed');
+    }
+  };
 
   // Step 1: validate fields and generate password (if needed) then move to step 2
   const proceedToReview = () => {
@@ -95,36 +117,29 @@ function AddStaffModal({
     setStep(2);
   };
 
-  // Final submit: create staff first, then user account if needed
   const submit = async () => {
     setErr('');
     try {
       setLoading(true);
-      // Step 1: Create staff (no user fields)
-      const staffPayload = {
-        name: name.trim(),
-        role,
-        phone: phone.trim(),
-        emergencyContact: emergencyContact.trim() || undefined,
-      };
-      const staffRes = await axios.post('/staff', staffPayload);
-      const newStaff = staffRes.data;
-      onCreated(newStaff);
-
-      if (createAccount) {
-        // Step 2: Create user account for the new staff
-        const userPayload = {
-          email: email.trim(),
-          password,
-          role, // Use the staff's role as default
-        };
-        await axios.post(`/users/staff/${newStaff.id}`, userPayload);
-        setCreatedCreds({ email: email.trim(), password, id: newStaff.id });
-      } else {
-        // No account created, close modal
-        setCreatedCreds(null);
-        onClose();
+      let staff = created;
+      if (!staff) {
+        const res = await axios.post('/staff', {
+          name: name.trim(),
+          role,
+          phone: phone.trim(),
+          emergencyContact: emergencyContact.trim() || undefined,
+        });
+        staff = res.data as Staff;
+        setCreated(staff);
       }
+      if (!createAccount) {
+        onCreated(staff);
+        onClose();
+        return;
+      }
+      const user = await axios.post(`/users/staff/${staff.id}`, { email: email.trim(), password, role });
+      setCreated({ ...staff, user: user.data });
+      setCreatedCreds({ email: email.trim(), password, id: staff.id });
     } catch (e: any) {
       const msg = e?.response?.data?.message || e?.message || 'Failed to add staff';
       setErr(Array.isArray(msg) ? msg.join(', ') : msg);
@@ -134,12 +149,18 @@ function AddStaffModal({
   };
 
   return (
-    <Modal open={open} onClose={onClose} title={step === 1 ? 'Add Staff' : 'Review & Create'} size="md" locked={loading || !!createdCreds}>
+    <Modal open={open} onClose={close} title={step === 1 ? 'Add Staff' : 'Review & Create'} size="md" locked={loading || !!createdCreds}>
       <p className="mt-1 text-sm text-gray-500">{step === 1 ? 'Enter staff details' : 'Confirm details and create staff'}</p>
 
       {err && (
         <div className="mt-3 rounded-md border border-red-200 bg-red-50 px-3 py-2 text-sm text-red-700">
           {err}
+        </div>
+      )}
+
+      {created && !createdCreds && !loading && (
+        <div className="mt-3 rounded-md border border-amber-200 bg-amber-50 px-3 py-2 text-sm text-amber-800">
+          {name} is saved as staff. Fix the email and try again to create the account.
         </div>
       )}
 
@@ -154,6 +175,7 @@ function AddStaffModal({
                     className="w-full rounded-md border px-3 py-2 outline-none focus:ring-2 focus:ring-indigo-500"
                     value={name}
                     onChange={(e) => setName(e.target.value)}
+                    disabled={!!created}
                     placeholder="e.g. Sara Reception"
                   />
                 )}
@@ -166,6 +188,7 @@ function AddStaffModal({
                     className="w-full rounded-md border px-3 py-2 outline-none focus:ring-2 focus:ring-indigo-500"
                     value={role}
                     onChange={(e) => setRole(e.target.value)}
+                    disabled={!!created}
                   >
                     <option value="" disabled>Select a role…</option>
                     {ROLE_VALUES.map((r) => (
@@ -184,6 +207,7 @@ function AddStaffModal({
                     className="w-full rounded-md border px-3 py-2 outline-none focus:ring-2 focus:ring-indigo-500"
                     value={phone}
                     onChange={(e) => setPhone(e.target.value)}
+                    disabled={!!created}
                     placeholder="+251 9xx xxx xxx"
                   />
                 )}
@@ -196,6 +220,7 @@ function AddStaffModal({
                     className="w-full rounded-md border px-3 py-2 outline-none focus:ring-2 focus:ring-indigo-500"
                     value={emergencyContact}
                     onChange={(e) => setEmergencyContact(e.target.value)}
+                    disabled={!!created}
                     placeholder="Name / Phone"
                   />
                 )}
@@ -207,6 +232,7 @@ function AddStaffModal({
                   type="checkbox"
                   checked={createAccount}
                   onChange={(e) => setCreateAccount(e.target.checked)}
+                  disabled={!!created}
                   className="h-4 w-4 rounded border-gray-300 text-indigo-600"
                 />
                 <label htmlFor="create-account" className="text-sm text-gray-700">
@@ -275,7 +301,7 @@ function AddStaffModal({
                   setErr('');
                   return;
                 }
-                onClose();
+                close();
               }}
               className="rounded-md border px-4 py-2 hover:bg-gray-50"
               disabled={loading}
@@ -296,7 +322,7 @@ function AddStaffModal({
                 disabled={loading}
                 className="rounded-md bg-indigo-600 px-4 py-2 font-semibold text-white hover:bg-indigo-700 disabled:opacity-60"
               >
-                {loading ? 'Saving…' : createAccount ? 'Create Staff & Account' : 'Create Staff'}
+                {loading ? 'Saving…' : created ? 'Retry Account' : createAccount ? 'Create Staff & Account' : 'Create Staff'}
               </button>
             )}
           </div>
@@ -312,20 +338,27 @@ function AddStaffModal({
           </div>
           <div className="mt-2 text-xs text-gray-700">Credentials must be delivered to the staff member. They will be required to change the password on first login.</div>
 
+          <div className="mt-3 text-sm" role="status">
+            {copy === 'copied' && <span className="font-semibold text-green-700">Copied</span>}
+            {copy === 'failed' && <span className="font-semibold text-red-700">Copy failed, select the password</span>}
+          </div>
+          {copy !== 'copied' && (
+            <label className="mt-2 flex items-center gap-2 text-sm text-gray-700">
+              <input type="checkbox" checked={savedConfirmed} onChange={(e) => setSavedConfirmed(e.target.checked)} className="h-4 w-4" />
+              I saved the password
+            </label>
+          )}
+
           <div className="mt-4 flex justify-end gap-2">
             <button
-              onClick={() => {
-                setCreatedCreds(null);
-                onClose();
-              }}
-              className="rounded-md border px-4 py-2 hover:bg-gray-50"
+              onClick={close}
+              disabled={copy !== 'copied' && !savedConfirmed}
+              className="rounded-md border px-4 py-2 hover:bg-gray-50 disabled:opacity-50"
             >
               Done
             </button>
             <button
-              onClick={() => {
-                navigator.clipboard?.writeText(`Email: ${createdCreds.email}\nPassword: ${createdCreds.password}`);
-              }}
+              onClick={copyCreds}
               className="rounded-md bg-indigo-600 px-4 py-2 font-semibold text-white hover:bg-indigo-700"
             >
               Copy Credentials
@@ -694,7 +727,7 @@ function StaffPageInner() {
   }, [q, staff]);
 
   const onCreated = (newStaff: Staff) => {
-    setStaff((prev) => [newStaff, ...prev]);
+    setStaff((prev) => [newStaff, ...prev.filter((p) => p.id !== newStaff.id)]);
   };
 
   // Fetch PDF as blob and show preview modal (no navigation)
