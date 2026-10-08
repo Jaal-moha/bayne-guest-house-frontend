@@ -519,69 +519,67 @@ function StaffTable({
   onDelete?: (s: Staff) => void;
 }) {
   return (
-    <>
-      <table className="min-w-full border-collapse table-auto">
-        <thead className="bg-gray-100">
-          <tr>
-            <th className="px-4 py-3 text-left text-sm font-semibold text-gray-700">Name</th>
-            <th className="px-4 py-3 text-left text-sm font-semibold text-gray-700">Role</th>
-            <th className="px-4 py-3 text-left text-sm font-semibold text-gray-700">Phone</th>
-            <th className="px-4 py-3 text-left text-sm font-semibold text-gray-700">Emergency</th>
-            <th className="px-4 py-3 text-left text-sm font-semibold text-gray-700">Barcode</th>
-            <th className="px-4 py-3 text-left text-sm font-semibold text-gray-700">Account</th>
-            <th className="px-4 py-3 text-left text-sm font-semibold text-gray-700">Actions</th>
-          </tr>
-        </thead>
-        <tbody>
-          {staff.map((s) => (
-            <tr key={s.id} className="border-t">
-              <td className="px-4 py-3">{s.name}</td>
-              <td className="px-4 py-3">{s.role}</td>
-              <td className="px-4 py-3">{s.phone}</td>
-              <td className="px-4 py-3">{s.emergencyContact || <span className="text-gray-400">—</span>}</td>
-              <td className="px-4 py-3 font-mono text-sm">{s.barcode}</td>
-              <td className="px-4 py-3">
-                {s.user ? (
-                  <span className="rounded bg-green-50 px-2 py-1 text-xs font-semibold text-green-700">
-                    {s.user.email}
-                  </span>
+    <table className="min-w-full border-collapse table-auto">
+      <thead className="bg-gray-100">
+        <tr>
+          <th className="px-4 py-3 text-left text-sm font-semibold text-gray-700">Name</th>
+          <th className="px-4 py-3 text-left text-sm font-semibold text-gray-700">Role</th>
+          <th className="px-4 py-3 text-left text-sm font-semibold text-gray-700">Phone</th>
+          <th className="px-4 py-3 text-left text-sm font-semibold text-gray-700">Emergency</th>
+          <th className="px-4 py-3 text-left text-sm font-semibold text-gray-700">Barcode</th>
+          <th className="px-4 py-3 text-left text-sm font-semibold text-gray-700">Account</th>
+          <th className="px-4 py-3 text-left text-sm font-semibold text-gray-700">Actions</th>
+        </tr>
+      </thead>
+      <tbody>
+        {staff.map((s) => (
+          <tr key={s.id} className="border-t">
+            <td className="px-4 py-3">{s.name}</td>
+            <td className="px-4 py-3">{s.role}</td>
+            <td className="px-4 py-3">{s.phone}</td>
+            <td className="px-4 py-3">{s.emergencyContact || <span className="text-gray-400">—</span>}</td>
+            <td className="px-4 py-3 font-mono text-sm">{s.barcode}</td>
+            <td className="px-4 py-3">
+              {s.user ? (
+                <span className="rounded bg-green-50 px-2 py-1 text-xs font-semibold text-green-700">
+                  {s.user.email}
+                </span>
+              ) : (
+                <span className="text-gray-400">No account</span>
+              )}
+            </td>
+            <td className="px-4 py-3">
+              <div className="flex gap-2">
+                {s.id ? (
+                  <>
+                    <button
+                      onClick={() => onPreview?.(s)}
+                      className="inline-block rounded bg-indigo-50 px-3 py-1 text-xs font-semibold text-indigo-700 hover:bg-indigo-100"
+                    >
+                      Preview / Download
+                    </button>
+                    <button
+                      onClick={() => onEdit?.(s)}
+                      className="inline-block rounded border px-3 py-1 text-xs font-semibold text-gray-700 hover:bg-gray-50"
+                    >
+                      Edit
+                    </button>
+                    <button
+                      onClick={() => onDelete?.(s)}
+                      className="inline-block rounded bg-red-50 px-3 py-1 text-xs font-semibold text-red-700 hover:bg-red-100"
+                    >
+                      Delete
+                    </button>
+                  </>
                 ) : (
-                  <span className="text-gray-400">No account</span>
+                  <span className="text-gray-400">—</span>
                 )}
-              </td>
-              <td className="px-4 py-3">
-                <div className="flex gap-2">
-                  {s.id ? (
-                    <>
-                      <button
-                        onClick={() => onPreview?.(s)}
-                        className="inline-block rounded bg-indigo-50 px-3 py-1 text-xs font-semibold text-indigo-700 hover:bg-indigo-100"
-                      >
-                        Preview / Download
-                      </button>
-                      <button
-                        onClick={() => onEdit?.(s)}
-                        className="inline-block rounded border px-3 py-1 text-xs font-semibold text-gray-700 hover:bg-gray-50"
-                      >
-                        Edit
-                      </button>
-                      <button
-                        onClick={() => onDelete?.(s)}
-                        className="inline-block rounded bg-red-50 px-3 py-1 text-xs font-semibold text-red-700 hover:bg-red-100"
-                      >
-                        Delete
-                      </button>
-                    </>
-                  ) : (
-                    <span className="text-gray-400">—</span>
-                  )}
-                </div>
-              </td>
-            </tr>
-          ))}
-        </tbody>
-      </table>
-    </>
+              </div>
+            </td>
+          </tr>
+        ))}
+      </tbody>
+    </table>
   );
 }
 
