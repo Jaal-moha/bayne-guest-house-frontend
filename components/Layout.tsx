@@ -1,4 +1,4 @@
-import { ReactNode, useEffect, useState } from 'react';
+import { ReactNode, useEffect, useRef, useState } from 'react';
 import Head from 'next/head';
 import Link from 'next/link';
 import { useRouter } from 'next/router';
@@ -9,6 +9,8 @@ export default function Layout({ children }: { children: ReactNode }) {
   const router = useRouter();
   const { user, logout } = useAuth();
   const [menuOpen, setMenuOpen] = useState(false);
+  const sidebarRef = useRef<HTMLElement>(null);
+  const menuButtonRef = useRef<HTMLButtonElement>(null);
 
   const isActive = (path: string) =>
     router.pathname === path || router.pathname.startsWith(path + '/');
@@ -22,7 +24,12 @@ export default function Layout({ children }: { children: ReactNode }) {
       if (e.key === 'Escape') setMenuOpen(false);
     };
     document.addEventListener('keydown', onKey);
-    return () => document.removeEventListener('keydown', onKey);
+    sidebarRef.current?.querySelector<HTMLElement>('a, button')?.focus();
+    const button = menuButtonRef.current;
+    return () => {
+      document.removeEventListener('keydown', onKey);
+      if (button?.isConnected) button.focus();
+    };
   }, [menuOpen]);
 
   return (
@@ -36,6 +43,7 @@ export default function Layout({ children }: { children: ReactNode }) {
       )}
 
       <aside
+        ref={sidebarRef}
         id="sidebar"
         className={`${menuOpen ? 'flex' : 'hidden'} fixed inset-y-0 left-0 z-40 w-64 flex-col bg-gray-800 text-white md:static md:flex`}
       >
@@ -66,6 +74,7 @@ export default function Layout({ children }: { children: ReactNode }) {
       <main className="flex min-w-0 flex-1 flex-col">
         <header className="flex items-center gap-3 bg-white px-4 py-4 shadow md:px-6">
           <button
+            ref={menuButtonRef}
             onClick={() => setMenuOpen(true)}
             className="rounded-md border px-3 py-1 md:hidden"
             aria-label="Open menu"
