@@ -70,13 +70,15 @@ const page = await ctx.newPage();
 page.setDefaultTimeout(STEP_TIMEOUT);
 
 const apiPath = (url) => url.slice(API_URL.length) || '/';
-for (const f of sub(spec.failApi ?? [])) {
+const failing = new Set(sub(spec.failApi ?? []));
+const fails = (req) => [...failing].some((f) => {
   const [method, prefix] = f.split(' ');
-  await page.route((u) => u.href.startsWith(API_URL + prefix), (r) =>
-    r.request().method() === method
-      ? r.fulfill({ status: 500, contentType: 'application/json', body: '{"message":"verify-injected failure"}' })
-      : r.fallback());
-}
+  return req.method() === method && req.url().startsWith(API_URL + prefix);
+});
+await page.route((u) => u.href.startsWith(API_URL), (r) =>
+  fails(r.request())
+    ? r.fulfill({ status: 500, contentType: 'application/json', body: '{"message":"verify-injected failure"}' })
+    : r.fallback());
 page.on('response', (r) => {
   if (!r.url().startsWith(API_URL) || r.request().method() === 'OPTIONS') return;
   report.api.push({ method: r.request().method(), path: apiPath(r.url()), status: r.status(), body: r.request().postData() ?? undefined });
@@ -130,6 +132,8 @@ const actions = {
   },
   press: async (k) => { await page.keyboard.press(k); await settle(); },
   wait: async (ms) => { await page.waitForTimeout(ms); },
+  failApi: async (fs) => { for (const f of fs) failing.add(f); },
+  unfailApi: async (fs) => { for (const f of fs) failing.delete(f); },
   screenshot: async (n) => { await page.screenshot({ path: join(dir, `${n}.png`) }); },
   expectText: (s) => poll(async () => (await bodyText()).includes(s), `text "${s}" not on page`),
   expectNoText: (s) => poll(async () => !(await bodyText()).includes(s), `text "${s}" still on page`),
