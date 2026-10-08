@@ -5,6 +5,7 @@ Every list page loads its rows through `lib/useList.ts` and renders them through
 ## Sub-features
 
 - `<page>-load-error` fails the page's list call with `failApi` and requires the error text, the Retry button, no empty text, no raw server message and no page errors. One spec exists for each of dashboard, bookings, guests, rooms, laundry, attendance, inventory, payments and staff.
+- `laundry-housekeeping` signs in as housekeeping with one seeded laundry record. The record shows with its guest name although `GET /guests` returns 403, and the page has no errors. Before UX-2 the combined load rejected and the page said `No laundry records.`.
 - `laundry-guests-forbidden` signs in as housekeeping, who can see laundry but gets 403 on `GET /guests`. The laundry list loads, and the Add Laundry modal's guest list shows the access message.
 
 ## How to get to it (user POV)
@@ -19,6 +20,7 @@ Preconditions:
 - The baseline from the README holds.
 
 - **All pages.** Run `$S suite '*-load-error'`. Each spec prints `RESULT PASS` and `PAGEERRORS 0`.
+- **Housekeeping laundry.** Run `$S drive laundry-housekeeping`. It requires `API GET /laundry 200`, `API GET /guests 403`, the seeded record and `PAGEERRORS 0`.
 - **403.** Run `$S drive laundry-guests-forbidden`. It requires `API GET /guests 403` and the access message in the modal.
 
 | Spec | Role | Failed call | Error text |

@@ -1,0 +1,19 @@
+{
+  "name": "laundry-housekeeping",
+  "role": "housekeeping",
+  "setup": [
+    { "as": "reception", "method": "POST", "path": "/guests", "body": { "name": "Laundry ${RUN}", "phone": "0911223344" }, "expect": 201, "save": "GUEST" },
+    { "as": "housekeeping", "method": "POST", "path": "/laundry", "body": { "guestId": "${GUEST}", "items": "2x Towels ${RUN}" }, "expect": 201 }
+  ],
+  "steps": [
+    { "goto": "/laundry" },
+    { "expectApi": "GET /laundry 200" },
+    { "expectApi": "GET /guests 403" },
+    { "expectText": "2x Towels ${RUN}" },
+    { "expectText": "Laundry ${RUN}" },
+    { "expectNoText": "Couldn't load laundry records" },
+    { "expectNoText": "No laundry records." },
+    { "screenshot": "laundry-housekeeping" },
+    { "expectNoPageErrors": true }
+  ]
+}
