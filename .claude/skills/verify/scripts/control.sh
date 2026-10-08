@@ -13,11 +13,12 @@ STATE="$RUN_DIR/state.env"
 EVIDENCE_ROOT="$ROOT/.verify/evidence"
 TOOLS="$ROOT/.verify/tools"
 PORT_FILE="$ROOT/.verify/web-port${VERIFY_ID:+-$VERIFY_ID}"
-BACKEND_LOCK="$BACKEND_DIR/.verify/frontend-up.lock"
+BACKEND_BUILD_LOCK="$BACKEND_DIR/.verify/build.lock"
 
 die() { echo "FAIL $*"; exit 1; }
 [[ -z "$VERIFY_ID" || "$VERIFY_ID" =~ ^[A-Za-z0-9_-]+$ ]] || die "bad-verify-id want=[A-Za-z0-9_-]+ got=$VERIFY_ID"
-backend() { VERIFY_ID="${VERIFY_ID:-frontend}" "$BACKEND_CTL" "$@"; }
+BACKEND_ID="${VERIFY_ID:-frontend}"
+backend() { VERIFY_ID="$BACKEND_ID" "$BACKEND_CTL" "$@"; }
 
 load_state() {
   [[ -f "$STATE" ]] || die "no-instance run 'control.sh up' first (VERIFY_ID=${VERIFY_ID:-unset})"
@@ -84,10 +85,9 @@ cmd_up() {
   local web="http://127.0.0.1:$port"
 
   local line
-  mkdir -p "${BACKEND_LOCK%/*}"
-  # The backend's up runs a shared `npm run build` (deleteOutDir), so concurrent ups must take turns.
+  mkdir -p "${BACKEND_BUILD_LOCK%/*}"
   # -o keeps the lock off the backend server that up leaves running.
-  line="$(ALLOWED_ORIGINS="[\"$web\"]" VERIFY_ID="${VERIFY_ID:-frontend}" flock -o -w 900 "$BACKEND_LOCK" "$BACKEND_CTL" up | tail -1)"
+  line="$(ALLOWED_ORIGINS="[\"$web\"]" VERIFY_ID="$BACKEND_ID" flock -o -w 900 "$BACKEND_BUILD_LOCK" "$BACKEND_CTL" up | tail -1)"
   [[ "$line" == READY* ]] || die "backend-up $line"
   local api; api="$(sed -E 's/.*base=([^ ]+).*/\1/' <<<"$line")"
 
