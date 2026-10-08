@@ -1,0 +1,28 @@
+{
+  "name": "shell-phone-pages",
+  "role": "admin",
+  "viewport": "phone",
+  "steps": [
+    { "goto": "/dashboard" },
+    { "expectFits": true },
+    { "goto": "/bookings" },
+    { "expectFits": true },
+    { "goto": "/laundry" },
+    { "expectFits": true },
+    { "goto": "/attendance" },
+    { "expectFits": true },
+    { "goto": "/payments" },
+    { "expectFits": true },
+    { "click": { "role": "button", "name": "Unpaid Bookings" } },
+    { "expectVisible": { "role": "heading", "name": "Unpaid Bookings" } },
+    { "expectFits": true },
+    { "goto": "/inventory" },
+    { "expectFits": true },
+    { "goto": "/rooms" },
+    { "expectFits": true },
+    { "goto": "/staff" },
+    { "expectFits": true },
+    { "goto": "/guests" },
+    { "expectFits": true }
+  ]
+}

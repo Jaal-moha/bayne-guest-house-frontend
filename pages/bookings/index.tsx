@@ -229,9 +229,9 @@ function BookingsInner() {
 
   return (
     <Layout>
-      <div className="mb-4 flex items-center gap-3">
+      <div className="mb-4 flex flex-wrap items-center gap-3">
         <h1 className="text-2xl font-bold">Bookings</h1>
-        <div className="ml-auto flex gap-2">
+        <div className="ml-auto flex flex-wrap gap-2">
           <input
             value={q}
             onChange={(e) => setQ(e.target.value)}

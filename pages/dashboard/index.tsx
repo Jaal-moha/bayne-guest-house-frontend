@@ -85,7 +85,7 @@ function DashboardInner() {
 
   return (
     <Layout>
-      <div className="mb-4 flex items-center gap-3">
+      <div className="mb-4 flex flex-wrap items-center gap-3">
         <h1 className="text-2xl font-bold text-gray-800">Dashboard</h1>
         <div className="ml-auto">
           {/* Only allow receptionists and managers to create bookings from dashboard */}
