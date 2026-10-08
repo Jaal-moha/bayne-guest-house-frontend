@@ -2,6 +2,8 @@ import { useEffect, useMemo, useState } from 'react';
 import Layout from '@/components/Layout';
 import RequireAuth from '@/components/RequireAuth';
 import axios from '@/utils/axiosInstance';
+import ListState from '@/components/ListState';
+import { useList } from '@/lib/useList';
 
 type Guest = {
   id: number;
@@ -344,9 +346,12 @@ function BookingModal({
 }
 
 /* -------------------- Guests Page -------------------- */
-export default function GuestsPageInner() {
-  const [guests, setGuests] = useState<Guest[]>([]);
-  const [loading, setLoading] = useState(true);
+function GuestsInner() {
+  const guestList = useList<Guest>('guests', async () => {
+    const res = await axios.get('/guests');
+    return Array.isArray(res.data) ? res.data : res.data?.guests ?? [];
+  });
+  const { rows: guests, setRows: setGuests } = guestList;
   const [q, setQ] = useState('');
 
   const [addOpen, setAddOpen] = useState(false);
@@ -354,21 +359,6 @@ export default function GuestsPageInner() {
   // booking/payment state
   const [bookingOpenFor, setBookingOpenFor] = useState<Guest | undefined>(undefined);
   const [paymentOpenBooking, setPaymentOpenBooking] = useState<Booking | undefined>(undefined);
-
-  const fetchGuests = async () => {
-    try {
-      const res = await axios.get('/guests');
-      setGuests(Array.isArray(res.data) ? res.data : res.data?.guests ?? []);
-    } catch (e) {
-      console.error('Failed to fetch guests', e);
-    } finally {
-      setLoading(false);
-    }
-  };
-
-  useEffect(() => {
-    fetchGuests();
-  }, []);
 
   const filtered = useMemo(() => {
     const term = q.trim().toLowerCase();
@@ -396,61 +386,67 @@ export default function GuestsPageInner() {
   };
 
   return (
-    <RequireAuth>
-      <Layout>
-        <div className="mb-4 flex items-center gap-3">
-          <h1 className="text-2xl font-bold text-gray-800">Guests</h1>
-          <div className="ml-auto flex items-center gap-2">
-            <input value={q} onChange={(e) => setQ(e.target.value)} placeholder="Search guests…" className="w-64 rounded-md border px-3 py-2" />
-            <button onClick={() => setAddOpen(true)} className="rounded-md bg-indigo-600 px-4 py-2 text-white">Add Guest</button>
-          </div>
+    <Layout>
+      <div className="mb-4 flex items-center gap-3">
+        <h1 className="text-2xl font-bold text-gray-800">Guests</h1>
+        <div className="ml-auto flex items-center gap-2">
+          <input value={q} onChange={(e) => setQ(e.target.value)} placeholder="Search guests…" className="w-64 rounded-md border px-3 py-2" />
+          <button onClick={() => setAddOpen(true)} className="rounded-md bg-indigo-600 px-4 py-2 text-white">Add Guest</button>
         </div>
+      </div>
 
-        {loading ? (
-          <div className="rounded-lg bg-white p-6 text-gray-600 shadow">Loading…</div>
-        ) : filtered.length === 0 ? (
-          <div className="rounded-lg bg-white p-6 text-gray-600 shadow">No guests found.</div>
-        ) : (
-          <div className="overflow-x-auto rounded-lg bg-white shadow">
-            <table className="min-w-full table-auto">
-              <thead className="bg-gray-100">
-                <tr>
-                  <th className="px-4 py-3 text-left text-sm font-semibold text-gray-700">Name</th>
-                  <th className="px-4 py-3 text-left text-sm font-semibold text-gray-700">Phone</th>
-                  <th className="px-4 py-3 text-left text-sm font-semibold text-gray-700">Email</th>
-                  <th className="px-4 py-3 text-left text-sm font-semibold text-gray-700">Actions</th>
+      <div className="overflow-x-auto rounded-lg bg-white shadow">
+        <ListState list={guestList} empty="No guests found.">
+          {filtered.length === 0 ? (
+            <div className="p-6 text-gray-600">No guests found.</div>
+          ) : (
+          <table className="min-w-full table-auto">
+            <thead className="bg-gray-100">
+              <tr>
+                <th className="px-4 py-3 text-left text-sm font-semibold text-gray-700">Name</th>
+                <th className="px-4 py-3 text-left text-sm font-semibold text-gray-700">Phone</th>
+                <th className="px-4 py-3 text-left text-sm font-semibold text-gray-700">Email</th>
+                <th className="px-4 py-3 text-left text-sm font-semibold text-gray-700">Actions</th>
+              </tr>
+            </thead>
+            <tbody>
+              {filtered.map((g) => (
+                <tr key={g.id} className="border-t">
+                  <td className="px-4 py-3">{g.name}</td>
+                  <td className="px-4 py-3">{g.phone || <span className="text-gray-400">—</span>}</td>
+                  <td className="px-4 py-3">{g.email || <span className="text-gray-400">—</span>}</td>
+                  <td className="px-4 py-3">
+                    <div className="flex gap-2">
+                      <button onClick={() => { setAddOpen(true); /* could open edit if implemented */ }} className="rounded border px-3 py-1 text-xs font-semibold text-gray-700">Edit</button>
+                    </div>
+                  </td>
                 </tr>
-              </thead>
-              <tbody>
-                {filtered.map((g) => (
-                  <tr key={g.id} className="border-t">
-                    <td className="px-4 py-3">{g.name}</td>
-                    <td className="px-4 py-3">{g.phone || <span className="text-gray-400">—</span>}</td>
-                    <td className="px-4 py-3">{g.email || <span className="text-gray-400">—</span>}</td>
-                    <td className="px-4 py-3">
-                      <div className="flex gap-2">
-                        <button onClick={() => { setAddOpen(true); /* could open edit if implemented */ }} className="rounded border px-3 py-1 text-xs font-semibold text-gray-700">Edit</button>
-                      </div>
-                    </td>
-                  </tr>
-                ))}
-              </tbody>
-            </table>
-          </div>
-        )}
+              ))}
+            </tbody>
+          </table>
+          )}
+        </ListState>
+      </div>
 
-        <AddGuestModal open={addOpen} onClose={() => setAddOpen(false)} onCreated={onCreated} />
+      <AddGuestModal open={addOpen} onClose={() => setAddOpen(false)} onCreated={onCreated} />
 
-        <BookingModal
-          open={Boolean(bookingOpenFor)}
-          guest={bookingOpenFor}
-          onClose={() => setBookingOpenFor(undefined)}
-          onBooked={onBooked}
-          onPaymentRequested={onPaymentRequested}
-        />
+      <BookingModal
+        open={Boolean(bookingOpenFor)}
+        guest={bookingOpenFor}
+        onClose={() => setBookingOpenFor(undefined)}
+        onBooked={onBooked}
+        onPaymentRequested={onPaymentRequested}
+      />
 
-        <PaymentModal open={Boolean(paymentOpenBooking)} booking={paymentOpenBooking} onClose={() => setPaymentOpenBooking(undefined)} onPaid={onPaid} />
-      </Layout>
+      <PaymentModal open={Boolean(paymentOpenBooking)} booking={paymentOpenBooking} onClose={() => setPaymentOpenBooking(undefined)} onPaid={onPaid} />
+    </Layout>
+  );
+}
+
+export default function GuestsPage() {
+  return (
+    <RequireAuth>
+      <GuestsInner />
     </RequireAuth>
   );
 }

@@ -1,7 +1,9 @@
-import { useCallback, useEffect, useMemo, useState } from 'react';
+import { useEffect, useMemo, useState } from 'react';
 import Layout from '@/components/Layout';
 import RequireAuth from '@/components/RequireAuth';
 import axios from '@/utils/axiosInstance';
+import ListState from '@/components/ListState';
+import { useList } from '@/lib/useList';
 import Link from 'next/link';
 
 type Item = {
@@ -397,10 +399,20 @@ function ItemActionsModal({
 /* ---------- Page ---------- */
 
 function InventoryInner() {
-  const [rows, setRows] = useState<Item[]>([]);
   const [q, setQ] = useState(''); const [category, setCategory] = useState('');
   const [onlyLow, setOnlyLow] = useState(false);
-  const [loading, setLoading] = useState(true);
+  const items = useList<Item>('inventory', async () => {
+    const res = await axios.get('/inventory', {
+      params: {
+        q: q || undefined,
+        category: category || undefined,
+        low: onlyLow ? 'true' : undefined,
+      }
+    });
+    const arr = Array.isArray(res.data) ? res.data : res.data.inventory ?? res.data;
+    return arr.map((r: Item) => ({ ...r, minThreshold: r.minThreshold ?? 0 }));
+  }, JSON.stringify([q, category, onlyLow]));
+  const { rows, setRows } = items;
 
   const [newOpen, setNewOpen] = useState(false);
   const [stockItem, setStockItem] = useState<Item | null>(null);
@@ -408,25 +420,6 @@ function InventoryInner() {
   const [historyItem, setHistoryItem] = useState<Item | null>(null);
   // Add: actions item state
   const [actionsItem, setActionsItem] = useState<Item | null>(null);
-
-  const fetchRows = useCallback(async () => {
-    setLoading(true);
-    try {
-      const res = await axios.get('/inventory', {
-        params: {
-          q: q || undefined,
-          category: category || undefined,
-          low: onlyLow ? 'true' : undefined,
-        }
-      });
-      const arr = Array.isArray(res.data) ? res.data : res.data.inventory ?? res.data;
-      setRows(arr.map((r: Item) => ({ ...r, minThreshold: r.minThreshold ?? 0 })));
-    } finally {
-      setLoading(false);
-    }
-  }, [q, category, onlyLow]);
-
-  useEffect(() => { fetchRows(); }, [fetchRows]);
 
   const categories = useMemo(() => {
     const set = new Set<string>();
@@ -483,9 +476,7 @@ function InventoryInner() {
       </div>
 
       <div className="overflow-x-auto rounded bg-white shadow">
-        {loading ? (
-          <div className="p-6 text-gray-600">Loading…</div>
-        ) : (
+        <ListState list={items}>
           <table className="min-w-full table-auto">
             <thead className="bg-gray-100">
               <tr>
@@ -529,7 +520,7 @@ function InventoryInner() {
               )}
             </tbody>
           </table>
-        )}
+        </ListState>
       </div>
 
       <NewItemModal

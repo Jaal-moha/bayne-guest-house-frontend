@@ -1,11 +1,15 @@
 {
   "name": "bookings-load-error",
   "role": "reception",
-  "knownBug": "A failed GET /bookings renders the empty state 'No bookings.' instead of an error.",
   "failApi": ["GET /bookings"],
   "steps": [
-    { "goto": "/bookings" },
-    { "expectApi": "GET /bookings 500" },
-    { "expectNoText": "No bookings." }
+    {"goto": "/bookings"},
+    {"expectApi": "GET /bookings 500"},
+    {"expectText": "Couldn't load bookings"},
+    {"expectVisible": {"role": "button", "name": "Retry"}},
+    {"expectNoText": "No bookings."},
+    {"expectNoText": "verify-injected failure"},
+    {"screenshot": "bookings-error"},
+    {"expectNoPageErrors": true}
   ]
 }

@@ -3,6 +3,8 @@ import { useEffect, useMemo, useState } from 'react';
 import Layout from '@/components/Layout';
 import RequireAuth from '@/components/RequireAuth';
 import axios from '@/utils/axiosInstance';
+import ListState from '@/components/ListState';
+import { useList } from '@/lib/useList';
 
 type Room = { id: number; number: string; type: string; price: number; };
 
@@ -114,17 +116,15 @@ function EditRoomModal({ open, onClose, room, onUpdated }: {
 }
 
 function RoomsInner() {
-  const [rooms, setRooms] = useState<Room[]>([]);
-  const [q, setQ] = useState(''); const [loading, setLoading] = useState(true);
+  const roomList = useList<Room>('rooms', async () => {
+    const res = await axios.get('/rooms');
+    return Array.isArray(res.data) ? res.data : res.data?.rooms ?? [];
+  });
+  const { rows: rooms, setRows: setRooms } = roomList;
+  const [q, setQ] = useState('');
   const [modal, setModal] = useState(false);
   const [editOpen, setEditOpen] = useState(false);
   const [editing, setEditing] = useState<Room | null>(null);
-
-  const fetchRooms = async () => {
-    try { const res = await axios.get('/rooms'); setRooms(Array.isArray(res.data) ? res.data : res.data?.rooms ?? []); }
-    finally { setLoading(false); }
-  };
-  useEffect(() => { fetchRooms(); }, []);
 
   const filtered = useMemo(() => {
     const t = q.toLowerCase();
@@ -142,7 +142,7 @@ function RoomsInner() {
       </div>
 
       <div className="overflow-x-auto rounded bg-white shadow">
-        {loading ? <div className="p-6 text-gray-600">Loading…</div> : (
+        <ListState list={roomList}>
           <table className="min-w-full table-auto">
             <thead className="bg-gray-100">
               <tr>
@@ -169,7 +169,7 @@ function RoomsInner() {
               {filtered.length === 0 && <tr><td className="px-4 py-6 text-gray-500" colSpan={4}>No rooms.</td></tr>}
             </tbody>
           </table>
-        )}
+        </ListState>
       </div>
 
       <AddRoomModal open={modal} onClose={() => setModal(false)} onCreated={(r) => setRooms(prev => [r, ...prev])} />

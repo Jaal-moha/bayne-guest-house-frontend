@@ -1,0 +1,10 @@
+{
+  "name": "guests-store-guard",
+  "role": "store",
+  "steps": [
+    { "goto": "/guests" },
+    { "expectApi": "GET /inventory" },
+    { "expectNoApi": "GET /guests" },
+    { "expectNoPageErrors": true }
+  ]
+}

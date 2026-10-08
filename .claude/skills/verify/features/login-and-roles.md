@@ -7,7 +7,7 @@ Staff sign in with email and password and land on the first page their role may 
 - `login-success` signs in through the form and lands on the role's landing page, `/dashboard` for admin, with the user's name in the header.
 - `login-error` keeps the user on `/login` and shows the API's message after a wrong password.
 - `nav-by-role` shows the sidebar links `pagesFor(role)` returns, in `PAGES` order.
-- `page-guard` is `RequireAuth`. It reads `canSee(role, pathname)` and redirects a disallowed role to `landingFor(role) ?? '/'`. Attendance fetches inside `RequireAuth`, so the redirect lands before any fetch. Laundry and guests still fetch outside it, so a disallowed role sends their list request before the redirect.
+- `page-guard` is `RequireAuth`. It reads `canSee(role, pathname)` and redirects a disallowed role to `landingFor(role) ?? '/'`. Every page renders `RequireAuth` around an inner component that owns the `useList` calls, so the redirect lands before any list request starts.
 - `role-landing` sends each role to `landingFor(role)`. Store and barista land on `/inventory`, housekeeping on `/laundry`, and admin, manager, reception and finance on `/dashboard`. Security has no page and gets a "No pages for your role" screen at `/` with Logout.
 
 ## How to get to it (user POV)
@@ -26,7 +26,7 @@ Preconditions:
 - **Wrong password.** Run `$S drive login-wrong-password`. `RESULT PASS` with `API POST /auth/login 401` and the URL still `/login`.
 - **Nav and guard.** Run `$S drive nav-roles-finance`. Finance sees Payments and not Staff, and `/staff` redirects to `/dashboard`.
 - **Reception inventory.** Run `$S drive nav-roles-reception`. The sidebar's Inventory link opens `/inventory` and `GET /inventory` returns 200.
-- **Guard before fetch.** Run `$S drive attendance-guard`. Finance at `/attendance` lands on `/dashboard` and the drive sends no `GET /attendance`. Only attendance guards before fetching. Laundry and guests don't yet.
+- **Guard before fetch.** Run `$S drive attendance-guard`, `$S drive laundry-store-guard` and `$S drive guests-store-guard`. Finance at `/attendance` lands on `/dashboard` with no `GET /attendance`. Store at `/laundry` or `/guests` lands on `/inventory` with no `GET /laundry` or `GET /guests`.
 - **Role landing.** Run `$S suite 'role-landing-*'`. Store lands on `/inventory` and housekeeping on `/laundry`, each with no Dashboard link in the sidebar. Housekeeping and security never visit `/dashboard`, so a login redirect to `/dashboard` that `RequireAuth` bounces still fails the spec. The dashboard fetches inside `RequireAuth`, so `expectNoApi "GET /stats/overview"` can't catch that bounce. Security signs in to "No pages for your role" and Logout returns to `/login`.
 
 ## Gotchas

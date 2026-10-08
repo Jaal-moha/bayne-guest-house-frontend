@@ -1,7 +1,9 @@
-import { useEffect, useMemo, useState } from 'react';
+import { useMemo, useState } from 'react';
 import Layout from '@/components/Layout';
 import RequireAuth from '@/components/RequireAuth';
 import axios from '@/utils/axiosInstance';
+import ListState from '@/components/ListState';
+import { useList } from '@/lib/useList';
 
 type Attendance = {
   id: number;
@@ -36,24 +38,14 @@ const apiUrl = (path: string) => {
 };
 
 function AttendanceInner() {
-  const [rowsAll, setRowsAll] = useState<Attendance[]>([]);
-  const [loading, setLoading] = useState(true);
+  const attendance = useList<Attendance>('attendance records', async () => {
+    const res = await axios.get(apiUrl('/attendance'));
+    return Array.isArray(res.data) ? res.data : res.data.attendance ?? [];
+  });
+  const { rows: rowsAll, setRows: setRowsAll } = attendance;
   const [q, setQ] = useState('');
   const [page, setPage] = useState(1);
   const [pageSize, setPageSize] = useState(10);
-
-  const fetchData = async () => {
-    try {
-      const res = await axios.get(apiUrl('/attendance'));
-      const data = Array.isArray(res.data) ? res.data : res.data.attendance ?? [];
-      setRowsAll(data);
-    } catch (e) {
-      console.error('Fetch attendance failed', e);
-    } finally {
-      setLoading(false);
-    }
-  };
-  useEffect(() => { fetchData(); }, []);
 
   const filtered = useMemo(() => {
     const term = q.trim().toLowerCase();
@@ -112,11 +104,10 @@ function AttendanceInner() {
 
       {/* Table */}
       <div className="overflow-x-auto rounded-lg bg-white shadow">
-        {loading ? (
-          <div className="p-6 text-gray-600">Loading...</div>
-        ) : rows.length === 0 ? (
-          <div className="p-6 text-gray-600">No records.</div>
-        ) : (
+        <ListState list={attendance} empty="No records.">
+          {rows.length === 0 ? (
+            <div className="p-6 text-gray-600">No records.</div>
+          ) : (
           <table className="min-w-full table-auto border-collapse">
             <thead className="bg-gray-100">
               <tr>
@@ -149,7 +140,8 @@ function AttendanceInner() {
               ))}
             </tbody>
           </table>
-        )}
+          )}
+        </ListState>
       </div>
     </Layout>
   );

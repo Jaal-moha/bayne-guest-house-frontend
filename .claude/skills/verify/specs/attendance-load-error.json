@@ -1,0 +1,15 @@
+{
+  "name": "attendance-load-error",
+  "role": "reception",
+  "failApi": ["GET /attendance"],
+  "steps": [
+    {"goto": "/attendance"},
+    {"expectApi": "GET /attendance 500"},
+    {"expectText": "Couldn't load attendance records"},
+    {"expectVisible": {"role": "button", "name": "Retry"}},
+    {"expectNoText": "No records."},
+    {"expectNoText": "verify-injected failure"},
+    {"screenshot": "attendance-error"},
+    {"expectNoPageErrors": true}
+  ]
+}

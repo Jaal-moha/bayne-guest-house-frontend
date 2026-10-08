@@ -32,6 +32,7 @@ Each feature file starts with an H1 title and one paragraph describing the user-
 - [Guests](./guests.md) covers adding a guest and editing one.
 - [Rooms](./rooms.md) covers adding a room and changing its price.
 - [App shell](./app-shell.md) covers the root URL and the layout at phone width.
+- [List load errors](./list-load-errors.md) covers the loading, error, access-denied and empty states of every list page.
 
 ## Not yet mapped
 

@@ -1,0 +1,11 @@
+{
+  "name": "laundry-store-guard",
+  "role": "store",
+  "steps": [
+    { "goto": "/laundry" },
+    { "expectApi": "GET /inventory" },
+    { "expectNoApi": "GET /laundry" },
+    { "expectNoApi": "GET /guests" },
+    { "expectNoPageErrors": true }
+  ]
+}

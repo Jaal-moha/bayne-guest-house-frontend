@@ -1,0 +1,15 @@
+{
+  "name": "laundry-guests-forbidden",
+  "role": "housekeeping",
+  "steps": [
+    { "goto": "/laundry" },
+    { "expectApi": "GET /laundry 200" },
+    { "expectApi": "GET /guests 403" },
+    { "expectNoText": "Couldn't load laundry records" },
+    { "click": { "role": "button", "name": "+ Add Laundry" } },
+    { "expectText": "You don't have access to this list" },
+    { "expectHidden": { "role": "button", "name": "Retry" } },
+    { "screenshot": "forbidden" },
+    { "expectNoPageErrors": true }
+  ]
+}

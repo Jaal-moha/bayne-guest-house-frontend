@@ -1,0 +1,15 @@
+{
+  "name": "guests-load-error",
+  "role": "reception",
+  "failApi": ["GET /guests"],
+  "steps": [
+    {"goto": "/guests"},
+    {"expectApi": "GET /guests 500"},
+    {"expectText": "Couldn't load guests"},
+    {"expectVisible": {"role": "button", "name": "Retry"}},
+    {"expectNoText": "No guests found."},
+    {"expectNoText": "verify-injected failure"},
+    {"screenshot": "guests-error"},
+    {"expectNoPageErrors": true}
+  ]
+}
