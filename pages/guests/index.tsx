@@ -2,6 +2,8 @@ import { useEffect, useMemo, useState } from 'react';
 import Layout from '@/components/Layout';
 import RequireAuth from '@/components/RequireAuth';
 import axios from '@/utils/axiosInstance';
+import ListState from '@/components/ListState';
+import { useList } from '@/lib/useList';
 
 type Guest = {
   id: number;
@@ -345,8 +347,11 @@ function BookingModal({
 
 /* -------------------- Guests Page -------------------- */
 export default function GuestsPageInner() {
-  const [guests, setGuests] = useState<Guest[]>([]);
-  const [loading, setLoading] = useState(true);
+  const guestList = useList<Guest>('guests', async () => {
+    const res = await axios.get('/guests');
+    return Array.isArray(res.data) ? res.data : res.data?.guests ?? [];
+  });
+  const { rows: guests, setRows: setGuests } = guestList;
   const [q, setQ] = useState('');
 
   const [addOpen, setAddOpen] = useState(false);
@@ -354,21 +359,6 @@ export default function GuestsPageInner() {
   // booking/payment state
   const [bookingOpenFor, setBookingOpenFor] = useState<Guest | undefined>(undefined);
   const [paymentOpenBooking, setPaymentOpenBooking] = useState<Booking | undefined>(undefined);
-
-  const fetchGuests = async () => {
-    try {
-      const res = await axios.get('/guests');
-      setGuests(Array.isArray(res.data) ? res.data : res.data?.guests ?? []);
-    } catch (e) {
-      console.error('Failed to fetch guests', e);
-    } finally {
-      setLoading(false);
-    }
-  };
-
-  useEffect(() => {
-    fetchGuests();
-  }, []);
 
   const filtered = useMemo(() => {
     const term = q.trim().toLowerCase();
@@ -406,12 +396,11 @@ export default function GuestsPageInner() {
           </div>
         </div>
 
-        {loading ? (
-          <div className="rounded-lg bg-white p-6 text-gray-600 shadow">Loading…</div>
-        ) : filtered.length === 0 ? (
-          <div className="rounded-lg bg-white p-6 text-gray-600 shadow">No guests found.</div>
-        ) : (
-          <div className="overflow-x-auto rounded-lg bg-white shadow">
+        <div className="overflow-x-auto rounded-lg bg-white shadow">
+          <ListState list={guestList} empty="No guests found.">
+            {filtered.length === 0 ? (
+              <div className="p-6 text-gray-600">No guests found.</div>
+            ) : (
             <table className="min-w-full table-auto">
               <thead className="bg-gray-100">
                 <tr>
@@ -436,8 +425,9 @@ export default function GuestsPageInner() {
                 ))}
               </tbody>
             </table>
-          </div>
-        )}
+            )}
+          </ListState>
+        </div>
 
         <AddGuestModal open={addOpen} onClose={() => setAddOpen(false)} onCreated={onCreated} />
 
