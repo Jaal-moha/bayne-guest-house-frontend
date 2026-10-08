@@ -37,6 +37,7 @@ export type FlowAction =
   | { type: 'next'; today: string }
   | { type: 'back' }
   | { type: 'submitStarted' }
+  | { type: 'submitRejected'; step: FlowStep; errors: FieldErrors }
   | { type: 'guestSaved'; guestId: number }
   | { type: 'submitFailed'; message: string };
 
@@ -55,6 +56,10 @@ export function todayYMD(now = new Date()): string {
   const m = String(now.getMonth() + 1).padStart(2, '0');
   const d = String(now.getDate()).padStart(2, '0');
   return `${now.getFullYear()}-${m}-${d}`;
+}
+
+export function addDays(ymd: string, days: number): string {
+  return new Date(Date.parse(ymd) + days * 86_400_000).toISOString().slice(0, 10);
 }
 
 export function nights({ checkIn, checkOut }: Stay): number {
@@ -131,6 +136,8 @@ export function flowReducer(state: FlowState, action: FlowAction): FlowState {
       return { ...state, step: STEPS[STEPS.indexOf(state.step) - 1], errors: {}, submit: { kind: 'idle' } };
     case 'submitStarted':
       return { ...state, submit: { kind: 'saving' } };
+    case 'submitRejected':
+      return { ...state, step: action.step, errors: action.errors, submit: { kind: 'idle' } };
     case 'guestSaved':
       return { ...state, createdGuestId: action.guestId };
     case 'submitFailed':
