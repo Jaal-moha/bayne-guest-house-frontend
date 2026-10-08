@@ -7,18 +7,24 @@ SELF="$ROOT/.claude/skills/verify/scripts/control.sh"
 SPECS="$ROOT/.claude/skills/verify/specs"
 BACKEND_DIR="${BACKEND_DIR:-$(cd "$ROOT/.." && pwd)/bayne-guest-house-backend}"
 BACKEND_CTL="$BACKEND_DIR/.claude/skills/verify/scripts/control.sh"
-VERIFY_ID="${VERIFY_ID:-frontend}"
-RUN_DIR="$ROOT/.verify/run-$VERIFY_ID"
+VERIFY_ID="${VERIFY_ID:-}"
+RUN_DIR="$ROOT/.verify/run${VERIFY_ID:+-$VERIFY_ID}"
 STATE="$RUN_DIR/state.env"
 EVIDENCE_ROOT="$ROOT/.verify/evidence"
 TOOLS="$ROOT/.verify/tools"
-PORT_FILE="$ROOT/.verify/web-port-$VERIFY_ID"
+PORT_FILE="$ROOT/.verify/web-port${VERIFY_ID:+-$VERIFY_ID}"
+BACKEND_BUILD_LOCK="$BACKEND_DIR/.verify/build.lock"
+VERIFY_LOCK_WAIT="${VERIFY_LOCK_WAIT:-900}"
+LOCK_TIMEOUT=75
 
 die() { echo "FAIL $*"; exit 1; }
-backend() { VERIFY_ID="$VERIFY_ID" "$BACKEND_CTL" "$@"; }
+[[ -z "$VERIFY_ID" || "$VERIFY_ID" =~ ^[A-Za-z0-9_-]+$ ]] || die "bad-verify-id want=[A-Za-z0-9_-]+ got=$VERIFY_ID"
+BACKEND_ID="${VERIFY_ID:+fe-$VERIFY_ID}"
+BACKEND_ID="${BACKEND_ID:-frontend}"
+backend() { VERIFY_ID="$BACKEND_ID" "$BACKEND_CTL" "$@"; }
 
 load_state() {
-  [[ -f "$STATE" ]] || die "no-instance run 'control.sh up' first (VERIFY_ID=$VERIFY_ID)"
+  [[ -f "$STATE" ]] || die "no-instance run 'control.sh up' first (VERIFY_ID=${VERIFY_ID:-unset})"
   source "$STATE"
 }
 
@@ -82,7 +88,10 @@ cmd_up() {
   local web="http://127.0.0.1:$port"
 
   local line
-  line="$(ALLOWED_ORIGINS="[\"$web\"]" backend up | tail -1)"
+  mkdir -p "${BACKEND_BUILD_LOCK%/*}"
+  # -o keeps the lock off the backend server that up leaves running.
+  line="$(ALLOWED_ORIGINS="[\"$web\"]" VERIFY_ID="$BACKEND_ID" flock -o -E "$LOCK_TIMEOUT" -w "$VERIFY_LOCK_WAIT" "$BACKEND_BUILD_LOCK" "$BACKEND_CTL" up | tail -1)"
+  (( $? == LOCK_TIMEOUT )) && die "backend-up lock-timeout lock=$BACKEND_BUILD_LOCK"
   [[ "$line" == READY* ]] || die "backend-up $line"
   local api; api="$(sed -E 's/.*base=([^ ]+).*/\1/' <<<"$line")"
 

@@ -3,6 +3,9 @@
   "role": "store",
   "steps": [
     { "goto": "/dashboard" },
-    { "expectVisible": { "role": "link", "name": "Inventory" } }
+    { "expectUrl": "/inventory" },
+    { "expectVisible": { "role": "link", "name": "Inventory" } },
+    { "expectHidden": "aside a:text-is(\"Dashboard\")" },
+    { "expectApi": "GET /inventory 200" }
   ]
 }

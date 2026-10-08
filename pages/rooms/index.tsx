@@ -35,7 +35,7 @@ function AddRoomModal({ open, onClose, onCreated }: {
   };
 
   return (
-    <Modal open={open} onClose={onClose} title="Add Room" size="md">
+    <Modal open={open} onClose={onClose} title="Add Room" size="md" locked={loading}>
       {err && <div className="mt-3 rounded border border-red-200 bg-red-50 px-3 py-2 text-sm text-red-700">{err}</div>}
       <div className="mt-4 space-y-3">
         <Field label="Number">
@@ -100,7 +100,7 @@ function EditRoomModal({ open, onClose, room, onUpdated }: {
   };
 
   return (
-    <Modal open={open} onClose={onClose} title="Edit Room" size="md">
+    <Modal open={open} onClose={onClose} title="Edit Room" size="md" locked={loading}>
       {err && <div className="mt-3 rounded border border-red-200 bg-red-50 px-3 py-2 text-sm text-red-700">{err}</div>}
       <div className="mt-4 space-y-3">
         <Field label="Number">

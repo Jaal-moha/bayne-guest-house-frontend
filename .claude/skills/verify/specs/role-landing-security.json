@@ -1,0 +1,19 @@
+{
+  "name": "role-landing-security",
+  "role": "anon",
+  "setup": [
+    { "as": "security", "method": "GET", "path": "/auth/me", "expect": 200 }
+  ],
+  "steps": [
+    { "goto": "/login" },
+    { "fill": { "placeholder": "you@example.com" }, "value": "verify-security@example.com" },
+    { "fill": { "placeholder": "••••••••" }, "value": "verify-pass-security" },
+    { "click": { "role": "button", "name": "Sign in" } },
+    { "expectApi": "POST /auth/login 201" },
+    { "expectUrl": "/" },
+    { "expectNoVisit": "/dashboard" },
+    { "expectText": "No pages for your role" },
+    { "click": { "role": "button", "name": "Logout" } },
+    { "expectUrl": "/login" }
+  ]
+}

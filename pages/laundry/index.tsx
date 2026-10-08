@@ -82,7 +82,7 @@ function AddLaundryModal({
 
   if (!open) return null;
   return (
-    <Modal open={open} onClose={onClose} title="Add Laundry" size="xl">
+    <Modal open={open} onClose={onClose} title="Add Laundry" size="xl" locked={submitting}>
       {error && <div className="mt-3 rounded border border-red-300 bg-red-50 px-3 py-2 text-sm text-red-700">{error}</div>}
 
       <div className="mt-4 space-y-4">
@@ -208,6 +208,7 @@ function LaundryInner() {
   const [page, setPage] = useState(1); const [pageSize, setPageSize] = useState(10);
   const [addModalOpen, setAddModalOpen] = useState(false);
   const [deleting, setDeleting] = useState<Laundry | null>(null);
+  const [removing, setRemoving] = useState(false);
   const { push } = useToast();
   const [submitting, setSubmitting] = useState(false);
   const [editing, setEditing] = useState<number | null>(null);
@@ -297,12 +298,14 @@ function LaundryInner() {
     }
   };
   const remove = async (id: number) => {
+    setRemoving(true);
     try {
       await axios.delete(`/laundry/${id}`);
       setRows(p => p.filter(x => x.id !== id));
     } catch {
       push('Delete failed', 'error');
     } finally {
+      setRemoving(false);
       setDeleting(null);
     }
   };
@@ -463,15 +466,16 @@ function LaundryInner() {
         setSubmitting={setSubmitting}
         statuses={statuses}
       />
-      <Modal open={!!deleting} onClose={() => setDeleting(null)} title="Delete laundry record" size="md">
+      <Modal open={!!deleting} onClose={() => setDeleting(null)} title="Delete laundry record" size="md" locked={removing}>
         <p className="text-sm text-gray-600">
           This removes the record for {deleting?.guest?.name ?? `Guest #${deleting?.guestId}`}.
         </p>
         <div className="mt-6 flex justify-end gap-2">
-          <button onClick={() => setDeleting(null)} className="rounded border px-4 py-2 text-sm hover:bg-gray-50">Cancel</button>
+          <button onClick={() => setDeleting(null)} disabled={removing} className="rounded border px-4 py-2 text-sm hover:bg-gray-50">Cancel</button>
           <button
             onClick={() => { if (deleting) remove(deleting.id); }}
-            className="rounded bg-red-600 px-4 py-2 text-sm font-semibold text-white hover:bg-red-700"
+            disabled={removing}
+            className="rounded bg-red-600 px-4 py-2 text-sm font-semibold text-white hover:bg-red-700 disabled:opacity-60"
           >
             Delete
           </button>

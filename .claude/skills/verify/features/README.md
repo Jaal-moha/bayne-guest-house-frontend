@@ -34,6 +34,10 @@ Each feature file starts with an H1 title and one paragraph describing the user-
 - [App shell](./app-shell.md) covers the root URL, page titles, the phone menu and the layout at phone and tablet widths.
 - [List load errors](./list-load-errors.md) covers the loading, error, access-denied and empty states of every list page.
 
+## Driver self-tests
+
+`driver-noapi-prefix` and `driver-noapi-inflight` check the driver, not the app. They keep `knownBug` and stay `XFAIL`. `XPASS` on either means `expectNoApi` went blind again, so fix `scripts/drive.mjs` instead of removing the flag.
+
 ## Not yet mapped
 
 These pages exist but have no spec yet. Write one before claiming them verified: payments (record payment, unpaid bookings), inventory (items, stock movements, history), laundry, attendance, staff (create with account, ID card), the dashboard stats and date range, the dashboard's New Booking stepper, and bookings edit.

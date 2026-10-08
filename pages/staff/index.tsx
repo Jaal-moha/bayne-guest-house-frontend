@@ -134,7 +134,7 @@ function AddStaffModal({
   };
 
   return (
-    <Modal open={open} onClose={onClose} title={step === 1 ? 'Add Staff' : 'Review & Create'} size="md">
+    <Modal open={open} onClose={onClose} title={step === 1 ? 'Add Staff' : 'Review & Create'} size="md" locked={loading || !!createdCreds}>
       <p className="mt-1 text-sm text-gray-500">{step === 1 ? 'Enter staff details' : 'Confirm details and create staff'}</p>
 
       {err && (
@@ -400,7 +400,7 @@ function EditStaffModal({
   };
 
   return (
-    <Modal open={open} onClose={onClose} title="Edit Staff" size="md">
+    <Modal open={open} onClose={onClose} title="Edit Staff" size="md" locked={loading}>
       <p className="mt-1 text-sm text-gray-500">Update staff member details</p>
 
       {err && (
@@ -485,31 +485,35 @@ function EditStaffModal({
 function DeleteConfirmationModal({
   open,
   staffName,
+  deleting,
   onClose,
   onConfirm,
 }: {
   open: boolean;
   staffName: string;
+  deleting: boolean;
   onClose: () => void;
   onConfirm: () => void;
 }) {
   if (!open) return null;
 
   return (
-    <Modal open={open} onClose={onClose} title="Confirm Deletion" size="md">
+    <Modal open={open} onClose={onClose} title="Confirm Deletion" size="md" locked={deleting}>
       <p className="mt-1 text-sm text-gray-500">
         Are you sure you want to delete <strong>{staffName}</strong> and their account? This action cannot be undone.
       </p>
       <div className="mt-6 flex justify-end gap-2">
         <button
           onClick={onClose}
+          disabled={deleting}
           className="rounded-md border px-4 py-2 hover:bg-gray-50"
         >
           Cancel
         </button>
         <button
           onClick={onConfirm}
-          className="rounded-md bg-red-600 px-4 py-2 font-semibold text-white hover:bg-red-700"
+          disabled={deleting}
+          className="rounded-md bg-red-600 px-4 py-2 font-semibold text-white hover:bg-red-700 disabled:opacity-60"
         >
           Delete
         </button>
@@ -677,6 +681,7 @@ function StaffPageInner() {
 
   // Delete confirmation state
   const [deleteConfirmOpen, setDeleteConfirmOpen] = useState(false);
+  const [deletePending, setDeletePending] = useState(false);
   const [staffToDelete, setStaffToDelete] = useState<Staff | undefined>(undefined);
 
   const filtered = useMemo(() => {
@@ -783,6 +788,7 @@ function StaffPageInner() {
 
   const confirmDelete = async () => {
     if (!staffToDelete) return;
+    setDeletePending(true);
     try {
       await axios.delete(`/staff/${staffToDelete.id}`);
       setStaff((prev) => prev.filter((staff) => staff.id !== staffToDelete.id));
@@ -790,6 +796,7 @@ function StaffPageInner() {
       console.error('Error deleting staff:', error);
       push('Failed to delete staff', 'error');
     } finally {
+      setDeletePending(false);
       setDeleteConfirmOpen(false);
       setStaffToDelete(undefined);
     }
@@ -866,6 +873,7 @@ function StaffPageInner() {
       <DeleteConfirmationModal
         open={deleteConfirmOpen}
         staffName={staffToDelete?.name ?? ''}
+        deleting={deletePending}
         onClose={closeDeleteConfirm}
         onConfirm={confirmDelete}
       />
