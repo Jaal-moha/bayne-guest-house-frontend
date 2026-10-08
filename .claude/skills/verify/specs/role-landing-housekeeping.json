@@ -1,0 +1,18 @@
+{
+  "name": "role-landing-housekeeping",
+  "role": "anon",
+  "setup": [
+    { "as": "housekeeping", "method": "GET", "path": "/auth/me", "expect": 200 }
+  ],
+  "steps": [
+    { "goto": "/login" },
+    { "fill": { "placeholder": "you@example.com" }, "value": "verify-housekeeping@example.com" },
+    { "fill": { "placeholder": "••••••••" }, "value": "verify-pass-housekeeping" },
+    { "click": { "role": "button", "name": "Sign in" } },
+    { "expectApi": "POST /auth/login 201" },
+    { "expectUrl": "/laundry" },
+    { "expectNoVisit": "/dashboard" },
+    { "expectVisible": { "role": "link", "name": "Laundry" } },
+    { "expectHidden": "aside a:text-is(\"Dashboard\")" }
+  ]
+}

@@ -1,0 +1,10 @@
+{
+  "name": "nav-roles-reception",
+  "role": "reception",
+  "steps": [
+    { "goto": "/dashboard" },
+    { "click": { "role": "link", "name": "Inventory" } },
+    { "expectUrl": "/inventory" },
+    { "expectApi": "GET /inventory 200" }
+  ]
+}

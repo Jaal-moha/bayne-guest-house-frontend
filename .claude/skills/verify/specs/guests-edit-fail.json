@@ -1,0 +1,21 @@
+{
+  "name": "guests-edit-fail",
+  "role": "reception",
+  "failApi": ["PATCH /guests/"],
+  "setup": [
+    { "as": "reception", "method": "POST", "path": "/guests", "body": { "name": "Fail ${RUN}", "phone": "0911000666" }, "expect": 201, "save": "GID" }
+  ],
+  "steps": [
+    { "goto": "/guests" },
+    { "click": "tr:has-text('Fail ${RUN}') >> role=button[name='Edit']" },
+    { "fill": { "label": "Full name" }, "value": "Typed ${RUN}" },
+    { "click": { "role": "button", "name": "Save changes" } },
+    { "expectApi": "PATCH /guests/${GID} 500" },
+    { "expectText": "Couldn't save guest" },
+    { "expectText": "Edit Guest" },
+    { "expectValue": { "label": "Full name" }, "value": "Typed ${RUN}" },
+    { "screenshot": "edit-fail" },
+    { "apiCheck": { "as": "reception", "path": "/guests/${GID}", "jq": ".name == \"Fail ${RUN}\"" } },
+    { "expectNoPageErrors": true }
+  ]
+}

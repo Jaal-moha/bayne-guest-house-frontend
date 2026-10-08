@@ -1,0 +1,14 @@
+{
+  "name": "bookings-seeded",
+  "role": "reception",
+  "setup": [
+    { "as": "reception", "method": "POST", "path": "/guests", "body": { "name": "Seeded ${RUN}", "phone": "0911223344" }, "expect": 201, "save": "G" },
+    { "as": "admin", "method": "POST", "path": "/rooms", "body": { "number": "S${RUN}", "type": "double", "price": 1500 }, "expect": 201, "save": "R" },
+    { "as": "reception", "method": "POST", "path": "/bookings", "body": { "guestId": "${G}", "roomId": "${R}", "checkIn": "${DATE+1}", "checkOut": "${DATE+3}" }, "expect": 201 }
+  ],
+  "steps": [
+    { "goto": "/bookings" },
+    { "expectText": "Seeded ${RUN}" },
+    { "expectNoPageErrors": true }
+  ]
+}
