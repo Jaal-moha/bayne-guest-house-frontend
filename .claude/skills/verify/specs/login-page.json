@@ -1,0 +1,13 @@
+{
+  "name": "login-page",
+  "role": "anon",
+  "steps": [
+    { "goto": "/login" },
+    { "expectTitle": "Sign in · Almis Hotel" },
+    { "expectVisible": { "role": "button", "name": "Sign in" } },
+    { "expectNoText": "Forgot password?" },
+    { "expectNoText": "Remember me" },
+    { "expectNoRequest": "google" },
+    { "screenshot": "login" }
+  ]
+}
