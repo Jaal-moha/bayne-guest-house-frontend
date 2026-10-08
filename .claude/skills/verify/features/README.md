@@ -40,4 +40,4 @@ Each feature file starts with an H1 title and one paragraph describing the user-
 
 ## Not yet mapped
 
-These pages exist but have no spec yet. Write one before claiming them verified: payments (record payment, unpaid bookings), inventory (items, stock movements, history), laundry, attendance, staff (create with account, ID card), the dashboard stats and date range, the dashboard's New Booking stepper, and bookings edit.
+These pages exist but have no spec yet. Write one before claiming them verified: payments (record payment, unpaid bookings), inventory (items, stock movements, history), laundry, attendance, staff (create with account, ID card), the dashboard stats and date range, and bookings edit.

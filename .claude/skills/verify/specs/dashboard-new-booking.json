@@ -17,11 +17,13 @@
     { "fill": { "label": "Check-out" }, "value": "${DATE+72}" },
     { "select": { "label": "Room" }, "value": "${ROOM}" },
     { "click": { "role": "button", "name": "Next" } },
+    { "expectText": "2 nights" },
     { "click": { "role": "button", "name": "Create booking" } },
     { "expectApi": "POST /bookings 201" },
     { "expectText": "Booking created successfully" },
     { "expectHidden": { "role": "heading", "name": "Create Booking" } },
     { "screenshot": "dashboard" },
+    { "expectNoApi": "POST /guests" },
     { "apiCheck": { "as": "manager", "path": "/bookings", "jq": "any(.[]; .guestId == ${GUEST} and .roomId == ${ROOM})" } }
   ]
 }
