@@ -3,6 +3,8 @@ import Layout from '@/components/Layout';
 import RequireAuth from '@/components/RequireAuth';
 import axios from '@/utils/axiosInstance';
 import ListState from '@/components/ListState';
+import Modal from '@/components/Modal';
+import Field from '@/components/Field';
 import { useList } from '@/lib/useList';
 import Link from 'next/link';
 
@@ -89,25 +91,22 @@ function NewItemModal({
 
   if (!open) return null;
   return (
-    <div className="fixed inset-0 z-50 grid place-items-center bg-black/40 p-4">
-      <div className="w-full max-w-xl rounded-xl bg-white p-6 shadow-lg">
-        <h3 className="text-lg font-semibold">New Item</h3>
-        {err && <div className="mt-3 rounded border border-red-200 bg-red-50 px-3 py-2 text-sm text-red-700">{err}</div>}
+    <Modal open={open} onClose={onClose} title="New Item" size="xl">
+      {err && <div className="mt-3 rounded border border-red-200 bg-red-50 px-3 py-2 text-sm text-red-700">{err}</div>}
 
-        <div className="mt-4 grid gap-3 sm:grid-cols-2">
-          <div className="sm:col-span-2">
-            <label className="mb-1 block text-sm font-medium text-gray-700">Name</label>
-            <input className="w-full rounded border px-3 py-2" value={name} onChange={(e) => setName(e.target.value)} />
-          </div>
+      <div className="mt-4 grid gap-3 sm:grid-cols-2">
+        <Field label="Name" className="sm:col-span-2">
+          {(id) => <input id={id} className="w-full rounded border px-3 py-2" value={name} onChange={(e) => setName(e.target.value)} />}
+        </Field>
 
-          <div>
-            <label className="mb-1 block text-sm font-medium text-gray-700">Category</label>
-            <input className="w-full rounded border px-3 py-2" value={category} onChange={(e) => setCategory(e.target.value)} placeholder="e.g., Grocery, Bar, Housekeeping" />
-          </div>
+        <Field label="Category">
+          {(id) => <input id={id} className="w-full rounded border px-3 py-2" value={category} onChange={(e) => setCategory(e.target.value)} placeholder="e.g., Grocery, Bar, Housekeeping" />}
+        </Field>
 
-          <div>
-            <label className="mb-1 block text-sm font-medium text-gray-700">Unit</label>
+        <Field label="Unit">
+          {(id) => (
             <select
+              id={id}
               className="w-full rounded border px-3 py-2"
               value={unit}
               onChange={(e) => setUnit(e.target.value as 'pcs' | 'kg' | 'L')}
@@ -116,44 +115,47 @@ function NewItemModal({
               <option value="kg">kg</option>
               <option value="L">L</option>
             </select>
-          </div>
+          )}
+        </Field>
 
-          <div>
-            <label className="mb-1 block text-sm font-medium text-gray-700">SKU (optional)</label>
-            <input className="w-full rounded border px-3 py-2" value={sku} onChange={(e) => setSku(e.target.value)} />
-          </div>
+        <Field label="SKU (optional)">
+          {(id) => <input id={id} className="w-full rounded border px-3 py-2" value={sku} onChange={(e) => setSku(e.target.value)} />}
+        </Field>
 
-          <div>
-            <label className="mb-1 block text-sm font-medium text-gray-700">Initial Quantity (optional)</label>
+        <Field label="Initial Quantity (optional)">
+          {(id) => (
             <input
+              id={id}
               type="number"
               min={0}
               className="w-full rounded border px-3 py-2"
               value={quantity}
               onChange={(e) => setQuantity(e.target.value === '' ? '' : Number(e.target.value))}
             />
-          </div>
+          )}
+        </Field>
 
-          <div>
-            <label className="mb-1 block text-sm font-medium text-gray-700">Min Threshold (optional)</label>
+        <Field label="Min Threshold (optional)">
+          {(id) => (
             <input
+              id={id}
               type="number"
               min={0}
               className="w-full rounded border px-3 py-2"
               value={minThreshold}
               onChange={(e) => setMinThreshold(e.target.value === '' ? '' : Number(e.target.value))}
             />
-          </div>
-        </div>
-
-        <div className="mt-6 flex justify-end gap-2">
-          <button onClick={onClose} className="rounded border px-4 py-2">Cancel</button>
-          <button onClick={submit} disabled={loading} className="rounded bg-indigo-600 px-4 py-2 font-semibold text-white disabled:opacity-60">
-            {loading ? 'Saving…' : 'Create'}
-          </button>
-        </div>
+          )}
+        </Field>
       </div>
-    </div>
+
+      <div className="mt-6 flex justify-end gap-2">
+        <button onClick={onClose} className="rounded border px-4 py-2">Cancel</button>
+        <button onClick={submit} disabled={loading} className="rounded bg-indigo-600 px-4 py-2 font-semibold text-white disabled:opacity-60">
+          {loading ? 'Saving…' : 'Create'}
+        </button>
+      </div>
+    </Modal>
   );
 }
 
@@ -205,20 +207,17 @@ function StockModal({
   };
 
   return (
-    <div className="fixed inset-0 z-50 grid place-items-center bg-black/40 p-4">
-      <div className="w-full max-w-lg rounded-xl bg-white p-6 shadow-lg">
-        <h3 className="text-lg font-semibold">{title}</h3>
-        <div className="mt-2 text-sm text-gray-600">
-          Current: {item.quantity} {item.unit || ''}
-        </div>
-        {err && <div className="mt-3 rounded border border-red-200 bg-red-50 px-3 py-2 text-sm text-red-700">{err}</div>}
+    <Modal open={open} onClose={onClose} title={title}>
+      <div className="mt-2 text-sm text-gray-600">
+        Current: {item.quantity} {item.unit || ''}
+      </div>
+      {err && <div className="mt-3 rounded border border-red-200 bg-red-50 px-3 py-2 text-sm text-red-700">{err}</div>}
 
-        <div className="mt-4 space-y-3">
-          <div>
-            <label className="mb-1 block text-sm font-medium text-gray-700">
-              Quantity {item.unit ? `(${item.unit})` : ''}
-            </label>
+      <div className="mt-4 space-y-3">
+        <Field label={`Quantity ${item.unit ? `(${item.unit})` : ''}`.trim()}>
+          {(id) => (
             <input
+              id={id}
               type="number"
               min={kind === 'adjust' ? 0 : 1}
               className="w-full rounded border px-3 py-2"
@@ -226,21 +225,20 @@ function StockModal({
               onChange={(e) => setQty(e.target.value === '' ? '' : Number(e.target.value))}
               placeholder={kind === 'adjust' ? 'Set absolute quantity' : 'Enter amount to add/remove'}
             />
-          </div>
-          <div>
-            <label className="mb-1 block text-sm font-medium text-gray-700">Reason (optional)</label>
-            <textarea className="w-full rounded border px-3 py-2" rows={3} value={reason} onChange={(e) => setReason(e.target.value)} />
-          </div>
-        </div>
-
-        <div className="mt-6 flex justify-end gap-2">
-          <button onClick={onClose} className="rounded border px-4 py-2">Cancel</button>
-          <button onClick={submit} disabled={loading} className="rounded bg-indigo-600 px-4 py-2 font-semibold text-white disabled:opacity-60">
-            {loading ? 'Processing…' : 'Confirm'}
-          </button>
-        </div>
+          )}
+        </Field>
+        <Field label="Reason (optional)">
+          {(id) => <textarea id={id} className="w-full rounded border px-3 py-2" rows={3} value={reason} onChange={(e) => setReason(e.target.value)} />}
+        </Field>
       </div>
-    </div>
+
+      <div className="mt-6 flex justify-end gap-2">
+        <button onClick={onClose} className="rounded border px-4 py-2">Cancel</button>
+        <button onClick={submit} disabled={loading} className="rounded bg-indigo-600 px-4 py-2 font-semibold text-white disabled:opacity-60">
+          {loading ? 'Processing…' : 'Confirm'}
+        </button>
+      </div>
+    </Modal>
   );
 }
 
@@ -271,75 +269,75 @@ function HistoryModal({
   if (!open || !item) return null;
 
   return (
-    <div className="fixed inset-0 z-50 grid place-items-center bg-black/40 p-4">
-      <div className="w-full max-w-3xl rounded-xl bg-white p-6 shadow-lg">
-        <h3 className="text-lg font-semibold">History — {item.name}</h3>
-        <div className="mt-4 overflow-x-auto rounded border">
-          {loading ? (
-            <div className="p-4 text-gray-600">Loading…</div>
-          ) : rows.length === 0 ? (
-            <div className="p-4 text-gray-600">No movements.</div>
-          ) : (
-            <table className="min-w-full table-auto">
-              <thead className="bg-gray-100">
-                <tr>
-                  <th className="px-3 py-2 text-left">Type</th>
-                  <th className="px-3 py-2 text-left">Quantity</th>
-                  <th className="px-3 py-2 text-left">Reason</th>
-                  <th className="px-3 py-2 text-left">Date</th>
+    <Modal open={open} onClose={onClose} title={`History — ${item.name}`} size="3xl">
+      <div className="mt-4 overflow-x-auto rounded border">
+        {loading ? (
+          <div className="p-4 text-gray-600">Loading…</div>
+        ) : rows.length === 0 ? (
+          <div className="p-4 text-gray-600">No movements.</div>
+        ) : (
+          <table className="min-w-full table-auto">
+            <thead className="bg-gray-100">
+              <tr>
+                <th className="px-3 py-2 text-left">Type</th>
+                <th className="px-3 py-2 text-left">Quantity</th>
+                <th className="px-3 py-2 text-left">Reason</th>
+                <th className="px-3 py-2 text-left">Date</th>
+              </tr>
+            </thead>
+            <tbody>
+              {rows.map(m => (
+                <tr key={m.id} className="border-t">
+                  <td className="px-3 py-2">
+                    {m.type === 'IN' && <Badge color="emerald">In</Badge>}
+                    {m.type === 'OUT' && <Badge color="red">Out</Badge>}
+                    {m.type === 'ADJUST' && <Badge color="gray">Adjust</Badge>}
+                  </td>
+                  <td className="px-3 py-2">{m.quantity} {item.unit || ''}</td>
+                  <td className="px-3 py-2">{m.reason || <span className="text-gray-400">—</span>}</td>
+                  <td className="px-3 py-2">{new Date(m.createdAt).toLocaleString()}</td>
                 </tr>
-              </thead>
-              <tbody>
-                {rows.map(m => (
-                  <tr key={m.id} className="border-t">
-                    <td className="px-3 py-2">
-                      {m.type === 'IN' && <Badge color="emerald">In</Badge>}
-                      {m.type === 'OUT' && <Badge color="red">Out</Badge>}
-                      {m.type === 'ADJUST' && <Badge color="gray">Adjust</Badge>}
-                    </td>
-                    <td className="px-3 py-2">{m.quantity} {item.unit || ''}</td>
-                    <td className="px-3 py-2">{m.reason || <span className="text-gray-400">—</span>}</td>
-                    <td className="px-3 py-2">{new Date(m.createdAt).toLocaleString()}</td>
-                  </tr>
-                ))}
-              </tbody>
-            </table>
-          )}
-        </div>
-
-        <div className="mt-4 flex justify-end">
-          <button onClick={onClose} className="rounded border px-4 py-2">Close</button>
-        </div>
+              ))}
+            </tbody>
+          </table>
+        )}
       </div>
-    </div>
+
+      <div className="mt-4 flex justify-end">
+        <button onClick={onClose} className="rounded border px-4 py-2">Close</button>
+      </div>
+    </Modal>
   );
 }
 
-// Add: Row actions modal
-function ItemActionsModal({
-  open,
-  onClose,
-  item,
-  onAdd,
-  onSubtract,
-  onAdjust,
-  onHistory,
-  onRemove,
-}: {
-  open: boolean;
-  onClose: () => void;
-  item: Item | null;
+type ItemActionsProps = {
+  item: Item;
   onAdd: () => void;
   onSubtract: () => void;
   onAdjust: () => void;
   onHistory: () => void;
   onRemove: () => Promise<void>;
-}) {
+};
+
+function ItemActionsModal({
+  open, onClose, item, ...actions
+}: Omit<ItemActionsProps, 'item'> & { open: boolean; onClose: () => void; item: Item | null; }) {
+  if (!open || !item) return null;
+  return (
+    <Modal open={open} onClose={onClose} title={item.name} size="md">
+      <ItemActions item={item} {...actions} />
+      <div className="mt-5 flex justify-end">
+        <button className="rounded border px-4 py-2" onClick={onClose}>Close</button>
+      </div>
+    </Modal>
+  );
+}
+
+// Lives inside Modal so its confirm step unmounts with the dialog and never carries over to the next item.
+function ItemActions({ item, onAdd, onSubtract, onAdjust, onHistory, onRemove }: ItemActionsProps) {
   const [confirming, setConfirming] = useState(false);
   const [loading, setLoading] = useState(false);
   const [err, setErr] = useState('');
-
-  if (!open || !item) return null;
 
   const doRemove = async () => {
     setErr('');
@@ -355,44 +353,37 @@ function ItemActionsModal({
   };
 
   return (
-    <div className="fixed inset-0 z-50 grid place-items-center bg-black/40 p-4">
-      <div className="w-full max-w-md rounded-xl bg-white p-6 shadow-lg">
-        <h3 className="text-lg font-semibold">{item.name}</h3>
-        <div className="mt-2 text-sm text-gray-600">
-          <div>Category: {item.category}</div>
-          <div>SKU: {item.sku || '—'}</div>
-          <div>Quantity: {item.quantity} {item.unit || ''}</div>
-          <div>Min: {item.minThreshold ?? 0}</div>
-          <div>Updated: {new Date(item.updatedAt).toLocaleString()}</div>
-        </div>
-        {err && <div className="mt-3 rounded border border-red-200 bg-red-50 px-3 py-2 text-sm text-red-700">{err}</div>}
-
-        {!confirming ? (
-          <div className="mt-5 grid grid-cols-2 gap-2">
-            <button className="rounded bg-emerald-600 px-3 py-2 text-white hover:bg-emerald-700" onClick={onAdd}>Add</button>
-            <button className="rounded bg-orange-600 px-3 py-2 text-white hover:bg-orange-700" onClick={onSubtract}>Subtract</button>
-            <button className="rounded bg-indigo-600 px-3 py-2 text-white hover:bg-indigo-700" onClick={onAdjust}>Adjust</button>
-            <button className="rounded border px-3 py-2 hover:bg-gray-50" onClick={onHistory}>History</button>
-            <button className="col-span-2 rounded border border-red-300 px-3 py-2 text-red-700 hover:bg-red-50" onClick={() => setConfirming(true)}>Remove Item</button>
-          </div>
-        ) : (
-          <div className="mt-5 rounded-lg border border-red-200 bg-red-50 p-3">
-            <div className="text-sm font-medium text-red-800">Confirm removal</div>
-            <div className="mt-1 text-sm text-red-700">This will permanently delete “{item.name}”.</div>
-            <div className="mt-3 flex gap-2">
-              <button className="rounded bg-red-600 px-3 py-2 text-white hover:bg-red-700 disabled:opacity-60" disabled={loading} onClick={doRemove}>
-                {loading ? 'Removing…' : 'Confirm Remove'}
-              </button>
-              <button className="rounded border px-3 py-2" disabled={loading} onClick={() => setConfirming(false)}>Cancel</button>
-            </div>
-          </div>
-        )}
-
-        <div className="mt-5 flex justify-end">
-          <button className="rounded border px-4 py-2" onClick={onClose}>Close</button>
-        </div>
+    <>
+      <div className="mt-2 text-sm text-gray-600">
+        <div>Category: {item.category}</div>
+        <div>SKU: {item.sku || '—'}</div>
+        <div>Quantity: {item.quantity} {item.unit || ''}</div>
+        <div>Min: {item.minThreshold ?? 0}</div>
+        <div>Updated: {new Date(item.updatedAt).toLocaleString()}</div>
       </div>
-    </div>
+      {err && <div className="mt-3 rounded border border-red-200 bg-red-50 px-3 py-2 text-sm text-red-700">{err}</div>}
+
+      {!confirming ? (
+        <div className="mt-5 grid grid-cols-2 gap-2">
+          <button className="rounded bg-emerald-600 px-3 py-2 text-white hover:bg-emerald-700" onClick={onAdd}>Add</button>
+          <button className="rounded bg-orange-600 px-3 py-2 text-white hover:bg-orange-700" onClick={onSubtract}>Subtract</button>
+          <button className="rounded bg-indigo-600 px-3 py-2 text-white hover:bg-indigo-700" onClick={onAdjust}>Adjust</button>
+          <button className="rounded border px-3 py-2 hover:bg-gray-50" onClick={onHistory}>History</button>
+          <button className="col-span-2 rounded border border-red-300 px-3 py-2 text-red-700 hover:bg-red-50" onClick={() => setConfirming(true)}>Remove Item</button>
+        </div>
+      ) : (
+        <div className="mt-5 rounded-lg border border-red-200 bg-red-50 p-3">
+          <div className="text-sm font-medium text-red-800">Confirm removal</div>
+          <div className="mt-1 text-sm text-red-700">This will permanently delete “{item.name}”.</div>
+          <div className="mt-3 flex gap-2">
+            <button className="rounded bg-red-600 px-3 py-2 text-white hover:bg-red-700 disabled:opacity-60" disabled={loading} onClick={doRemove}>
+              {loading ? 'Removing…' : 'Confirm Remove'}
+            </button>
+            <button className="rounded border px-3 py-2" disabled={loading} onClick={() => setConfirming(false)}>Cancel</button>
+          </div>
+        </div>
+      )}
+    </>
   );
 }
 
