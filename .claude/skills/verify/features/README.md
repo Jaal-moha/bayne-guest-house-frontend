@@ -33,6 +33,10 @@ Each feature file starts with an H1 title and one paragraph describing the user-
 - [Rooms](./rooms.md) covers adding a room and changing its price.
 - [App shell](./app-shell.md) covers the root URL and the layout at phone width.
 
+## Driver self-tests
+
+`driver-noapi-prefix` and `driver-noapi-inflight` check the driver, not the app. They keep `knownBug` and stay `XFAIL`. `XPASS` on either means `expectNoApi` went blind again, so fix `scripts/drive.mjs` instead of removing the flag.
+
 ## Not yet mapped
 
 These pages exist but have no spec yet. Write one before claiming them verified: payments (record payment, unpaid bookings), inventory (items, stock movements, history), laundry, attendance, staff (create with account, ID card), the dashboard stats and date range, the dashboard's New Booking stepper, and bookings edit.

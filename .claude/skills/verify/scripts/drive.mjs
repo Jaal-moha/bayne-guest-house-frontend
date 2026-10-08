@@ -73,19 +73,25 @@ page.setDefaultTimeout(STEP_TIMEOUT);
 
 const apiPath = (url) => url.slice(API_URL.length) || '/';
 const failing = new Set(sub(spec.failApi ?? []));
-const fails = (req) => [...failing].some((f) => {
-  const [method, prefix] = f.split(' ');
-  return req.method() === method && req.url().startsWith(API_URL + prefix);
-});
+const routeMatches = (rule, method, path) => {
+  const [m, prefix] = rule.split(' ');
+  const rest = path.slice(prefix.length);
+  return method === m && path.startsWith(prefix) && (rest === '' || prefix.endsWith('/') || /^[/?]/.test(rest));
+};
+const fails = (req) => [...failing].some((f) => routeMatches(f, req.method(), apiPath(req.url())));
 await page.route((u) => u.href.startsWith(API_URL), (r) =>
   fails(r.request())
     ? r.fulfill({ status: 500, contentType: 'application/json', body: '{"message":"verify-injected failure"}' })
     : r.fallback());
-page.on('response', (r) => {
-  if (!r.url().startsWith(API_URL) || r.request().method() === 'OPTIONS') return;
-  report.api.push({ method: r.request().method(), path: apiPath(r.url()), status: r.status(), body: r.request().postData() ?? undefined });
+const sent = new Map();
+page.on('request', (r) => {
+  if (!r.url().startsWith(API_URL) || r.method() === 'OPTIONS') return;
+  const entry = { method: r.method(), path: apiPath(r.url()), status: 'pending', body: r.postData() ?? undefined };
+  sent.set(r, entry);
+  report.api.push(entry);
 });
-page.on('requestfailed', (r) => r.url().startsWith(API_URL) && report.api.push({ method: r.request().method(), path: apiPath(r.url()), status: 'failed' }));
+page.on('response', (r) => { const entry = sent.get(r.request()); if (entry) entry.status = r.status(); });
+page.on('requestfailed', (r) => { const entry = sent.get(r); if (entry) entry.status = 'failed'; });
 page.on('framenavigated', (f) => f === page.mainFrame() && report.visits.push(new URL(f.url()).pathname));
 page.on('console', (m) => m.type() === 'error' && report.console.push(m.text().slice(0, 300)));
 page.on('pageerror', (e) => report.pageErrors.push(e.message.slice(0, 300)));
@@ -107,6 +113,16 @@ async function target(t) {
   throw new Error(`unknown target ${JSON.stringify(t)}`);
 }
 const settle = () => page.waitForLoadState('networkidle', { timeout: 5_000 }).catch(() => {});
+// networkidle resolves at once after the first load, so track our own pending requests instead.
+async function apiQuiet() {
+  const end = Date.now() + 5_000;
+  let quietSince = Date.now();
+  while (Date.now() < end) {
+    if (report.api.some((a) => a.status === 'pending')) quietSince = Date.now();
+    else if (Date.now() - quietSince >= 500) return;
+    await page.waitForTimeout(50);
+  }
+}
 async function poll(check, what) {
   const end = Date.now() + STEP_TIMEOUT;
   let last;
@@ -146,7 +162,11 @@ const actions = {
   expectUrl: (p) => poll(async () => new URL(page.url()).pathname === p || new URL(page.url()).pathname, `url ${p}`),
   expectTitle: (s) => poll(async () => (await page.title()) === s || await page.title(), `title "${s}"`),
   expectApi: (w) => poll(async () => apiMatch(w) || JSON.stringify(report.api.map((a) => `${a.method} ${a.path} ${a.status}`).slice(-4)), `api ${w}`),
-  expectNoApi: async (w) => { await settle(); if (apiMatch(w)) throw new Error(`api ${w} was called`); },
+  expectNoApi: async (w) => {
+    await apiQuiet();
+    const hit = report.api.find((a) => routeMatches(w, a.method, a.path));
+    if (hit) throw new Error(`api ${w} was called (${hit.method} ${hit.path} ${hit.status})`);
+  },
   expectNoVisit: async (p) => { await settle(); if (report.visits.includes(p)) throw new Error(`visited ${p} (visits: ${report.visits.join(' ')})`); },
   expectNoPageErrors: async () => { if (report.pageErrors.length) throw new Error(report.pageErrors[0]); },
   expectFits: async () => {
