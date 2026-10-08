@@ -1,0 +1,17 @@
+{
+  "name": "inventory-modal-escape",
+  "role": "store",
+  "steps": [
+    { "goto": "/inventory" },
+    { "click": { "role": "button", "name": "New Item" } },
+    { "expectVisible": { "role": "dialog", "name": "New Item" } },
+    { "fill": { "label": "Name" }, "value": "Esc ${RUN}" },
+    { "press": "Escape" },
+    { "expectHidden": { "role": "dialog", "name": "New Item" } },
+    { "expectNoApi": "POST /inventory" },
+    { "click": { "role": "button", "name": "New Item" } },
+    { "expectValue": { "label": "Name" }, "value": "" },
+    { "screenshot": "inventory-escape" },
+    { "expectNoPageErrors": true }
+  ]
+}
