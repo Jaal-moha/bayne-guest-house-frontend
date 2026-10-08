@@ -24,7 +24,7 @@ const sub = (v) =>
     : v;
 const control = (...a) => execFileSync(CONTROL, a, { encoding: 'utf8', stdio: ['ignore', 'pipe', 'pipe'] }).trim();
 
-const report = { spec: name, role: spec.role ?? 'admin', viewport: spec.viewport ?? 'desktop', setup: [], steps: [], api: [], console: [], pageErrors: [] };
+const report = { spec: name, role: spec.role ?? 'admin', viewport: spec.viewport ?? 'desktop', setup: [], steps: [], visits: [], api: [], console: [], pageErrors: [] };
 let failed = null;
 
 function finish(browserClose) {
@@ -84,6 +84,7 @@ page.on('response', (r) => {
   report.api.push({ method: r.request().method(), path: apiPath(r.url()), status: r.status(), body: r.request().postData() ?? undefined });
 });
 page.on('requestfailed', (r) => r.url().startsWith(API_URL) && report.api.push({ method: r.request().method(), path: apiPath(r.url()), status: 'failed' }));
+page.on('framenavigated', (f) => f === page.mainFrame() && report.visits.push(new URL(f.url()).pathname));
 page.on('console', (m) => m.type() === 'error' && report.console.push(m.text().slice(0, 300)));
 page.on('pageerror', (e) => report.pageErrors.push(e.message.slice(0, 300)));
 
@@ -144,6 +145,7 @@ const actions = {
   expectTitle: (s) => poll(async () => (await page.title()) === s || await page.title(), `title "${s}"`),
   expectApi: (w) => poll(async () => apiMatch(w) || JSON.stringify(report.api.map((a) => `${a.method} ${a.path} ${a.status}`).slice(-4)), `api ${w}`),
   expectNoApi: async (w) => { await settle(); if (apiMatch(w)) throw new Error(`api ${w} was called`); },
+  expectNoVisit: async (p) => { await settle(); if (report.visits.includes(p)) throw new Error(`visited ${p} (visits: ${report.visits.join(' ')})`); },
   expectNoPageErrors: async () => { if (report.pageErrors.length) throw new Error(report.pageErrors[0]); },
   expectFits: async () => {
     const w = await page.evaluate(() => [document.documentElement.scrollWidth, window.innerWidth]);
