@@ -159,6 +159,15 @@ function NewItemModal({
   );
 }
 
+function quantityError(qty: number | '', kind: 'in' | 'out' | 'adjust', stock: number): string | null {
+  if (qty === '') return 'Enter quantity';
+  if (!Number.isInteger(qty)) return 'Enter a whole number';
+  if (kind === 'adjust') return qty < 0 ? 'Quantity cannot be negative' : null;
+  if (qty <= 0) return 'Quantity must be more than 0';
+  if (kind === 'out' && qty > stock) return 'Insufficient stock';
+  return null;
+}
+
 function StockModal({
   open, onClose, onDone, item, kind,
 }: {
@@ -169,13 +178,14 @@ function StockModal({
   kind: 'in' | 'out' | 'adjust';
 }) {
   const [qty, setQty] = useState<number | ''>('');
+  const [qtyErr, setQtyErr] = useState('');
   const [reason, setReason] = useState('');
   const [err, setErr] = useState('');
   const [loading, setLoading] = useState(false);
 
   useEffect(() => {
     if (!open) return;
-    setQty(''); setReason(''); setErr('');
+    setQty(''); setQtyErr(''); setReason(''); setErr('');
   }, [open]);
 
   if (!open || !item) return null;
@@ -184,9 +194,9 @@ function StockModal({
 
   const submit = async () => {
     setErr('');
-    if (qty === '' || qty === null) return setErr('Enter quantity');
-    if (kind !== 'adjust' && qty <= 0) return setErr('Quantity must be > 0');
-    if (kind === 'out' && qty > item.quantity) return setErr('Insufficient stock');
+    const invalid = quantityError(qty, kind, item.quantity);
+    setQtyErr(invalid ?? '');
+    if (invalid) return;
 
     try {
       setLoading(true);
@@ -214,12 +224,14 @@ function StockModal({
       {err && <div className="mt-3 rounded border border-red-200 bg-red-50 px-3 py-2 text-sm text-red-700">{err}</div>}
 
       <div className="mt-4 space-y-3">
-        <Field label={`Quantity ${item.unit ? `(${item.unit})` : ''}`.trim()}>
+        <Field label={`Quantity ${item.unit ? `(${item.unit})` : ''}`.trim()} error={qtyErr}>
           {(id) => (
             <input
               id={id}
               type="number"
               min={kind === 'adjust' ? 0 : 1}
+              step={1}
+              aria-invalid={!!qtyErr}
               className="w-full rounded border px-3 py-2"
               value={qty}
               onChange={(e) => setQty(e.target.value === '' ? '' : Number(e.target.value))}
@@ -398,18 +410,25 @@ function ItemActions({ item, onAdd, onSubtract, onAdjust, onHistory, onRemove, r
 
 function InventoryInner() {
   const [q, setQ] = useState(''); const [category, setCategory] = useState('');
+  const [query, setQuery] = useState('');
   const [onlyLow, setOnlyLow] = useState(false);
+
+  useEffect(() => {
+    const t = setTimeout(() => setQuery(q.trim()), 300);
+    return () => clearTimeout(t);
+  }, [q]);
+
   const items = useList<Item>('inventory', async () => {
     const res = await axios.get('/inventory', {
       params: {
-        q: q || undefined,
+        q: query || undefined,
         category: category || undefined,
         low: onlyLow ? 'true' : undefined,
       }
     });
     const arr = Array.isArray(res.data) ? res.data : res.data.inventory ?? res.data;
     return arr.map((r: Item) => ({ ...r, minThreshold: r.minThreshold ?? 0 }));
-  }, JSON.stringify([q, category, onlyLow]));
+  }, JSON.stringify([query, category, onlyLow]));
   const { rows, setRows } = items;
 
   const [newOpen, setNewOpen] = useState(false);
@@ -424,13 +443,6 @@ function InventoryInner() {
     rows.forEach(r => r.category && set.add(r.category));
     return Array.from(set).sort();
   }, [rows]);
-
-  const filtered = useMemo(() => {
-    const t = q.toLowerCase();
-    return rows
-      .filter(r => (category ? r.category === category : true))
-      .filter(r => [r.name, r.category, r.sku || '', String(r.quantity)].some(v => (v || '').toLowerCase().includes(t)));
-  }, [rows, q, category]);
 
   const low = (r: Item) => (r.quantity <= (r.minThreshold ?? 0));
 
@@ -488,7 +500,7 @@ function InventoryInner() {
               </tr>
             </thead>
             <tbody>
-              {filtered.map(r => (
+              {rows.map(r => (
                 <tr
                   key={r.id}
                   className="border-t cursor-pointer transition-colors hover:bg-gray-50 active:bg-gray-100"
@@ -513,7 +525,7 @@ function InventoryInner() {
                   {/* Removed inline Actions cell */}
                 </tr>
               ))}
-              {filtered.length === 0 && (
+              {rows.length === 0 && (
                 <tr><td className="px-4 py-6 text-gray-500" colSpan={6}>No items.</td></tr>
               )}
             </tbody>

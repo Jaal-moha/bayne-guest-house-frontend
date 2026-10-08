@@ -1,0 +1,22 @@
+{
+  "name": "inventory-search",
+  "role": "store",
+  "setup": [
+    { "as": "store", "method": "POST", "path": "/inventory", "body": { "name": "Towel ${RUN}", "category": "Housekeeping", "unit": "pcs", "quantity": 12 }, "expect": 201, "save": "ITEM" }
+  ],
+  "steps": [
+    { "goto": "/inventory" },
+    { "expectApi": "GET /inventory 200" },
+    { "click": { "placeholder": "Search name, SKU, category…" } },
+    { "press": "t" },
+    { "press": "o" },
+    { "press": "w" },
+    { "press": "e" },
+    { "press": "l" },
+    { "wait": 1000 },
+    { "expectText": "Towel ${RUN}" },
+    { "screenshot": "search" },
+    { "apiCheck": { "as": "store", "path": "/inventory?q=towel", "jq": "any(.[]; .id == ${ITEM})" } },
+    { "expectNoPageErrors": true }
+  ]
+}
