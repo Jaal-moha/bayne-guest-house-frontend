@@ -94,147 +94,149 @@ function Flow<B>({ onClose, onCreated }: { onClose: () => void; onCreated: (book
   );
 
   return (
-    <form onSubmit={onSubmit} noValidate className="space-y-4">
-      <ol className="flex flex-wrap gap-x-4 gap-y-1 text-sm">
-        {STEPS.map((s, i) => (
-          <li
-            key={s}
-            aria-current={s === step ? 'step' : undefined}
-            className={s === step ? 'font-semibold text-indigo-700' : 'text-gray-500'}
-          >
-            {i + 1}. {STEP_LABEL[s]}
-          </li>
-        ))}
-      </ol>
+    <Modal open onClose={onClose} title="Create Booking" size="2xl" locked={submit.kind === 'saving'}>
+      <form onSubmit={onSubmit} noValidate className="space-y-4">
+        <ol className="flex flex-wrap gap-x-4 gap-y-1 text-sm">
+          {STEPS.map((s, i) => (
+            <li
+              key={s}
+              aria-current={s === step ? 'step' : undefined}
+              className={s === step ? 'font-semibold text-indigo-700' : 'text-gray-500'}
+            >
+              {i + 1}. {STEP_LABEL[s]}
+            </li>
+          ))}
+        </ol>
 
-      {submit.kind === 'failed' && (
-        <div role="alert" className="rounded border border-red-200 bg-red-50 px-3 py-2 text-sm text-red-700">{submit.message}</div>
-      )}
+        {submit.kind === 'failed' && (
+          <div role="alert" className="rounded border border-red-200 bg-red-50 px-3 py-2 text-sm text-red-700">{submit.message}</div>
+        )}
 
-      {step === 'guest' && (
-        <div className="space-y-4">
-          <div className="flex gap-2">
-            {(['existing', 'new'] as const).map((kind) => (
-              <button
-                key={kind}
-                type="button"
-                aria-pressed={guest.kind === kind}
-                onClick={() => dispatch({ type: 'chooseGuestKind', kind })}
-                className={`rounded px-3 py-1.5 text-sm ${guest.kind === kind ? 'bg-indigo-600 text-white' : 'border hover:bg-gray-50'}`}
-              >
-                {kind === 'existing' ? 'Existing guest' : 'New guest'}
-              </button>
-            ))}
-          </div>
-
-          {guest.kind === 'existing' ? (
-            <ListState list={guests} empty="No guests yet. Choose New guest.">
-              <Field label="Guest" error={errors.guestId}>
-                {(id) => (
-                  <select
-                    id={id}
-                    className={INPUT}
-                    value={guest.guestId ?? ''}
-                    onChange={(e) => dispatch({ type: 'pickGuest', guestId: e.target.value ? Number(e.target.value) : null })}
-                    aria-invalid={!!errors.guestId}
-                  >
-                    <option value="">Select guest…</option>
-                    {guests.rows.map((g) => <option key={g.id} value={g.id}>{g.name} — {g.phone}</option>)}
-                  </select>
-                )}
-              </Field>
-            </ListState>
-          ) : (
-            <div className="grid gap-4 sm:grid-cols-2">
-              {draftField('name', 'Full name', { placeholder: 'Full name' })}
-              {draftField('phone', 'Phone', { type: 'tel', placeholder: '+251…' })}
-              <div className="sm:col-span-2">{draftField('email', 'Email (optional)', { type: 'email', placeholder: 'name@example.com' })}</div>
+        {step === 'guest' && (
+          <div className="space-y-4">
+            <div className="flex gap-2">
+              {(['existing', 'new'] as const).map((kind) => (
+                <button
+                  key={kind}
+                  type="button"
+                  aria-pressed={guest.kind === kind}
+                  onClick={() => dispatch({ type: 'chooseGuestKind', kind })}
+                  className={`rounded px-3 py-1.5 text-sm ${guest.kind === kind ? 'bg-indigo-600 text-white' : 'border hover:bg-gray-50'}`}
+                >
+                  {kind === 'existing' ? 'Existing guest' : 'New guest'}
+                </button>
+              ))}
             </div>
+
+            {guest.kind === 'existing' ? (
+              <ListState list={guests} empty="No guests yet. Choose New guest.">
+                <Field label="Guest" error={errors.guestId}>
+                  {(id) => (
+                    <select
+                      id={id}
+                      className={INPUT}
+                      value={guest.guestId ?? ''}
+                      onChange={(e) => dispatch({ type: 'pickGuest', guestId: e.target.value ? Number(e.target.value) : null })}
+                      aria-invalid={!!errors.guestId}
+                    >
+                      <option value="">Select guest…</option>
+                      {guests.rows.map((g) => <option key={g.id} value={g.id}>{g.name} — {g.phone}</option>)}
+                    </select>
+                  )}
+                </Field>
+              </ListState>
+            ) : (
+              <div className="grid gap-4 sm:grid-cols-2">
+                {draftField('name', 'Full name', { placeholder: 'Full name' })}
+                {draftField('phone', 'Phone', { type: 'tel', placeholder: '+251…' })}
+                <div className="sm:col-span-2">{draftField('email', 'Email (optional)', { type: 'email', placeholder: 'name@example.com' })}</div>
+              </div>
+            )}
+          </div>
+        )}
+
+        {step === 'stay' && (
+          <div className="grid gap-4 sm:grid-cols-2">
+            <Field label="Check-in" error={errors.checkIn}>
+              {(id) => (
+                <input
+                  id={id}
+                  type="date"
+                  className={INPUT}
+                  min={today}
+                  value={stay.checkIn}
+                  onChange={(e) => dispatch({ type: 'editDate', field: 'checkIn', value: e.target.value, today })}
+                  aria-invalid={!!errors.checkIn}
+                />
+              )}
+            </Field>
+            <Field label="Check-out" error={errors.checkOut}>
+              {(id) => (
+                <input
+                  id={id}
+                  type="date"
+                  className={INPUT}
+                  min={addDays(stay.checkIn && stay.checkIn > today ? stay.checkIn : today, 1)}
+                  value={stay.checkOut}
+                  onChange={(e) => dispatch({ type: 'editDate', field: 'checkOut', value: e.target.value, today })}
+                  aria-invalid={!!errors.checkOut}
+                />
+              )}
+            </Field>
+            <Field label="Room" error={errors.roomId} className="sm:col-span-2">
+              {(id) => (
+                <select
+                  id={id}
+                  className={INPUT}
+                  value={stay.roomId ?? ''}
+                  onChange={(e) => dispatch({ type: 'pickRoom', roomId: e.target.value ? Number(e.target.value) : null })}
+                  disabled={!datesReady || rooms.state.kind !== 'ready' || rooms.rows.length === 0}
+                  aria-invalid={!!errors.roomId}
+                >
+                  <option value="">
+                    {!datesReady ? 'Pick valid dates first'
+                      : rooms.state.kind === 'loading' ? 'Loading rooms…'
+                      : rooms.state.kind !== 'ready' ? "Couldn't load rooms"
+                      : rooms.rows.length === 0 ? 'No rooms free for these dates'
+                      : 'Select room…'}
+                  </option>
+                  {rooms.rows.map((r) => (
+                    <option key={r.id} value={r.id}>{r.number} — {r.type} — ${Number(r.price).toFixed(2)}</option>
+                  ))}
+                </select>
+              )}
+            </Field>
+          </div>
+        )}
+
+        {step === 'review' && (
+          <dl className="grid grid-cols-[auto_1fr] gap-x-6 gap-y-2 text-sm">
+            <dt className="text-gray-500">Guest</dt>
+            <dd>{pickedGuest?.name} — {pickedGuest?.phone}{guest.kind === 'new' && ' (new)'}</dd>
+            <dt className="text-gray-500">Stay</dt>
+            <dd>{stay.checkIn} → {stay.checkOut} ({nights(stay)} {nights(stay) === 1 ? 'night' : 'nights'})</dd>
+            <dt className="text-gray-500">Room</dt>
+            <dd>{pickedRoom?.number} — {pickedRoom?.type}</dd>
+          </dl>
+        )}
+
+        <div className="flex flex-wrap justify-end gap-2 pt-2">
+          <button type="button" onClick={onClose} disabled={submit.kind === 'saving'} className="mr-auto rounded border px-4 py-2 disabled:opacity-60">Cancel</button>
+          {step !== 'guest' && (
+            <button type="button" onClick={() => dispatch({ type: 'back' })} disabled={submit.kind === 'saving'} className="rounded border px-4 py-2 disabled:opacity-60">
+              Back
+            </button>
+          )}
+          {step === 'review' ? (
+            <button type="submit" disabled={submit.kind === 'saving'} className="rounded bg-emerald-600 px-4 py-2 font-semibold text-white disabled:opacity-60">
+              {submit.kind === 'saving' ? 'Creating…' : 'Create booking'}
+            </button>
+          ) : (
+            <button type="submit" className="rounded bg-indigo-600 px-4 py-2 font-semibold text-white">Next</button>
           )}
         </div>
-      )}
-
-      {step === 'stay' && (
-        <div className="grid gap-4 sm:grid-cols-2">
-          <Field label="Check-in" error={errors.checkIn}>
-            {(id) => (
-              <input
-                id={id}
-                type="date"
-                className={INPUT}
-                min={today}
-                value={stay.checkIn}
-                onChange={(e) => dispatch({ type: 'editDate', field: 'checkIn', value: e.target.value, today })}
-                aria-invalid={!!errors.checkIn}
-              />
-            )}
-          </Field>
-          <Field label="Check-out" error={errors.checkOut}>
-            {(id) => (
-              <input
-                id={id}
-                type="date"
-                className={INPUT}
-                min={addDays(stay.checkIn && stay.checkIn > today ? stay.checkIn : today, 1)}
-                value={stay.checkOut}
-                onChange={(e) => dispatch({ type: 'editDate', field: 'checkOut', value: e.target.value, today })}
-                aria-invalid={!!errors.checkOut}
-              />
-            )}
-          </Field>
-          <Field label="Room" error={errors.roomId} className="sm:col-span-2">
-            {(id) => (
-              <select
-                id={id}
-                className={INPUT}
-                value={stay.roomId ?? ''}
-                onChange={(e) => dispatch({ type: 'pickRoom', roomId: e.target.value ? Number(e.target.value) : null })}
-                disabled={!datesReady || rooms.state.kind !== 'ready' || rooms.rows.length === 0}
-                aria-invalid={!!errors.roomId}
-              >
-                <option value="">
-                  {!datesReady ? 'Pick valid dates first'
-                    : rooms.state.kind === 'loading' ? 'Loading rooms…'
-                    : rooms.state.kind !== 'ready' ? "Couldn't load rooms"
-                    : rooms.rows.length === 0 ? 'No rooms free for these dates'
-                    : 'Select room…'}
-                </option>
-                {rooms.rows.map((r) => (
-                  <option key={r.id} value={r.id}>{r.number} — {r.type} — ${Number(r.price).toFixed(2)}</option>
-                ))}
-              </select>
-            )}
-          </Field>
-        </div>
-      )}
-
-      {step === 'review' && (
-        <dl className="grid grid-cols-[auto_1fr] gap-x-6 gap-y-2 text-sm">
-          <dt className="text-gray-500">Guest</dt>
-          <dd>{pickedGuest?.name} — {pickedGuest?.phone}{guest.kind === 'new' && ' (new)'}</dd>
-          <dt className="text-gray-500">Stay</dt>
-          <dd>{stay.checkIn} → {stay.checkOut} ({nights(stay)} {nights(stay) === 1 ? 'night' : 'nights'})</dd>
-          <dt className="text-gray-500">Room</dt>
-          <dd>{pickedRoom ? `${pickedRoom.number} — ${pickedRoom.type}` : stay.roomId}</dd>
-        </dl>
-      )}
-
-      <div className="flex flex-wrap justify-end gap-2 pt-2">
-        <button type="button" onClick={onClose} className="mr-auto rounded border px-4 py-2">Cancel</button>
-        {step !== 'guest' && (
-          <button type="button" onClick={() => dispatch({ type: 'back' })} disabled={submit.kind === 'saving'} className="rounded border px-4 py-2 disabled:opacity-60">
-            Back
-          </button>
-        )}
-        {step === 'review' ? (
-          <button type="submit" disabled={submit.kind === 'saving'} className="rounded bg-emerald-600 px-4 py-2 font-semibold text-white disabled:opacity-60">
-            {submit.kind === 'saving' ? 'Creating…' : 'Create booking'}
-          </button>
-        ) : (
-          <button type="submit" className="rounded bg-indigo-600 px-4 py-2 font-semibold text-white">Next</button>
-        )}
-      </div>
-    </form>
+      </form>
+    </Modal>
   );
 }
 
@@ -245,9 +247,5 @@ export default function BookingFlow<B>({
   onClose: () => void;
   onCreated: (booking: B) => void;
 }) {
-  return (
-    <Modal open={open} onClose={onClose} title="Create Booking" size="2xl">
-      <Flow onClose={onClose} onCreated={onCreated} />
-    </Modal>
-  );
+  return open && <Flow onClose={onClose} onCreated={onCreated} />;
 }
