@@ -95,7 +95,7 @@ cmd_up() {
   [[ "$line" == READY* ]] || die "backend-up $line"
   local api; api="$(sed -E 's/.*base=([^ ]+).*/\1/' <<<"$line")"
 
-  (cd "$ROOT" && exec setsid env NEXT_PUBLIC_API_BASE="$api" NEXT_PUBLIC_API_BASE_URL="$api" NEXT_TELEMETRY_DISABLED=1 \
+  (cd "$ROOT" && exec setsid env NEXT_PUBLIC_API_BASE="$api" NEXT_TELEMETRY_DISABLED=1 \
     nohup node_modules/.bin/next dev --turbopack -p "$port" -H 127.0.0.1 >"$RUN_DIR/web.log" 2>&1) &
   local pid=$!
   cat >"$STATE" <<STATE_EOF

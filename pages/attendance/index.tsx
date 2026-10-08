@@ -1,8 +1,11 @@
-import { useMemo, useState } from 'react';
+import { useEffect, useMemo, useState } from 'react';
+import { isAxiosError } from 'axios';
 import Layout from '@/components/Layout';
 import RequireAuth from '@/components/RequireAuth';
 import axios from '@/utils/axiosInstance';
 import ListState from '@/components/ListState';
+import Modal from '@/components/Modal';
+import Field from '@/components/Field';
 import { useToast } from '@/components/Toast';
 import { useList } from '@/lib/useList';
 
@@ -32,15 +35,80 @@ const hoursBetween = (a: string | Date, b?: string | Date | null) => {
   return hrs < 0 ? '—' : hrs.toFixed(2);
 };
 
-// Build full API URL using NEXT_PUBLIC_API_BASE_URL when set
-const apiUrl = (path: string) => {
-  const base = (process.env.NEXT_PUBLIC_API_BASE_URL || '').replace(/\/+$/, '');
-  return `${base}${path}`;
+// datetime-local inputs take local wall time, so shift the ISO string by the zone offset.
+const toLocalInput = (d?: string | Date | null) => {
+  if (!d) return '';
+  const x = new Date(d);
+  return Number.isNaN(x.getTime()) ? '' : new Date(x.getTime() - x.getTimezoneOffset() * 60_000).toISOString().slice(0, 16);
 };
+
+function EditAttendanceModal({
+  record, onClose, onSaved,
+}: {
+  record: Attendance | null;
+  onClose: () => void;
+  onSaved: (a: Attendance) => void;
+}) {
+  const [checkIn, setCheckIn] = useState('');
+  const [checkOut, setCheckOut] = useState('');
+  const [fieldErr, setFieldErr] = useState('');
+  const [err, setErr] = useState('');
+  const [saving, setSaving] = useState(false);
+
+  useEffect(() => {
+    if (!record) return;
+    setCheckIn(toLocalInput(record.checkIn));
+    setCheckOut(toLocalInput(record.checkOut));
+    setFieldErr('');
+    setErr('');
+  }, [record]);
+
+  if (!record) return null;
+
+  const submit = async () => {
+    setErr('');
+    if (!checkIn) return setFieldErr('Check-in is required');
+    if (checkOut && new Date(checkOut) <= new Date(checkIn)) return setFieldErr('Check-out must be after check-in');
+    setFieldErr('');
+    try {
+      setSaving(true);
+      const res = await axios.patch(`/attendance/${record.id}`, {
+        checkIn: new Date(checkIn).toISOString(),
+        checkOut: checkOut ? new Date(checkOut).toISOString() : undefined,
+      });
+      onSaved({ ...record, ...res.data, staff: record.staff });
+      onClose();
+    } catch (e: unknown) {
+      setErr(isAxiosError(e) ? e.response?.data?.message ?? e.message : 'Save failed');
+    } finally {
+      setSaving(false);
+    }
+  };
+
+  return (
+    <Modal open onClose={onClose} title={`Edit attendance, ${record.staff?.name ?? `#${record.staffId}`}`} size="md" locked={saving}>
+      {err && <div className="mb-3 rounded border border-red-200 bg-red-50 px-3 py-2 text-sm text-red-700">{err}</div>}
+      <div className="space-y-3">
+        <Field label="Check-in">
+          {(id) => <input id={id} type="datetime-local" className="w-full rounded-md border px-3 py-2" value={checkIn} onChange={(e) => setCheckIn(e.target.value)} />}
+        </Field>
+        <Field label="Check-out" error={fieldErr}>
+          {(id) => <input id={id} type="datetime-local" className="w-full rounded-md border px-3 py-2" value={checkOut} onChange={(e) => setCheckOut(e.target.value)} />}
+        </Field>
+      </div>
+      <div className="mt-6 flex justify-end gap-2">
+        <button onClick={onClose} disabled={saving} className="rounded-md border px-4 py-2 hover:bg-gray-50">Cancel</button>
+        <button onClick={submit} disabled={saving} className="rounded-md bg-indigo-600 px-4 py-2 font-semibold text-white hover:bg-indigo-700 disabled:opacity-60">
+          {saving ? 'Saving…' : 'Save'}
+        </button>
+      </div>
+    </Modal>
+  );
+}
 
 function AttendanceInner() {
   const attendance = useList<Attendance>('attendance records', async () => {
-    const res = await axios.get(apiUrl('/attendance'));
+    const res = await axios.get('/attendance');
     return Array.isArray(res.data) ? res.data : res.data.attendance ?? [];
   });
   const { rows: rowsAll, setRows: setRowsAll } = attendance;
@@ -48,6 +116,7 @@ function AttendanceInner() {
   const [q, setQ] = useState('');
   const [page, setPage] = useState(1);
   const [pageSize, setPageSize] = useState(10);
+  const [editing, setEditing] = useState<Attendance | null>(null);
 
   const filtered = useMemo(() => {
     const term = q.trim().toLowerCase();
@@ -67,7 +136,7 @@ function AttendanceInner() {
   const handleDelete = async (id: number) => {
     if (!confirm('Delete this attendance record?')) return;
     try {
-      await axios.delete(apiUrl(`/attendance/${id}`));
+      await axios.delete(`/attendance/${id}`);
       setRowsAll(prev => prev.filter(r => r.id !== id));
     } catch {
       push('Delete failed.', 'error');
@@ -133,7 +202,7 @@ function AttendanceInner() {
                   <td className="px-4 py-3">{hoursBetween(r.checkIn, r.checkOut)}</td>
                   <td className="px-4 py-3">
                     <div className="flex justify-end gap-2">
-                      <button className="rounded-md border px-3 py-1 hover:bg-gray-50">Edit</button>
+                      <button onClick={() => setEditing(r)} className="rounded-md border px-3 py-1 hover:bg-gray-50">Edit</button>
                       <button onClick={() => handleDelete(r.id)}
                               className="rounded-md border px-3 py-1 text-red-600 hover:bg-red-50">Delete</button>
                     </div>
@@ -145,6 +214,12 @@ function AttendanceInner() {
           )}
         </ListState>
       </div>
+
+      <EditAttendanceModal
+        record={editing}
+        onClose={() => setEditing(null)}
+        onSaved={(saved) => setRowsAll(prev => prev.map(r => r.id === saved.id ? saved : r))}
+      />
     </Layout>
   );
 }
