@@ -87,7 +87,7 @@ page.on('requestfinished', (q) => sizing.push(q.sizes().then((z) => { report.req
 page.on('console', (m) => m.type() === 'error' && report.console.push(m.text().slice(0, 300)));
 page.on('pageerror', (e) => report.pageErrors.push(e.message.slice(0, 300)));
 
-const scope = () => (page.locator('[role="dialog"]').count().then((n) => (n ? page.locator('[role="dialog"]').last() : page)));
+const scope = () => (page.locator('[role="dialog"]').count().then((n) => (n ? page.locator('[role="dialog"]').last().locator('xpath=..') : page)));
 async function target(t) {
   if (typeof t === 'string') return page.locator(t).first();
   const root = await scope();

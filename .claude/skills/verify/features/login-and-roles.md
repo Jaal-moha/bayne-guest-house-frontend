@@ -25,9 +25,10 @@ Preconditions:
 
 - **Sign in.** Run `$S drive login-admin`. `RESULT PASS` with `API POST /auth/login 201`, then `API GET /auth/me 200`, and the step `expectText "Welcome, Admin"`.
 - **Wrong password.** Run `$S drive login-wrong-password`. `RESULT PASS` with `API POST /auth/login 401` and the URL still `/login`.
+- **Login page.** Run `$S drive login-page`. It checks the tab title, that "Forgot password?" and "Remember me" are gone, and with `expectNoRequest` that nothing loads from Google. `login.png` shows the local image.
 - **Nav and guard.** Run `$S drive nav-roles-finance`. Finance sees Payments and not Staff, and `/staff` redirects to `/dashboard`.
 - **Guard before fetch.** Run `$S drive laundry-store-guard` and `$S drive guests-store-guard`. Store lands on `/inventory`, and `expectNoApi` confirms no `GET /laundry` or `GET /guests` went out.
-- **Role landing.** Run `$S drive role-landing-store`. It reports `RESULT XFAIL` until the store role lands on a page that renders. The failing step is `expectVisible {"role":"link","name":"Inventory"}`.
+- **Role landing.** Run `$S drive role-landing-store`. It reports `RESULT PASS` when the store role, sent to `/dashboard`, ends on a page whose sidebar shows Inventory.
 
 ## Gotchas
 
