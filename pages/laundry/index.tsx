@@ -21,7 +21,7 @@ type Guest = { id: number; name: string; };
 
 // Add Laundry Modal component
 function AddLaundryModal({
-  open, onClose, guests, onCreated, submitting, setSubmitting, statuses,
+  open, onClose, guests, onCreated, submitting, setSubmitting,
 }: {
   open: boolean;
   onClose: () => void;
@@ -29,7 +29,6 @@ function AddLaundryModal({
   onCreated: (row: any) => void;
   submitting: boolean;
   setSubmitting: (v: boolean) => void;
-  statuses: string[];
 }) {
   const [guestId, setGuestId] = useState('');
   const [status, setStatus] = useState('');
@@ -39,7 +38,7 @@ function AddLaundryModal({
 
   const reset = () => { setGuestId(''); setStatus(ALLOWED_STATUSES[0]); setItems([{ name: '', qty: 1 }]); setError(''); setPrice(''); };
 
-  useEffect(() => { if (open) reset(); }, [open, statuses]);
+  useEffect(() => { if (open) reset(); }, [open]);
 
   const updateItem = (i: number, patch: Partial<{ name: string; qty: number; }>) => {
     setItems(list => list.map((r, idx) => idx === i ? { ...r, ...patch } : r));
@@ -109,7 +108,6 @@ function AddLaundryModal({
                 className="w-full rounded border px-3 py-2"
                 value={status}
                 onChange={e => setStatus(e.target.value)}
-                disabled={!statuses.length}
               >
                 {ALLOWED_STATUSES.map(s => <option key={s} value={s}>{STATUS_LABELS[s]}</option>)}
               </select>
@@ -215,8 +213,6 @@ function LaundryInner() {
   const [editForm, setEditForm] = useState({ guestId: '', items: '', status: 'pending' });
   const [editError, setEditError] = useState('');
   const [justSaved, setJustSaved] = useState<number | null>(null);
-  const [statuses, setStatuses] = useState<string[]>([...ALLOWED_STATUSES]);
-  const [statusesLoading, setStatusesLoading] = useState(false);
 
   useEffect(() => {
     if (justSaved != null) {
@@ -224,35 +220,6 @@ function LaundryInner() {
       return () => clearTimeout(t);
     }
   }, [justSaved]);
-
-  useEffect(() => {
-    let cancelled = false;
-    (async () => {
-      setStatusesLoading(true);
-      try {
-        const res = await axios.get('/laundry/statuses');
-        let list = res.data?.statuses ?? res.data;
-        if (Array.isArray(list)) {
-          list = list.filter((s: string) => ALLOWED_STATUSES.includes(s as any));
-        } else {
-          list = ALLOWED_STATUSES;
-        }
-        if (!cancelled && list.length) setStatuses(list);
-      } catch {
-        if (!cancelled) setStatuses([...ALLOWED_STATUSES]);
-      } finally {
-        if (!cancelled) setStatusesLoading(false);
-      }
-    })();
-    return () => { cancelled = true; };
-  }, []);
-
-  useEffect(() => {
-    if (status !== 'All' && !statuses.includes(status)) setStatus('All');
-    if (editing && !statuses.includes(editForm.status) && statuses.length) {
-      setEditForm(f => ({ ...f, status: statuses[0] }));
-    }
-  }, [statuses, status, editing, editForm.status]);
 
   const filtered = useMemo(() => {
     const t = q.toLowerCase().trim();
@@ -275,10 +242,6 @@ function LaundryInner() {
   const saveEdit = async (id: number) => {
     if (!editForm.items.trim()) {
       setEditError('Items required');
-      return;
-    }
-    if (!statuses.includes(editForm.status)) {
-      setEditError('Invalid status');
       return;
     }
     setSubmitting(true);
@@ -341,9 +304,9 @@ function LaundryInner() {
         <input value={q} onChange={e => { setQ(e.target.value); setPage(1); }} placeholder="Search by guest, items, status…" className="w-full rounded-md border px-3 py-2 sm:w-96" />
         <div className="flex items-center gap-2">
           <label className="text-sm text-gray-600">Status</label>
-          <select className="rounded-md border px-2 py-2" value={status} onChange={e => { setStatus(e.target.value); setPage(1); }} disabled={statusesLoading}>
+          <select className="rounded-md border px-2 py-2" value={status} onChange={e => { setStatus(e.target.value); setPage(1); }}>
             <option value="All">All</option>
-            {statuses.map(s => <option key={s} value={s}>{STATUS_LABELS[s] || s}</option>)}
+            {ALLOWED_STATUSES.map(s => <option key={s} value={s}>{STATUS_LABELS[s] || s}</option>)}
           </select>
         </div>
         <div className="flex items-center gap-2">
@@ -355,6 +318,15 @@ function LaundryInner() {
           >
             {[5, 10, 20, 50].map(n => <option key={n} value={n}>{n}</option>)}
           </select>
+        </div>
+        <div className="ml-auto flex flex-wrap items-center gap-2">
+          <button className="rounded-md border px-3 py-2 disabled:opacity-50"
+                  onClick={() => setPage(p => Math.max(1, p - 1))}
+                  disabled={cur <= 1}>Prev</button>
+          <span className="text-sm text-gray-600">Page {cur} / {totalPages}</span>
+          <button className="rounded-md border px-3 py-2 disabled:opacity-50"
+                  onClick={() => setPage(p => Math.min(totalPages, p + 1))}
+                  disabled={cur >= totalPages}>Next</button>
         </div>
       </div>
 
@@ -400,7 +372,7 @@ function LaundryInner() {
                           value={editForm.status}
                           onChange={e => setEditForm(f => ({ ...f, status: e.target.value }))}
                         >
-                          {statuses.map(s => <option key={s} value={s}>{s}</option>)}
+                          {ALLOWED_STATUSES.map(s => <option key={s} value={s}>{s}</option>)}
                         </select>
                       ) : (
                         <span className="rounded-full bg-gray-100 px-2 py-1 text-xs">{r.status}</span>
@@ -464,7 +436,6 @@ function LaundryInner() {
         onCreated={handleCreated}
         submitting={submitting}
         setSubmitting={setSubmitting}
-        statuses={statuses}
       />
       <Modal open={!!deleting} onClose={() => setDeleting(null)} title="Delete laundry record" size="md" locked={removing}>
         <p className="text-sm text-gray-600">
