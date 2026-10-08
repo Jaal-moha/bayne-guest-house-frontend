@@ -120,7 +120,7 @@ function EditBookingModal({
   if (!open || !booking) return null;
 
   return (
-    <Modal open={open} onClose={onClose} title="Edit Booking" size="2xl">
+    <Modal open={open} onClose={onClose} title="Edit Booking" size="2xl" locked={loading}>
       {err && <div className="mt-3 rounded border border-red-200 bg-red-50 px-3 py-2 text-sm text-red-700">{err}</div>}
 
       <div className="mt-4 grid gap-4 sm:grid-cols-2">

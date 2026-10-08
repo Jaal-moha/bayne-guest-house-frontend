@@ -71,7 +71,7 @@ function GuestModal({
   };
 
   return (
-    <Modal open onClose={onClose} title={editing.mode === 'edit' ? 'Edit Guest' : 'Add Guest'} size="md">
+    <Modal open onClose={onClose} locked={saving} title={editing.mode === 'edit' ? 'Edit Guest' : 'Add Guest'} size="md">
       <p className="text-sm text-gray-500">
         {editing.mode === 'edit' ? "Update this guest's details" : 'Create a new guest profile'}
       </p>

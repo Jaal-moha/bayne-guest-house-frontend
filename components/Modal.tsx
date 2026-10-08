@@ -20,10 +20,11 @@ const FOCUSABLE = [
 const openStack: HTMLElement[] = [];
 
 export default function Modal({
-  open, onClose, title, size = 'lg', children,
+  open, onClose, title, size = 'lg', locked = false, children,
 }: {
   open: boolean;
   onClose: () => void;
+  locked?: boolean;
   title: string;
   size?: keyof typeof WIDTH;
   children: ReactNode;
@@ -31,14 +32,17 @@ export default function Modal({
   const titleId = useId();
   const panelRef = useRef<HTMLDivElement>(null);
   const bodyRef = useRef<HTMLDivElement>(null);
-  const onCloseRef = useRef(onClose);
-  onCloseRef.current = onClose;
+  const dismiss = locked ? () => {} : onClose;
+  const dismissRef = useRef(dismiss);
+  dismissRef.current = dismiss;
 
   useEffect(() => {
     const panel = panelRef.current;
     if (!open || !panel) return;
     const opener = document.activeElement as HTMLElement | null;
     openStack.push(panel);
+    const bodyOverflow = document.body.style.overflow;
+    document.body.style.overflow = 'hidden';
     const focusables = () => Array.from(panel.querySelectorAll<HTMLElement>(FOCUSABLE));
     (bodyRef.current?.querySelector<HTMLElement>(FOCUSABLE) ?? panel).focus();
 
@@ -46,7 +50,7 @@ export default function Modal({
       if (openStack[openStack.length - 1] !== panel) return;
       if (e.key === 'Escape') {
         e.preventDefault();
-        onCloseRef.current();
+        dismissRef.current();
         return;
       }
       if (e.key !== 'Tab') return;
@@ -69,15 +73,16 @@ export default function Modal({
     return () => {
       document.removeEventListener('keydown', onKey);
       openStack.splice(openStack.indexOf(panel), 1);
-      if (opener?.isConnected) opener.focus();
+      document.body.style.overflow = bodyOverflow;
+      if (opener?.isConnected) opener.focus({ preventScroll: true });
     };
   }, [open]);
 
   if (!open) return null;
   return (
     <div
-      className="fixed inset-0 z-50 grid place-items-center bg-black/40 p-4"
-      onMouseDown={(e) => { if (e.target === e.currentTarget) onClose(); }}
+      className="fixed inset-0 z-50 grid place-items-center overflow-y-auto overscroll-contain bg-black/40 p-4"
+      onMouseDown={(e) => { if (e.target === e.currentTarget) dismiss(); }}
     >
       <div
         ref={panelRef}
@@ -85,15 +90,16 @@ export default function Modal({
         aria-modal="true"
         aria-labelledby={titleId}
         tabIndex={-1}
-        className={`max-h-[90vh] w-full overflow-y-auto rounded-xl bg-white p-6 shadow-lg outline-none ${WIDTH[size]}`}
+        className={`max-h-[90vh] w-full overflow-y-auto overscroll-contain rounded-xl bg-white p-6 shadow-lg outline-none ${WIDTH[size]}`}
       >
         <div className="mb-4 flex items-center justify-between gap-4">
           <h3 id={titleId} className="text-lg font-semibold">{title}</h3>
           <button
             type="button"
-            onClick={onClose}
+            onClick={dismiss}
+            disabled={locked}
             aria-label="Close dialog"
-            className="rounded px-2 py-1 text-gray-500 hover:bg-gray-100"
+            className="rounded px-2 py-1 text-gray-500 hover:bg-gray-100 disabled:opacity-40"
           >
             ✕
           </button>
