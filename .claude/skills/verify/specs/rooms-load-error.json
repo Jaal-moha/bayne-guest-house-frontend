@@ -1,0 +1,15 @@
+{
+  "name": "rooms-load-error",
+  "role": "manager",
+  "failApi": ["GET /rooms"],
+  "steps": [
+    {"goto": "/rooms"},
+    {"expectApi": "GET /rooms 500"},
+    {"expectText": "Couldn't load rooms"},
+    {"expectVisible": {"role": "button", "name": "Retry"}},
+    {"expectNoText": "No rooms."},
+    {"expectNoText": "verify-injected failure"},
+    {"screenshot": "rooms-error"},
+    {"expectNoPageErrors": true}
+  ]
+}

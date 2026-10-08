@@ -1,0 +1,15 @@
+{
+  "name": "payments-load-error",
+  "role": "finance",
+  "failApi": ["GET /payments"],
+  "steps": [
+    {"goto": "/payments"},
+    {"expectApi": "GET /payments 500"},
+    {"expectText": "Couldn't load payments"},
+    {"expectVisible": {"role": "button", "name": "Retry"}},
+    {"expectNoText": "No payments."},
+    {"expectNoText": "verify-injected failure"},
+    {"screenshot": "payments-error"},
+    {"expectNoPageErrors": true}
+  ]
+}
