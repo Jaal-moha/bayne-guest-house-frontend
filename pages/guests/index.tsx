@@ -5,6 +5,8 @@ import RequireAuth from '@/components/RequireAuth';
 import axios from '@/utils/axiosInstance';
 import ListState from '@/components/ListState';
 import { useToast } from '@/components/Toast';
+import Modal from '@/components/Modal';
+import Field from '@/components/Field';
 import { useList } from '@/lib/useList';
 
 type Guest = {
@@ -69,38 +71,30 @@ function GuestModal({
   };
 
   return (
-    <div className="fixed inset-0 z-50 grid place-items-center bg-black/40 p-4">
-      <div className="w-full max-w-md rounded-xl bg-white p-6 shadow-lg">
-        <h3 className="text-lg font-semibold">{editing.mode === 'edit' ? 'Edit Guest' : 'Add Guest'}</h3>
-        <p className="mt-1 text-sm text-gray-500">
-          {editing.mode === 'edit' ? "Update this guest's details" : 'Create a new guest profile'}
-        </p>
+    <Modal open onClose={onClose} locked={saving} title={editing.mode === 'edit' ? 'Edit Guest' : 'Add Guest'} size="md">
+      <p className="text-sm text-gray-500">
+        {editing.mode === 'edit' ? "Update this guest's details" : 'Create a new guest profile'}
+      </p>
 
-        <div className="mt-4 space-y-3">
-          <div>
-            <label className="mb-1 block text-sm font-medium text-gray-700">Full name</label>
-            <input className="w-full rounded-md border px-3 py-2" value={name} onChange={(e) => setName(e.target.value)} />
-            {errors.name && <p className="mt-1 text-sm text-red-600">{errors.name}</p>}
-          </div>
-          <div>
-            <label className="mb-1 block text-sm font-medium text-gray-700">Phone</label>
-            <input required maxLength={30} className="w-full rounded-md border px-3 py-2" value={phone} onChange={(e) => setPhone(e.target.value)} />
-            {errors.phone && <p className="mt-1 text-sm text-red-600">{errors.phone}</p>}
-          </div>
-          <div>
-            <label className="mb-1 block text-sm font-medium text-gray-700">Email</label>
-            <input className="w-full rounded-md border px-3 py-2" value={email} onChange={(e) => setEmail(e.target.value)} />
-          </div>
-        </div>
-
-        <div className="mt-6 flex justify-end gap-2">
-          <button onClick={onClose} className="rounded-md border px-4 py-2">Cancel</button>
-          <button onClick={submit} disabled={saving} className="rounded-md bg-indigo-600 px-4 py-2 text-white">
-            {saving ? 'Saving…' : editing.mode === 'edit' ? 'Save changes' : 'Add Guest'}
-          </button>
-        </div>
+      <div className="mt-4 space-y-3">
+        <Field label="Full name" error={errors.name}>
+          {(id) => <input id={id} className="w-full rounded-md border px-3 py-2" value={name} onChange={(e) => setName(e.target.value)} />}
+        </Field>
+        <Field label="Phone" error={errors.phone}>
+          {(id) => <input id={id} required maxLength={30} className="w-full rounded-md border px-3 py-2" value={phone} onChange={(e) => setPhone(e.target.value)} />}
+        </Field>
+        <Field label="Email">
+          {(id) => <input id={id} className="w-full rounded-md border px-3 py-2" value={email} onChange={(e) => setEmail(e.target.value)} />}
+        </Field>
       </div>
-    </div>
+
+      <div className="mt-6 flex justify-end gap-2">
+        <button onClick={onClose} className="rounded-md border px-4 py-2">Cancel</button>
+        <button onClick={submit} disabled={saving} className="rounded-md bg-indigo-600 px-4 py-2 text-white">
+          {saving ? 'Saving…' : editing.mode === 'edit' ? 'Save changes' : 'Add Guest'}
+        </button>
+      </div>
+    </Modal>
   );
 }
 

@@ -1,0 +1,14 @@
+{
+  "name": "laundry-modal-escape",
+  "role": "housekeeping",
+  "steps": [
+    { "goto": "/laundry" },
+    { "click": { "role": "button", "name": "+ Add Laundry" } },
+    { "expectVisible": { "role": "dialog", "name": "Add Laundry" } },
+    { "press": "Escape" },
+    { "expectHidden": { "role": "dialog", "name": "Add Laundry" } },
+    { "expectNoApi": "POST /laundry" },
+    { "screenshot": "laundry-escape" },
+    { "expectNoPageErrors": true }
+  ]
+}

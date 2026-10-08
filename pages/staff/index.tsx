@@ -5,6 +5,9 @@ import Layout from '@/components/Layout';
 import RequireAuth from '@/components/RequireAuth';
 import axios from '@/utils/axiosInstance';
 import ListState from '@/components/ListState';
+import Modal from '@/components/Modal';
+import Field from '@/components/Field';
+import { useToast } from '@/components/Toast';
 import { useList } from '@/lib/useList';
 
 type UserLite = {
@@ -131,34 +134,35 @@ function AddStaffModal({
   };
 
   return (
-    <div className="fixed inset-0 z-50 grid place-items-center bg-black/40 p-4">
-      <div className="w-full max-w-md rounded-xl bg-white p-6 shadow-lg">
-        <h3 className="text-lg font-semibold">{step === 1 ? 'Add Staff' : 'Review & Create'}</h3>
-        <p className="mt-1 text-sm text-gray-500">{step === 1 ? 'Enter staff details' : 'Confirm details and create staff'}</p>
+    <Modal open={open} onClose={onClose} title={step === 1 ? 'Add Staff' : 'Review & Create'} size="md" locked={loading || !!createdCreds}>
+      <p className="mt-1 text-sm text-gray-500">{step === 1 ? 'Enter staff details' : 'Confirm details and create staff'}</p>
 
-        {err && (
-          <div className="mt-3 rounded-md border border-red-200 bg-red-50 px-3 py-2 text-sm text-red-700">
-            {err}
-          </div>
-        )}
+      {err && (
+        <div className="mt-3 rounded-md border border-red-200 bg-red-50 px-3 py-2 text-sm text-red-700">
+          {err}
+        </div>
+      )}
 
-        {!createdCreds ? (
-          <>
-            {step === 1 ? (
-              <div className="mt-4 space-y-3">
-                <div>
-                  <label className="mb-1 block text-sm font-medium text-gray-700">Full name</label>
+      {!createdCreds ? (
+        <>
+          {step === 1 ? (
+            <div className="mt-4 space-y-3">
+              <Field label="Full name">
+                {(id) => (
                   <input
+                    id={id}
                     className="w-full rounded-md border px-3 py-2 outline-none focus:ring-2 focus:ring-indigo-500"
                     value={name}
                     onChange={(e) => setName(e.target.value)}
                     placeholder="e.g. Sara Reception"
                   />
-                </div>
+                )}
+              </Field>
 
-                <div>
-                  <label className="mb-1 block text-sm font-medium text-gray-700">Role</label>
+              <Field label="Role">
+                {(id) => (
                   <select
+                    id={id}
                     className="w-full rounded-md border px-3 py-2 outline-none focus:ring-2 focus:ring-indigo-500"
                     value={role}
                     onChange={(e) => setRole(e.target.value)}
@@ -170,160 +174,166 @@ function AddStaffModal({
                       </option>
                     ))}
                   </select>
-                </div>
+                )}
+              </Field>
 
-                <div>
-                  <label className="mb-1 block text-sm font-medium text-gray-700">Phone</label>
+              <Field label="Phone">
+                {(id) => (
                   <input
+                    id={id}
                     className="w-full rounded-md border px-3 py-2 outline-none focus:ring-2 focus:ring-indigo-500"
                     value={phone}
                     onChange={(e) => setPhone(e.target.value)}
                     placeholder="+251 9xx xxx xxx"
                   />
-                </div>
+                )}
+              </Field>
 
-                <div>
-                  <label className="mb-1 block text-sm font-medium text-gray-700">Emergency contact (optional)</label>
+              <Field label="Emergency contact (optional)">
+                {(id) => (
                   <input
+                    id={id}
                     className="w-full rounded-md border px-3 py-2 outline-none focus:ring-2 focus:ring-indigo-500"
                     value={emergencyContact}
                     onChange={(e) => setEmergencyContact(e.target.value)}
                     placeholder="Name / Phone"
                   />
-                </div>
+                )}
+              </Field>
 
-                <div className="flex items-center gap-2 pt-2">
-                  <input
-                    id="create-account"
-                    type="checkbox"
-                    checked={createAccount}
-                    onChange={(e) => setCreateAccount(e.target.checked)}
-                    className="h-4 w-4 rounded border-gray-300 text-indigo-600"
-                  />
-                  <label htmlFor="create-account" className="text-sm text-gray-700">
-                    Create user account for this staff (recommended)
-                  </label>
-                </div>
+              <div className="flex items-center gap-2 pt-2">
+                <input
+                  id="create-account"
+                  type="checkbox"
+                  checked={createAccount}
+                  onChange={(e) => setCreateAccount(e.target.checked)}
+                  className="h-4 w-4 rounded border-gray-300 text-indigo-600"
+                />
+                <label htmlFor="create-account" className="text-sm text-gray-700">
+                  Create user account for this staff (recommended)
+                </label>
+              </div>
 
-                {createAccount && (
-                  <div>
-                    <label className="mb-1 block text-sm font-medium text-gray-700">Email</label>
+              {createAccount && (
+                <Field label="Email">
+                  {(id) => (
                     <input
+                      id={id}
                       className="w-full rounded-md border px-3 py-2 outline-none focus:ring-2 focus:ring-indigo-500"
                       value={email}
                       onChange={(e) => setEmail(e.target.value)}
                       placeholder="e.g. sara@example.com"
                       type="email"
                     />
-                  </div>
-                )}
-              </div>
-            ) : (
-              // Step 2: review details
-              <div className="mt-4 space-y-3">
-                <div>
-                  <div className="text-sm text-gray-700"><strong>Name:</strong> {name}</div>
-                  <div className="text-sm text-gray-700"><strong>Role:</strong> {role}</div>
-                  <div className="text-sm text-gray-700"><strong>Phone:</strong> {phone}</div>
-                </div>
-
-                {createAccount ? (
-                  <div className="rounded-md border border-gray-100 bg-gray-50 p-3">
-                    <div className="text-sm text-gray-700"><strong>Email:</strong> {email}</div>
-                    <div className="mt-3 flex items-center justify-between">
-                      <div>
-                        <div className="text-xs text-gray-500">Generated password</div>
-                        <div className="font-mono">{password}</div>
-                      </div>
-                      <div>
-                        <button
-                          onClick={() => setPassword(genPassword())}
-                          className="ml-2 rounded border px-2 py-1 text-xs"
-                        >
-                          Regenerate
-                        </button>
-                      </div>
-                    </div>
-                    <div className="mt-2 text-xs text-gray-600">
-                      The staff will use this email and password to sign in. They will be required to change the password on first login.
-                    </div>
-                  </div>
-                ) : (
-                  <div className="rounded-md border border-yellow-100 bg-yellow-50 p-3 text-sm text-yellow-800">
-                    No user account will be created. You can create one later from the staff details.
-                  </div>
-                )}
-              </div>
-            )}
-
-            <div className="mt-6 flex justify-end gap-2">
-              <button
-                onClick={() => {
-                  if (step === 2) {
-                    setStep(1);
-                    setErr('');
-                    return;
-                  }
-                  onClose();
-                }}
-                className="rounded-md border px-4 py-2 hover:bg-gray-50"
-                disabled={loading}
-              >
-                {step === 2 ? 'Back' : 'Cancel'}
-              </button>
-
-              {step === 1 ? (
-                <button
-                  onClick={proceedToReview}
-                  className="rounded-md bg-indigo-600 px-4 py-2 font-semibold text-white hover:bg-indigo-700 disabled:opacity-60"
-                >
-                  Continue
-                </button>
-              ) : (
-                <button
-                  onClick={submit}
-                  disabled={loading}
-                  className="rounded-md bg-indigo-600 px-4 py-2 font-semibold text-white hover:bg-indigo-700 disabled:opacity-60"
-                >
-                  {loading ? 'Saving…' : createAccount ? 'Create Staff & Account' : 'Create Staff'}
-                </button>
+                  )}
+                </Field>
               )}
             </div>
-          </>
-        ) : (
-          <div className="mt-4 rounded-md border border-green-100 bg-green-50 p-4 text-sm text-green-800">
-            <div>Staff created{createdCreds.id ? ` (ID: ${createdCreds.id})` : ''}.</div>
-            <div className="mt-2">
-              <strong>Email:</strong> <code className="ml-1">{createdCreds.email}</code>
-            </div>
-            <div className="mt-1">
-              <strong>Password:</strong> <code className="ml-1">{createdCreds.password}</code>
-            </div>
-            <div className="mt-2 text-xs text-gray-700">Credentials must be delivered to the staff member. They will be required to change the password on first login.</div>
+          ) : (
+            // Step 2: review details
+            <div className="mt-4 space-y-3">
+              <div>
+                <div className="text-sm text-gray-700"><strong>Name:</strong> {name}</div>
+                <div className="text-sm text-gray-700"><strong>Role:</strong> {role}</div>
+                <div className="text-sm text-gray-700"><strong>Phone:</strong> {phone}</div>
+              </div>
 
-            <div className="mt-4 flex justify-end gap-2">
-              <button
-                onClick={() => {
-                  setCreatedCreds(null);
-                  onClose();
-                }}
-                className="rounded-md border px-4 py-2 hover:bg-gray-50"
-              >
-                Done
-              </button>
-              <button
-                onClick={() => {
-                  navigator.clipboard?.writeText(`Email: ${createdCreds.email}\nPassword: ${createdCreds.password}`);
-                }}
-                className="rounded-md bg-indigo-600 px-4 py-2 font-semibold text-white hover:bg-indigo-700"
-              >
-                Copy Credentials
-              </button>
+              {createAccount ? (
+                <div className="rounded-md border border-gray-100 bg-gray-50 p-3">
+                  <div className="text-sm text-gray-700"><strong>Email:</strong> {email}</div>
+                  <div className="mt-3 flex items-center justify-between">
+                    <div>
+                      <div className="text-xs text-gray-500">Generated password</div>
+                      <div className="font-mono">{password}</div>
+                    </div>
+                    <div>
+                      <button
+                        onClick={() => setPassword(genPassword())}
+                        className="ml-2 rounded border px-2 py-1 text-xs"
+                      >
+                        Regenerate
+                      </button>
+                    </div>
+                  </div>
+                  <div className="mt-2 text-xs text-gray-600">
+                    The staff will use this email and password to sign in. They will be required to change the password on first login.
+                  </div>
+                </div>
+              ) : (
+                <div className="rounded-md border border-yellow-100 bg-yellow-50 p-3 text-sm text-yellow-800">
+                  No user account will be created. You can create one later from the staff details.
+                </div>
+              )}
             </div>
+          )}
+
+          <div className="mt-6 flex justify-end gap-2">
+            <button
+              onClick={() => {
+                if (step === 2) {
+                  setStep(1);
+                  setErr('');
+                  return;
+                }
+                onClose();
+              }}
+              className="rounded-md border px-4 py-2 hover:bg-gray-50"
+              disabled={loading}
+            >
+              {step === 2 ? 'Back' : 'Cancel'}
+            </button>
+
+            {step === 1 ? (
+              <button
+                onClick={proceedToReview}
+                className="rounded-md bg-indigo-600 px-4 py-2 font-semibold text-white hover:bg-indigo-700 disabled:opacity-60"
+              >
+                Continue
+              </button>
+            ) : (
+              <button
+                onClick={submit}
+                disabled={loading}
+                className="rounded-md bg-indigo-600 px-4 py-2 font-semibold text-white hover:bg-indigo-700 disabled:opacity-60"
+              >
+                {loading ? 'Saving…' : createAccount ? 'Create Staff & Account' : 'Create Staff'}
+              </button>
+            )}
           </div>
-        )}
-      </div>
-    </div>
+        </>
+      ) : (
+        <div className="mt-4 rounded-md border border-green-100 bg-green-50 p-4 text-sm text-green-800">
+          <div>Staff created{createdCreds.id ? ` (ID: ${createdCreds.id})` : ''}.</div>
+          <div className="mt-2">
+            <strong>Email:</strong> <code className="ml-1">{createdCreds.email}</code>
+          </div>
+          <div className="mt-1">
+            <strong>Password:</strong> <code className="ml-1">{createdCreds.password}</code>
+          </div>
+          <div className="mt-2 text-xs text-gray-700">Credentials must be delivered to the staff member. They will be required to change the password on first login.</div>
+
+          <div className="mt-4 flex justify-end gap-2">
+            <button
+              onClick={() => {
+                setCreatedCreds(null);
+                onClose();
+              }}
+              className="rounded-md border px-4 py-2 hover:bg-gray-50"
+            >
+              Done
+            </button>
+            <button
+              onClick={() => {
+                navigator.clipboard?.writeText(`Email: ${createdCreds.email}\nPassword: ${createdCreds.password}`);
+              }}
+              className="rounded-md bg-indigo-600 px-4 py-2 font-semibold text-white hover:bg-indigo-700"
+            >
+              Copy Credentials
+            </button>
+          </div>
+        </div>
+      )}
+    </Modal>
   );
 }
 
@@ -390,31 +400,32 @@ function EditStaffModal({
   };
 
   return (
-    <div className="fixed inset-0 z-50 grid place-items-center bg-black/40 p-4">
-      <div className="w-full max-w-md rounded-xl bg-white p-6 shadow-lg">
-        <h3 className="text-lg font-semibold">Edit Staff</h3>
-        <p className="mt-1 text-sm text-gray-500">Update staff member details</p>
+    <Modal open={open} onClose={onClose} title="Edit Staff" size="md" locked={loading}>
+      <p className="mt-1 text-sm text-gray-500">Update staff member details</p>
 
-        {err && (
-          <div className="mt-3 rounded-md border border-red-200 bg-red-50 px-3 py-2 text-sm text-red-700">
-            {err}
-          </div>
-        )}
+      {err && (
+        <div className="mt-3 rounded-md border border-red-200 bg-red-50 px-3 py-2 text-sm text-red-700">
+          {err}
+        </div>
+      )}
 
-        <div className="mt-4 space-y-3">
-          <div>
-            <label className="mb-1 block text-sm font-medium text-gray-700">Full name</label>
+      <div className="mt-4 space-y-3">
+        <Field label="Full name">
+          {(id) => (
             <input
+              id={id}
               className="w-full rounded-md border px-3 py-2 outline-none focus:ring-2 focus:ring-indigo-500"
               value={name}
               onChange={(e) => setName(e.target.value)}
               placeholder="e.g. Sara Reception"
             />
-          </div>
+          )}
+        </Field>
 
-          <div>
-            <label className="mb-1 block text-sm font-medium text-gray-700">Role</label>
+        <Field label="Role">
+          {(id) => (
             <select
+              id={id}
               className="w-full rounded-md border px-3 py-2 outline-none focus:ring-2 focus:ring-indigo-500"
               value={role}
               onChange={(e) => setRole(e.target.value)}
@@ -426,43 +437,47 @@ function EditStaffModal({
                 </option>
               ))}
             </select>
-          </div>
+          )}
+        </Field>
 
-          <div>
-            <label className="mb-1 block text-sm font-medium text-gray-700">Phone</label>
+        <Field label="Phone">
+          {(id) => (
             <input
+              id={id}
               className="w-full rounded-md border px-3 py-2 outline-none focus:ring-2 focus:ring-indigo-500"
               value={phone}
               onChange={(e) => setPhone(e.target.value)}
               placeholder="+251 9xx xxx xxx"
             />
-          </div>
+          )}
+        </Field>
 
-          <div>
-            <label className="mb-1 block text-sm font-medium text-gray-700">Emergency contact (optional)</label>
+        <Field label="Emergency contact (optional)">
+          {(id) => (
             <input
+              id={id}
               className="w-full rounded-md border px-3 py-2 outline-none focus:ring-2 focus:ring-indigo-500"
               value={emergencyContact}
               onChange={(e) => setEmergencyContact(e.target.value)}
               placeholder="Name / Phone"
             />
-          </div>
-        </div>
-
-        <div className="mt-6 flex justify-end gap-2">
-          <button onClick={onClose} className="rounded-md border px-4 py-2 hover:bg-gray-50">
-            Cancel
-          </button>
-          <button
-            onClick={submit}
-            disabled={loading}
-            className="rounded-md bg-indigo-600 px-4 py-2 font-semibold text-white hover:bg-indigo-700 disabled:opacity-60"
-          >
-            {loading ? 'Saving…' : 'Save Changes'}
-          </button>
-        </div>
+          )}
+        </Field>
       </div>
-    </div>
+
+      <div className="mt-6 flex justify-end gap-2">
+        <button onClick={onClose} className="rounded-md border px-4 py-2 hover:bg-gray-50">
+          Cancel
+        </button>
+        <button
+          onClick={submit}
+          disabled={loading}
+          className="rounded-md bg-indigo-600 px-4 py-2 font-semibold text-white hover:bg-indigo-700 disabled:opacity-60"
+        >
+          {loading ? 'Saving…' : 'Save Changes'}
+        </button>
+      </div>
+    </Modal>
   );
 }
 
@@ -470,39 +485,40 @@ function EditStaffModal({
 function DeleteConfirmationModal({
   open,
   staffName,
+  deleting,
   onClose,
   onConfirm,
 }: {
   open: boolean;
   staffName: string;
+  deleting: boolean;
   onClose: () => void;
   onConfirm: () => void;
 }) {
   if (!open) return null;
 
   return (
-    <div className="fixed inset-0 z-50 grid place-items-center bg-black/40 p-4">
-      <div className="w-full max-w-md rounded-xl bg-white p-6 shadow-lg">
-        <h3 className="text-lg font-semibold">Confirm Deletion</h3>
-        <p className="mt-1 text-sm text-gray-500">
-          Are you sure you want to delete <strong>{staffName}</strong> and their account? This action cannot be undone.
-        </p>
-        <div className="mt-6 flex justify-end gap-2">
-          <button
-            onClick={onClose}
-            className="rounded-md border px-4 py-2 hover:bg-gray-50"
-          >
-            Cancel
-          </button>
-          <button
-            onClick={onConfirm}
-            className="rounded-md bg-red-600 px-4 py-2 font-semibold text-white hover:bg-red-700"
-          >
-            Delete
-          </button>
-        </div>
+    <Modal open={open} onClose={onClose} title="Confirm Deletion" size="md" locked={deleting}>
+      <p className="mt-1 text-sm text-gray-500">
+        Are you sure you want to delete <strong>{staffName}</strong> and their account? This action cannot be undone.
+      </p>
+      <div className="mt-6 flex justify-end gap-2">
+        <button
+          onClick={onClose}
+          disabled={deleting}
+          className="rounded-md border px-4 py-2 hover:bg-gray-50"
+        >
+          Cancel
+        </button>
+        <button
+          onClick={onConfirm}
+          disabled={deleting}
+          className="rounded-md bg-red-600 px-4 py-2 font-semibold text-white hover:bg-red-700 disabled:opacity-60"
+        >
+          Delete
+        </button>
       </div>
-    </div>
+    </Modal>
   );
 }
 
@@ -603,45 +619,40 @@ function PdfPreviewModal({
 }) {
   if (!open) return null;
   return (
-    <div className="fixed inset-0 z-50 grid place-items-center bg-black/40 p-4">
-      <div className="w-full max-w-3xl rounded-xl bg-white p-4 shadow-lg">
-        <div className="flex items-center justify-between">
-          <h3 className="text-lg font-semibold">ID Card Preview</h3>
-          <div className="flex items-center gap-2">
-            {url && (
-              <a
-                href={url}
-                download={filename}
-                className="rounded bg-indigo-600 px-3 py-1 text-xs font-semibold text-white hover:bg-indigo-700"
-              >
-                Download
-              </a>
-            )}
-            {onPrint && !loading && (
-              <button
-                onClick={onPrint}
-                className="rounded bg-green-600 px-3 py-1 text-xs font-semibold text-white hover:bg-green-700"
-              >
-                Print
-              </button>
-            )}
-            <button onClick={onClose} className="rounded border px-3 py-1 text-sm">Close</button>
-          </div>
-        </div>
-
-        <div className="mt-3 h-[70vh]">
-          {loading ? (
-            <div className="grid h-full place-items-center text-gray-600">Preparing preview…</div>
-          ) : error ? (
-            <div className="rounded-md border border-red-200 bg-red-50 p-4 text-sm text-red-700">{error}</div>
-          ) : url ? (
-            <iframe src={url} title="ID Preview" className="h-full w-full rounded" />
-          ) : (
-            <div className="grid h-full place-items-center text-gray-500">No preview available</div>
-          )}
-        </div>
+    <Modal open={open} onClose={onClose} title="ID Card Preview" size="3xl">
+      <div className="flex items-center justify-end gap-2">
+        {url && (
+          <a
+            href={url}
+            download={filename}
+            className="rounded bg-indigo-600 px-3 py-1 text-xs font-semibold text-white hover:bg-indigo-700"
+          >
+            Download
+          </a>
+        )}
+        {onPrint && !loading && (
+          <button
+            onClick={onPrint}
+            className="rounded bg-green-600 px-3 py-1 text-xs font-semibold text-white hover:bg-green-700"
+          >
+            Print
+          </button>
+        )}
+        <button onClick={onClose} className="rounded border px-3 py-1 text-sm">Close</button>
       </div>
-    </div>
+
+      <div className="mt-3 h-[70vh]">
+        {loading ? (
+          <div className="grid h-full place-items-center text-gray-600">Preparing preview…</div>
+        ) : error ? (
+          <div className="rounded-md border border-red-200 bg-red-50 p-4 text-sm text-red-700">{error}</div>
+        ) : url ? (
+          <iframe src={url} title="ID Preview" className="h-full w-full rounded" />
+        ) : (
+          <div className="grid h-full place-items-center text-gray-500">No preview available</div>
+        )}
+      </div>
+    </Modal>
   );
 }
 
@@ -652,6 +663,7 @@ function StaffPageInner() {
     return Array.isArray(res.data) ? res.data : res.data?.staff ?? [];
   });
   const { rows: staff, setRows: setStaff } = staffList;
+  const { push } = useToast();
   const [q, setQ] = useState('');
   const [modalOpen, setModalOpen] = useState(false);
 
@@ -669,6 +681,7 @@ function StaffPageInner() {
 
   // Delete confirmation state
   const [deleteConfirmOpen, setDeleteConfirmOpen] = useState(false);
+  const [deletePending, setDeletePending] = useState(false);
   const [staffToDelete, setStaffToDelete] = useState<Staff | undefined>(undefined);
 
   const filtered = useMemo(() => {
@@ -755,7 +768,7 @@ function StaffPageInner() {
       window.open(url, '_blank');
     } catch (err) {
       console.error('Failed to prepare printable view', err);
-      alert('Failed to prepare printable view');
+      push('Failed to prepare printable view', 'error');
     }
   };
 
@@ -775,13 +788,15 @@ function StaffPageInner() {
 
   const confirmDelete = async () => {
     if (!staffToDelete) return;
+    setDeletePending(true);
     try {
       await axios.delete(`/staff/${staffToDelete.id}`);
       setStaff((prev) => prev.filter((staff) => staff.id !== staffToDelete.id));
     } catch (error) {
       console.error('Error deleting staff:', error);
-      alert('Failed to delete staff');
+      push('Failed to delete staff', 'error');
     } finally {
+      setDeletePending(false);
       setDeleteConfirmOpen(false);
       setStaffToDelete(undefined);
     }
@@ -858,6 +873,7 @@ function StaffPageInner() {
       <DeleteConfirmationModal
         open={deleteConfirmOpen}
         staffName={staffToDelete?.name ?? ''}
+        deleting={deletePending}
         onClose={closeDeleteConfirm}
         onConfirm={confirmDelete}
       />

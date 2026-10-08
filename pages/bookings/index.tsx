@@ -3,6 +3,8 @@ import Layout from '@/components/Layout';
 import RequireAuth from '@/components/RequireAuth';
 import axios from '@/utils/axiosInstance';
 import { useToast } from '@/components/Toast';
+import Modal from '@/components/Modal';
+import Field from '@/components/Field';
 import ListState from '@/components/ListState';
 import { useList } from '@/lib/useList';
 
@@ -117,25 +119,26 @@ function EditBookingModal({
   if (!open || !booking) return null;
 
   return (
-    <div className="fixed inset-0 z-50 grid place-items-center bg-black/40 p-4">
-      <div className="w-full max-w-2xl rounded-xl bg-white p-6 shadow-lg">
-        <h3 className="text-lg font-semibold">Edit Booking</h3>
-        {err && <div className="mt-3 rounded border border-red-200 bg-red-50 px-3 py-2 text-sm text-red-700">{err}</div>}
+    <Modal open={open} onClose={onClose} title="Edit Booking" size="2xl" locked={loading}>
+      {err && <div className="mt-3 rounded border border-red-200 bg-red-50 px-3 py-2 text-sm text-red-700">{err}</div>}
 
-        <div className="mt-4 grid gap-4 sm:grid-cols-2">
-          <div className="sm:col-span-2">
-            <label className="mb-1 block text-sm font-medium text-gray-700">Guest</label>
+      <div className="mt-4 grid gap-4 sm:grid-cols-2">
+        <Field label="Guest" className="sm:col-span-2">
+          {(id) => (
             <input
+              id={id}
               className="w-full rounded border bg-gray-50 px-3 py-2 text-gray-700"
               value={`${booking.guest?.name ?? ''}${booking.guest?.phone ? ` — ${booking.guest.phone}` : ''}`}
               readOnly
               disabled
             />
-          </div>
+          )}
+        </Field>
 
-          <div>
-            <label className="mb-1 block text-sm font-medium text-gray-700">Check-in {canEditCheckIn ? '' : '(read-only)'}</label>
+        <Field label={<>Check-in {canEditCheckIn ? '' : '(read-only)'}</>}>
+          {(id) => (
             <input
+              id={id}
               type="date"
               className={`w-full rounded border px-3 py-2 ${canEditCheckIn ? '' : 'bg-gray-50 text-gray-700'}`}
               value={checkIn}
@@ -144,23 +147,25 @@ function EditBookingModal({
               disabled={!canEditCheckIn}
               min={canEditCheckIn ? tomorrowYMD : undefined}
             />
-          </div>
-          <div>
-            <label className="mb-1 block text-sm font-medium text-gray-700">Check-out</label>
+          )}
+        </Field>
+        <Field label="Check-out">
+          {(id) => (
             <input
+              id={id}
               type="date"
               className="w-full rounded border px-3 py-2"
               value={checkOut}
               onChange={(e) => setCheckOut(e.target.value)}
               min={checkIn || undefined}
             />
-          </div>
+          )}
+        </Field>
 
-          <div className="sm:col-span-2">
-            <label className="mb-1 block text-sm font-medium text-gray-700">
-              Available Rooms {checkIn && checkOut ? '' : <span className="text-gray-400">(select dates first)</span>}
-            </label>
+        <Field label={<>Available Rooms {checkIn && checkOut ? '' : <span className="text-gray-400">(select dates first)</span>}</>} className="sm:col-span-2">
+          {(id) => (
             <select
+              id={id}
               className="w-full rounded border px-3 py-2"
               value={roomId}
               onChange={(e) => setRoomId(Number(e.target.value))}
@@ -181,21 +186,21 @@ function EditBookingModal({
                 </>
               )}
             </select>
-          </div>
-        </div>
-
-        <div className="mt-6 flex justify-end gap-2">
-          <button onClick={onClose} className="rounded border px-4 py-2">Cancel</button>
-          <button
-            onClick={submit}
-            disabled={loading}
-            className="rounded bg-indigo-600 px-4 py-2 font-semibold text-white disabled:opacity-60"
-          >
-            {loading ? 'Saving…' : 'Save Changes'}
-          </button>
-        </div>
+          )}
+        </Field>
       </div>
-    </div>
+
+      <div className="mt-6 flex justify-end gap-2">
+        <button onClick={onClose} className="rounded border px-4 py-2">Cancel</button>
+        <button
+          onClick={submit}
+          disabled={loading}
+          className="rounded bg-indigo-600 px-4 py-2 font-semibold text-white disabled:opacity-60"
+        >
+          {loading ? 'Saving…' : 'Save Changes'}
+        </button>
+      </div>
+    </Modal>
   );
 }
 
@@ -269,15 +274,14 @@ function CreateBookingModal({
   if (!open) return null;
 
   return (
-    <div className="fixed inset-0 z-50 grid place-items-center bg-black/40 p-4">
-      <div className="w-full max-w-2xl rounded-xl bg-white p-6 shadow-lg">
-        <h3 className="text-lg font-semibold">Create Booking</h3>
-        {err && <div className="mt-3 rounded border border-red-200 bg-red-50 px-3 py-2 text-sm text-red-700">{err}</div>}
+    <Modal open={open} onClose={onClose} title="Create Booking" size="2xl" locked={loading}>
+      {err && <div className="mt-3 rounded border border-red-200 bg-red-50 px-3 py-2 text-sm text-red-700">{err}</div>}
 
-        <div className="mt-4 grid gap-4 sm:grid-cols-2">
-          <div className="sm:col-span-2">
-            <label className="mb-1 block text-sm font-medium text-gray-700">Guest</label>
+      <div className="mt-4 grid gap-4 sm:grid-cols-2">
+        <Field label="Guest" className="sm:col-span-2">
+          {(id) => (
             <select
+              id={id}
               className="w-full rounded border px-3 py-2"
               value={guestId}
               onChange={(e) => setGuestId(Number(e.target.value))}
@@ -285,33 +289,37 @@ function CreateBookingModal({
               <option value="">Select guest…</option>
               {guests.map(g => <option key={g.id} value={g.id}>{g.name} — {g.phone}</option>)}
             </select>
-          </div>
+          )}
+        </Field>
 
-          <div>
-            <label className="mb-1 block text-sm font-medium text-gray-700">Check-in</label>
+        <Field label="Check-in">
+          {(id) => (
             <input
+              id={id}
               type="date"
               className="w-full rounded border px-3 py-2"
               value={checkIn}
               onChange={(e) => setCheckIn(e.target.value)}
             />
-          </div>
-          <div>
-            <label className="mb-1 block text-sm font-medium text-gray-700">Check-out</label>
+          )}
+        </Field>
+        <Field label="Check-out">
+          {(id) => (
             <input
+              id={id}
               type="date"
               className="w-full rounded border px-3 py-2"
               value={checkOut}
               onChange={(e) => setCheckOut(e.target.value)}
               min={checkIn || undefined}
             />
-          </div>
+          )}
+        </Field>
 
-          <div className="sm:col-span-2">
-            <label className="mb-1 block text-sm font-medium text-gray-700">
-              Available Rooms {checkIn && checkOut ? '' : <span className="text-gray-400">(select dates first)</span>}
-            </label>
+        <Field label={<>Available Rooms {checkIn && checkOut ? '' : <span className="text-gray-400">(select dates first)</span>}</>} className="sm:col-span-2">
+          {(id) => (
             <select
+              id={id}
               className="w-full rounded border px-3 py-2"
               value={roomId}
               onChange={(e) => setRoomId(Number(e.target.value))}
@@ -332,21 +340,21 @@ function CreateBookingModal({
                 </>
               )}
             </select>
-          </div>
-        </div>
-
-        <div className="mt-6 flex justify-end gap-2">
-          <button onClick={onClose} className="rounded border px-4 py-2">Cancel</button>
-          <button
-            onClick={submit}
-            disabled={loading}
-            className="rounded bg-emerald-600 px-4 py-2 font-semibold text-white disabled:opacity-60"
-          >
-            {loading ? 'Saving…' : 'Create'}
-          </button>
-        </div>
+          )}
+        </Field>
       </div>
-    </div>
+
+      <div className="mt-6 flex justify-end gap-2">
+        <button onClick={onClose} className="rounded border px-4 py-2">Cancel</button>
+        <button
+          onClick={submit}
+          disabled={loading}
+          className="rounded bg-emerald-600 px-4 py-2 font-semibold text-white disabled:opacity-60"
+        >
+          {loading ? 'Saving…' : 'Create'}
+        </button>
+      </div>
+    </Modal>
   );
 }
 

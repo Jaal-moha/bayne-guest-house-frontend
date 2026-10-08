@@ -1,0 +1,24 @@
+{
+  "name": "inventory-stale-confirm",
+  "role": "store",
+  "setup": [
+    { "as": "store", "method": "POST", "path": "/inventory", "body": { "name": "Stale A ${RUN}", "category": "Verify", "unit": "pcs", "quantity": 3 }, "expect": 201, "save": "A" },
+    { "as": "store", "method": "POST", "path": "/inventory", "body": { "name": "Stale B ${RUN}", "category": "Verify", "unit": "pcs", "quantity": 3 }, "expect": 201, "save": "B" }
+  ],
+  "steps": [
+    { "goto": "/inventory" },
+    { "click": "tr:has-text('Stale A ${RUN}')" },
+    { "expectVisible": { "role": "dialog", "name": "Stale A ${RUN}" } },
+    { "click": { "role": "button", "name": "Remove Item" } },
+    { "expectText": "Confirm removal" },
+    { "click": { "role": "button", "name": "Close" } },
+    { "expectHidden": { "role": "dialog", "name": "Stale A ${RUN}" } },
+    { "click": "tr:has-text('Stale B ${RUN}')" },
+    { "expectVisible": { "role": "dialog", "name": "Stale B ${RUN}" } },
+    { "expectVisible": { "role": "button", "name": "Remove Item" } },
+    { "expectNoText": "Confirm removal" },
+    { "screenshot": "stale-confirm" },
+    { "expectNoApi": "DELETE /inventory/" },
+    { "expectNoPageErrors": true }
+  ]
+}

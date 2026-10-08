@@ -1,7 +1,6 @@
 {
   "name": "bookings-modal-escape",
   "role": "reception",
-  "knownBug": "Modals ignore Escape and have no role=dialog.",
   "steps": [
     { "goto": "/bookings" },
     { "click": { "role": "button", "name": "Create Booking" } },

@@ -1,0 +1,31 @@
+{
+  "name": "staff-modal-escape",
+  "role": "admin",
+  "setup": [
+    { "as": "admin", "method": "POST", "path": "/staff", "body": { "name": "Esc ${RUN}", "role": "barista", "phone": "0911000777" }, "expect": 201, "save": "SID" }
+  ],
+  "steps": [
+    { "goto": "/staff" },
+    { "click": { "role": "button", "name": "Add Staff" } },
+    { "expectVisible": { "role": "dialog", "name": "Add Staff" } },
+    { "press": "Escape" },
+    { "expectHidden": { "role": "dialog", "name": "Add Staff" } },
+    { "click": "tr:has-text('Esc ${RUN}') >> role=button[name='Edit']" },
+    { "expectVisible": { "role": "dialog", "name": "Edit Staff" } },
+    { "expectValue": { "label": "Full name" }, "value": "Esc ${RUN}" },
+    { "press": "Escape" },
+    { "expectHidden": { "role": "dialog", "name": "Edit Staff" } },
+    { "expectNoApi": "PUT /staff/" },
+    { "click": "tr:has-text('Esc ${RUN}') >> role=button[name='Preview / Download']" },
+    { "expectVisible": { "role": "dialog", "name": "ID Card Preview" } },
+    { "press": "Escape" },
+    { "expectHidden": { "role": "dialog", "name": "ID Card Preview" } },
+    { "click": "tr:has-text('Esc ${RUN}') >> role=button[name='Delete']" },
+    { "expectVisible": { "role": "dialog", "name": "Confirm Deletion" } },
+    { "press": "Escape" },
+    { "expectHidden": { "role": "dialog", "name": "Confirm Deletion" } },
+    { "expectNoApi": "DELETE /staff/" },
+    { "screenshot": "staff-escape" },
+    { "expectNoPageErrors": true }
+  ]
+}

@@ -1,0 +1,22 @@
+{
+  "name": "laundry-delete-fail",
+  "role": "housekeeping",
+  "failApi": ["DELETE /laundry/"],
+  "setup": [
+    { "as": "reception", "method": "POST", "path": "/guests", "body": { "name": "Toast ${RUN}", "phone": "0911223355" }, "expect": 201, "save": "GUEST" },
+    { "as": "housekeeping", "method": "POST", "path": "/laundry", "body": { "guestId": "${GUEST}", "items": "1x Sheet ${RUN}" }, "expect": 201, "save": "LID" }
+  ],
+  "steps": [
+    { "goto": "/laundry" },
+    { "click": "tr:has-text('1x Sheet ${RUN}') >> role=button[name='Delete']" },
+    { "expectVisible": { "role": "dialog", "name": "Delete laundry record" } },
+    { "click": { "role": "button", "name": "Delete" } },
+    { "expectApi": "DELETE /laundry/${LID} 500" },
+    { "expectText": "Delete failed" },
+    { "expectHidden": { "role": "dialog", "name": "Delete laundry record" } },
+    { "expectText": "1x Sheet ${RUN}" },
+    { "screenshot": "laundry-toast" },
+    { "apiCheck": { "as": "housekeeping", "path": "/laundry", "jq": "any(.[]; .id == ${LID})" } },
+    { "expectNoPageErrors": true }
+  ]
+}

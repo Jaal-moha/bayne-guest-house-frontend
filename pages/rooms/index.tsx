@@ -4,6 +4,8 @@ import Layout from '@/components/Layout';
 import RequireAuth from '@/components/RequireAuth';
 import axios from '@/utils/axiosInstance';
 import ListState from '@/components/ListState';
+import Modal from '@/components/Modal';
+import Field from '@/components/Field';
 import { useList } from '@/lib/useList';
 
 type Room = { id: number; number: string; type: string; price: number; };
@@ -33,23 +35,26 @@ function AddRoomModal({ open, onClose, onCreated }: {
   };
 
   return (
-    <div className="fixed inset-0 z-50 grid place-items-center bg-black/40 p-4">
-      <div className="w-full max-w-md rounded-xl bg-white p-6 shadow-lg">
-        <h3 className="text-lg font-semibold">Add Room</h3>
-        {err && <div className="mt-3 rounded border border-red-200 bg-red-50 px-3 py-2 text-sm text-red-700">{err}</div>}
-        <div className="mt-4 space-y-3">
-          <input className="w-full rounded border px-3 py-2" placeholder="Number" value={number} onChange={e => setNumber(e.target.value)} />
-          <input className="w-full rounded border px-3 py-2" placeholder="Type (Single/Double/Suite…)" value={type} onChange={e => setType(e.target.value)} />
-          <input className="w-full rounded border px-3 py-2" placeholder="Price (e.g. 75)" value={price} onChange={e => setPrice(e.target.value)} />
-        </div>
-        <div className="mt-6 flex justify-end gap-2">
-          <button onClick={onClose} className="rounded border px-4 py-2">Cancel</button>
-          <button onClick={submit} disabled={loading} className="rounded bg-indigo-600 px-4 py-2 font-semibold text-white disabled:opacity-60">
-            {loading ? 'Saving…' : 'Add Room'}
-          </button>
-        </div>
+    <Modal open={open} onClose={onClose} title="Add Room" size="md" locked={loading}>
+      {err && <div className="mt-3 rounded border border-red-200 bg-red-50 px-3 py-2 text-sm text-red-700">{err}</div>}
+      <div className="mt-4 space-y-3">
+        <Field label="Number">
+          {(id) => <input id={id} className="w-full rounded border px-3 py-2" placeholder="Number" value={number} onChange={e => setNumber(e.target.value)} />}
+        </Field>
+        <Field label="Type">
+          {(id) => <input id={id} className="w-full rounded border px-3 py-2" placeholder="Type (Single/Double/Suite…)" value={type} onChange={e => setType(e.target.value)} />}
+        </Field>
+        <Field label="Price">
+          {(id) => <input id={id} className="w-full rounded border px-3 py-2" placeholder="Price (e.g. 75)" value={price} onChange={e => setPrice(e.target.value)} />}
+        </Field>
       </div>
-    </div>
+      <div className="mt-6 flex justify-end gap-2">
+        <button onClick={onClose} className="rounded border px-4 py-2">Cancel</button>
+        <button onClick={submit} disabled={loading} className="rounded bg-indigo-600 px-4 py-2 font-semibold text-white disabled:opacity-60">
+          {loading ? 'Saving…' : 'Add Room'}
+        </button>
+      </div>
+    </Modal>
   );
 }
 
@@ -95,23 +100,26 @@ function EditRoomModal({ open, onClose, room, onUpdated }: {
   };
 
   return (
-    <div className="fixed inset-0 z-50 grid place-items-center bg-black/40 p-4">
-      <div className="w-full max-w-md rounded-xl bg-white p-6 shadow-lg">
-        <h3 className="text-lg font-semibold">Edit Room</h3>
-        {err && <div className="mt-3 rounded border border-red-200 bg-red-50 px-3 py-2 text-sm text-red-700">{err}</div>}
-        <div className="mt-4 space-y-3">
-          <input className="w-full rounded border px-3 py-2" placeholder="Number" value={number} onChange={e => setNumber(e.target.value)} />
-          <input className="w-full rounded border px-3 py-2" placeholder="Type (Single/Double/Suite…)" value={type} onChange={e => setType(e.target.value)} />
-          <input className="w-full rounded border px-3 py-2" placeholder="Price (e.g. 75)" value={price} onChange={e => setPrice(e.target.value)} />
-        </div>
-        <div className="mt-6 flex justify-end gap-2">
-          <button onClick={onClose} className="rounded border px-4 py-2">Cancel</button>
-          <button onClick={submit} disabled={loading} className="rounded bg-indigo-600 px-4 py-2 font-semibold text-white disabled:opacity-60">
-            {loading ? 'Saving…' : 'Save Changes'}
-          </button>
-        </div>
+    <Modal open={open} onClose={onClose} title="Edit Room" size="md" locked={loading}>
+      {err && <div className="mt-3 rounded border border-red-200 bg-red-50 px-3 py-2 text-sm text-red-700">{err}</div>}
+      <div className="mt-4 space-y-3">
+        <Field label="Number">
+          {(id) => <input id={id} className="w-full rounded border px-3 py-2" placeholder="Number" value={number} onChange={e => setNumber(e.target.value)} />}
+        </Field>
+        <Field label="Type">
+          {(id) => <input id={id} className="w-full rounded border px-3 py-2" placeholder="Type (Single/Double/Suite…)" value={type} onChange={e => setType(e.target.value)} />}
+        </Field>
+        <Field label="Price">
+          {(id) => <input id={id} className="w-full rounded border px-3 py-2" placeholder="Price (e.g. 75)" value={price} onChange={e => setPrice(e.target.value)} />}
+        </Field>
       </div>
-    </div>
+      <div className="mt-6 flex justify-end gap-2">
+        <button onClick={onClose} className="rounded border px-4 py-2">Cancel</button>
+        <button onClick={submit} disabled={loading} className="rounded bg-indigo-600 px-4 py-2 font-semibold text-white disabled:opacity-60">
+          {loading ? 'Saving…' : 'Save Changes'}
+        </button>
+      </div>
+    </Modal>
   );
 }
 
