@@ -3,6 +3,7 @@ import Layout from '@/components/Layout';
 import RequireAuth from '@/components/RequireAuth';
 import axios from '@/utils/axiosInstance';
 import ListState from '@/components/ListState';
+import { useToast } from '@/components/Toast';
 import { useList } from '@/lib/useList';
 
 type Attendance = {
@@ -43,6 +44,7 @@ function AttendanceInner() {
     return Array.isArray(res.data) ? res.data : res.data.attendance ?? [];
   });
   const { rows: rowsAll, setRows: setRowsAll } = attendance;
+  const { push } = useToast();
   const [q, setQ] = useState('');
   const [page, setPage] = useState(1);
   const [pageSize, setPageSize] = useState(10);
@@ -68,7 +70,7 @@ function AttendanceInner() {
       await axios.delete(apiUrl(`/attendance/${id}`));
       setRowsAll(prev => prev.filter(r => r.id !== id));
     } catch {
-      alert('Delete failed.');
+      push('Delete failed.', 'error');
     }
   };
 
