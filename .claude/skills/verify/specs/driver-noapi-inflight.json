@@ -1,0 +1,15 @@
+{
+  "name": "driver-noapi-inflight",
+  "role": "manager",
+  "knownBug": "Driver self-test, keep this flag. expectNoApi runs right after the Save click, while PATCH /rooms/<id> may still be in flight, so it must fail here. XPASS means expectNoApi ignores in-flight requests again; fix drive.mjs, not this spec.",
+  "setup": [
+    { "as": "manager", "method": "POST", "path": "/rooms", "body": { "number": "F${RUN}", "type": "single", "price": 900 }, "expect": 201, "save": "ROOM" }
+  ],
+  "steps": [
+    { "goto": "/rooms" },
+    { "click": "tr:has-text('F${RUN}') >> role=button[name='Edit']" },
+    { "fill": { "placeholder": "Price (e.g. 75)" }, "value": "1100" },
+    { "click": { "role": "button", "name": "Save Changes" } },
+    { "expectNoApi": "PATCH /rooms/${ROOM}" }
+  ]
+}
