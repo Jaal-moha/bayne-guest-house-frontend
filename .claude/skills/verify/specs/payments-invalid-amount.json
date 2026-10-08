@@ -1,0 +1,26 @@
+{
+  "name": "payments-invalid-amount",
+  "role": "reception",
+  "setup": [
+    { "as": "admin", "method": "POST", "path": "/rooms", "body": { "number": "P${RUN}", "type": "double", "price": 1500 }, "expect": 201, "save": "ROOM" },
+    { "as": "reception", "method": "POST", "path": "/guests", "body": { "name": "Payer ${RUN}", "phone": "0911223344" }, "expect": 201, "save": "GUEST" },
+    { "as": "reception", "method": "POST", "path": "/bookings", "body": { "guestId": "${GUEST}", "roomId": "${ROOM}", "checkIn": "${DATE+40}", "checkOut": "${DATE+42}" }, "expect": 201, "save": "BOOKING" }
+  ],
+  "steps": [
+    { "goto": "/payments" },
+    { "click": { "role": "button", "name": "Record Payment" } },
+    { "select": { "label": "Booking" }, "value": "${BOOKING}" },
+    { "fill": { "label": "Amount (optional)" }, "value": "-5" },
+    { "click": { "role": "button", "name": "Record" } },
+    { "expectText": "Amount must be more than zero" },
+    { "fill": { "label": "Amount (optional)" }, "value": "0" },
+    { "expectNoText": "Amount must be more than zero" },
+    { "click": { "role": "button", "name": "Record" } },
+    { "expectText": "Amount must be more than zero" },
+    { "expectVisible": "role=dialog" },
+    { "screenshot": "invalid" },
+    { "expectNoApi": "POST /payments" },
+    { "apiCheck": { "as": "reception", "path": "/payments", "jq": "all(.[]; .bookingId != ${BOOKING})" } },
+    { "expectNoPageErrors": true }
+  ]
+}

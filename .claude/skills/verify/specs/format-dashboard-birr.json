@@ -1,0 +1,12 @@
+{
+  "name": "format-dashboard-birr",
+  "role": "admin",
+  "steps": [
+    { "goto": "/dashboard" },
+    { "expectApi": "GET /stats/overview 200" },
+    { "expectVisible": "div:has-text('Revenue') >> text=/^ETB\\s[\\d,]+\\.\\d{2}$/" },
+    { "expectNoText": "$" },
+    { "screenshot": "dashboard" },
+    { "expectNoPageErrors": true }
+  ]
+}
