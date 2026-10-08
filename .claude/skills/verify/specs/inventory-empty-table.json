@@ -4,6 +4,7 @@
   "steps": [
     { "goto": "/inventory" },
     { "expectApi": "GET /inventory 200" },
+    { "fill": { "placeholder": "Search name, SKU, category…" }, "value": "nothing-${RUN}" },
     { "expectVisible": { "role": "columnheader", "name": "Category" } },
     { "expectVisible": { "role": "cell", "name": "No items." } },
     { "screenshot": "inventory-empty" },
