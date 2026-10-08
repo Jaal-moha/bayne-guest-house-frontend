@@ -8,6 +8,7 @@ Staff sign in with email and password and land on the dashboard. The sidebar sho
 - `login-error` keeps the user on `/login` and shows the API's message after a wrong password.
 - `nav-by-role` shows or hides sidebar links per role, using the menu in `components/Layout.tsx`.
 - `page-guard` redirects a role that a page's `RequireAuth roles` list excludes.
+- `guard-before-fetch` keeps a page's list requests from firing for a role the page excludes. Every page renders `RequireAuth` around an inner component that owns the `useList` calls, so `RequireAuth` redirects before any fetch starts.
 - `role-landing` lands each role somewhere usable after login. This is broken for store, barista, housekeeping and security.
 
 ## How to get to it (user POV)
@@ -25,6 +26,7 @@ Preconditions:
 - **Sign in.** Run `$S drive login-admin`. `RESULT PASS` with `API POST /auth/login 201`, then `API GET /auth/me 200`, and the step `expectText "Welcome, Admin"`.
 - **Wrong password.** Run `$S drive login-wrong-password`. `RESULT PASS` with `API POST /auth/login 401` and the URL still `/login`.
 - **Nav and guard.** Run `$S drive nav-roles-finance`. Finance sees Payments and not Staff, and `/staff` redirects to `/dashboard`.
+- **Guard before fetch.** Run `$S drive laundry-store-guard` and `$S drive guests-store-guard`. Store lands on `/inventory`, and `expectNoApi` confirms no `GET /laundry` or `GET /guests` went out.
 - **Role landing.** Run `$S drive role-landing-store`. It reports `RESULT XFAIL` until the store role lands on a page that renders. The failing step is `expectVisible {"role":"link","name":"Inventory"}`.
 
 ## Gotchas
