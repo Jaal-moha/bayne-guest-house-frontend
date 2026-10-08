@@ -21,6 +21,7 @@ Preconditions:
 - The baseline from the README holds.
 
 - **Create.** Run `$S drive bookings-create`. Setup creates room `V${RUN}` and guest `Guest ${RUN}`. The spec fills the modal as reception and requires `API POST /bookings 201`, the toast `Booking created successfully`, the new row, and an `apiCheck` that a booking with that guest and room exists.
+- **Create on a phone.** Run `$S drive bookings-create-phone`. It runs the same flow at 390px and checks `expectFits` before opening the modal and after the new row lands, so Create Booking stays on screen and the table scrolls inside its card.
 - **Load error.** Run `$S drive bookings-load-error`. `failApi` makes `GET /bookings` return 500. It requires `Couldn't load bookings`, a Retry button and no `No bookings.`.
 - **Escape.** Run `$S drive bookings-modal-escape`. It reports `RESULT XFAIL` while the `Create Booking` heading stays visible after Escape.
 
