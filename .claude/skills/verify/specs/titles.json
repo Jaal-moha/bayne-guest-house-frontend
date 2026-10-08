@@ -1,0 +1,24 @@
+{
+  "name": "titles",
+  "role": "admin",
+  "steps": [
+    { "goto": "/dashboard" },
+    { "expectTitle": "Dashboard · Almis Hotel" },
+    { "goto": "/bookings" },
+    { "expectTitle": "Bookings · Almis Hotel" },
+    { "goto": "/laundry" },
+    { "expectTitle": "Laundry · Almis Hotel" },
+    { "goto": "/attendance" },
+    { "expectTitle": "Attendance · Almis Hotel" },
+    { "goto": "/payments" },
+    { "expectTitle": "Payments · Almis Hotel" },
+    { "goto": "/inventory" },
+    { "expectTitle": "Inventory · Almis Hotel" },
+    { "goto": "/rooms" },
+    { "expectTitle": "Rooms · Almis Hotel" },
+    { "goto": "/staff" },
+    { "expectTitle": "Staff · Almis Hotel" },
+    { "goto": "/guests" },
+    { "expectTitle": "Guests · Almis Hotel" }
+  ]
+}

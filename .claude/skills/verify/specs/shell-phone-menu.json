@@ -1,0 +1,25 @@
+{
+  "name": "shell-phone-menu",
+  "role": "admin",
+  "viewport": "phone",
+  "steps": [
+    { "goto": "/bookings" },
+    { "expectHidden": { "role": "link", "name": "Rooms" } },
+    { "click": { "role": "button", "name": "Open menu" } },
+    { "expectVisible": { "role": "link", "name": "Rooms" } },
+    { "expectFits": true },
+    { "screenshot": "menu" },
+    { "press": "Escape" },
+    { "expectHidden": { "role": "link", "name": "Rooms" } },
+    { "click": { "role": "button", "name": "Open menu" } },
+    { "click": "div:has(+ #sidebar)", "at": [350, 400] },
+    { "expectHidden": { "role": "link", "name": "Rooms" } },
+    { "click": { "role": "button", "name": "Open menu" } },
+    { "click": { "role": "link", "name": "Rooms" } },
+    { "expectUrl": "/rooms" },
+    { "expectHidden": { "role": "link", "name": "Bookings" } },
+    { "click": { "role": "button", "name": "Open menu" } },
+    { "click": { "role": "button", "name": "Logout" } },
+    { "expectUrl": "/login" }
+  ]
+}

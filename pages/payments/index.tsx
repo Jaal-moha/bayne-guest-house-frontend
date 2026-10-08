@@ -271,7 +271,7 @@ function PaymentsTab({
             Dashboard
           </Link>
         )}
-        <div className="ml-auto flex gap-2">
+        <div className="ml-auto flex flex-wrap gap-2">
           <input value={q} onChange={e=>setQ(e.target.value)} placeholder="Search…" className="w-64 rounded border px-3 py-2" />
           <button onClick={openModal} disabled={!canRecord} className="rounded bg-indigo-600 px-4 py-2 font-semibold text-white disabled:opacity-60">Record Payment</button>
         </div>
@@ -341,9 +341,9 @@ function UnpaidTab({
 
   return (
     <>
-      <div className="mb-4 flex items-center gap-3">
+      <div className="mb-4 flex flex-wrap items-center gap-3">
         <h1 className="text-2xl font-bold">Unpaid Bookings</h1>
-        <div className="ml-auto flex gap-2">
+        <div className="ml-auto flex flex-wrap gap-2">
           <input value={q} onChange={e=>setQ(e.target.value)} placeholder="Search…" className="w-64 rounded border px-3 py-2" />
         </div>
       </div>

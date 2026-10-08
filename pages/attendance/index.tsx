@@ -93,7 +93,7 @@ function AttendanceInner() {
             {[5,10,20,50].map(n => <option key={n} value={n}>{n}</option>)}
           </select>
         </div>
-        <div className="ml-auto flex items-center gap-2">
+        <div className="ml-auto flex flex-wrap items-center gap-2">
           <button className="rounded-md border px-3 py-2 disabled:opacity-50"
                   onClick={() => setPage(p => Math.max(1, p - 1))}
                   disabled={curPage <= 1}>Prev</button>
