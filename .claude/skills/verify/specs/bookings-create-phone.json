@@ -1,0 +1,25 @@
+{
+  "name": "bookings-create-phone",
+  "role": "reception",
+  "viewport": "phone",
+  "setup": [
+    { "as": "admin", "method": "POST", "path": "/rooms", "body": { "number": "V${RUN}", "type": "double", "price": 1500 }, "expect": 201, "save": "ROOM" },
+    { "as": "reception", "method": "POST", "path": "/guests", "body": { "name": "Guest ${RUN}", "phone": "0911223344" }, "expect": 201, "save": "GUEST" }
+  ],
+  "steps": [
+    { "goto": "/bookings" },
+    { "expectFits": true },
+    { "click": { "role": "button", "name": "Create Booking" } },
+    { "select": { "label": "Guest" }, "value": "${GUEST}" },
+    { "fill": { "label": "Check-in" }, "value": "${DATE+40}" },
+    { "fill": { "label": "Check-out" }, "value": "${DATE+42}" },
+    { "select": { "label": "Available Rooms" }, "value": "${ROOM}" },
+    { "click": { "role": "button", "name": "Create" } },
+    { "expectApi": "POST /bookings 201" },
+    { "expectText": "Booking created successfully" },
+    { "expectText": "Guest ${RUN}" },
+    { "expectFits": true },
+    { "screenshot": "phone-booking" },
+    { "apiCheck": { "as": "reception", "path": "/bookings", "jq": "any(.[]; .guestId == ${GUEST} and .roomId == ${ROOM})" } }
+  ]
+}

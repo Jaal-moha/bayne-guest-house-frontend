@@ -122,9 +122,9 @@ function GuestsInner() {
 
   return (
     <Layout>
-      <div className="mb-4 flex items-center gap-3">
+      <div className="mb-4 flex flex-wrap items-center gap-3">
         <h1 className="text-2xl font-bold text-gray-800">Guests</h1>
-        <div className="ml-auto flex items-center gap-2">
+        <div className="ml-auto flex flex-wrap items-center gap-2">
           <input value={q} onChange={(e) => setQ(e.target.value)} placeholder="Search guests…" className="w-64 rounded-md border px-3 py-2" />
           <button onClick={() => setEditing({ mode: 'add' })} className="rounded-md bg-indigo-600 px-4 py-2 text-white">Add Guest</button>
         </div>

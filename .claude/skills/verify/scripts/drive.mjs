@@ -26,7 +26,7 @@ const sub = (v) =>
     : v;
 const control = (...a) => execFileSync(CONTROL, a, { encoding: 'utf8', stdio: ['ignore', 'pipe', 'pipe'] }).trim();
 
-const report = { spec: name, role: spec.role ?? 'admin', viewport: spec.viewport ?? 'desktop', setup: [], steps: [], visits: [], api: [], console: [], pageErrors: [] };
+const report = { spec: name, role: spec.role ?? 'admin', viewport: spec.viewport ?? 'desktop', setup: [], steps: [], visits: [], api: [], requests: [], console: [], pageErrors: [] };
 let failed = null;
 
 function finish(browserClose) {
@@ -35,6 +35,7 @@ function finish(browserClose) {
   report.failure = failed;
   writeFileSync(join(dir, 'result.json'), JSON.stringify(report, null, 2));
   for (const a of report.api) console.log(`API ${a.method} ${a.path} ${a.status}`);
+  console.log(`BYTES ${report.requests.reduce((t, r) => t + (r.bytes ?? 0), 0)} requests=${report.requests.length}`);
   console.log(`PAGEERRORS ${report.pageErrors.length}`);
   console.log(`EVIDENCE ${dir}`);
   if (result === 'XFAIL') console.log(`KNOWN_BUG ${spec.knownBug}`);
@@ -61,8 +62,10 @@ for (const [i, raw] of (spec.setup ?? []).entries()) {
 
 const role = report.role;
 const token = role === 'anon' ? null : control('api', 'token', role);
+const VIEWPORTS = { desktop: { width: 1280, height: 800 }, tablet: { width: 768, height: 1024 }, phone: { width: 390, height: 844 } };
+if (!VIEWPORTS[report.viewport]) throw new Error(`viewport must be one of ${Object.keys(VIEWPORTS).join(', ')}`);
 const browser = await chromium.launch({ executablePath: CHROME });
-const ctx = await browser.newContext({ viewport: report.viewport === 'phone' ? { width: 390, height: 844 } : { width: 1280, height: 800 } });
+const ctx = await browser.newContext({ viewport: VIEWPORTS[report.viewport] });
 await ctx.addInitScript((t) => {
   if (sessionStorage.getItem('verify-seeded')) return;
   sessionStorage.setItem('verify-seeded', '1');
@@ -93,10 +96,13 @@ page.on('request', (r) => {
 page.on('response', (r) => { const entry = sent.get(r.request()); if (entry) entry.status = r.status(); });
 page.on('requestfailed', (r) => { const entry = sent.get(r); if (entry) entry.status = 'failed'; });
 page.on('framenavigated', (f) => f === page.mainFrame() && report.visits.push(new URL(f.url()).pathname));
+const sizing = [];
+page.on('request', (q) => report.requests.push({ url: q.url().slice(0, 200), q }));
+page.on('requestfinished', (q) => sizing.push(q.sizes().then((z) => { report.requests.find((r) => r.q === q).bytes = z.responseHeadersSize + z.responseBodySize; }).catch(() => {})));
 page.on('console', (m) => m.type() === 'error' && report.console.push(m.text().slice(0, 300)));
 page.on('pageerror', (e) => report.pageErrors.push(e.message.slice(0, 300)));
 
-const scope = () => (page.locator('.fixed.inset-0').count().then((n) => (n ? page.locator('.fixed.inset-0').last() : page)));
+const scope = () => (page.locator('[role="dialog"]').count().then((n) => (n ? page.locator('[role="dialog"]').last().locator('xpath=..') : page)));
 async function target(t) {
   if (typeof t === 'string') return page.locator(t).first();
   const root = await scope();
@@ -141,7 +147,7 @@ const apiMatch = (want) => {
 
 const actions = {
   goto: async (p) => { await page.goto(WEB_URL + p, { waitUntil: 'networkidle', timeout: 60_000 }); },
-  click: async (t) => { await (await target(t)).click(); await settle(); },
+  click: async (t, s) => { await (await target(t)).click(s.at ? { position: { x: s.at[0], y: s.at[1] } } : {}); await settle(); },
   fill: async (t, s) => { await (await target(t)).fill(String(s.value)); },
   select: async (t, s) => {
     const el = await target(t);
@@ -168,10 +174,17 @@ const actions = {
     if (hit) throw new Error(`api ${w} was called (${hit.method} ${hit.path} ${hit.status})`);
   },
   expectNoVisit: async (p) => { await settle(); if (report.visits.includes(p)) throw new Error(`visited ${p} (visits: ${report.visits.join(' ')})`); },
+  expectNoRequest: async (s) => { await settle(); const hit = report.requests.find((r) => r.url.includes(s)); if (hit) throw new Error(`request to ${hit.url}`); },
   expectNoPageErrors: async () => { if (report.pageErrors.length) throw new Error(report.pageErrors[0]); },
   expectFits: async () => {
     const w = await page.evaluate(() => [document.documentElement.scrollWidth, window.innerWidth]);
     if (w[0] > w[1]) throw new Error(`page is ${w[0]}px wide in a ${w[1]}px viewport`);
+    const off = await page.evaluate(() => [...document.querySelectorAll('button, a[href], input, select, textarea')]
+      .filter((el) => !el.closest('table'))
+      .map((el) => [el, el.getBoundingClientRect()])
+      .filter(([, r]) => r.width > 0 && (r.left < 0 || r.right > window.innerWidth))
+      .map(([el, r]) => `${el.tagName.toLowerCase()} "${(el.textContent || el.getAttribute('placeholder') || '').trim().slice(0, 30)}" spans ${Math.round(r.left)}..${Math.round(r.right)}px`));
+    if (off.length) throw new Error(`${off[0]} in a ${w[1]}px viewport`);
   },
   apiCheck: async (c) => {
     try {
@@ -201,4 +214,6 @@ for (const [i, raw] of spec.steps.entries()) {
 await page.screenshot({ path: join(dir, failed ? 'failure.png' : 'final.png') }).catch(() => {});
 report.finalUrl = page.url();
 report.title = await page.title().catch(() => '');
+await Promise.all(sizing);
+for (const r of report.requests) delete r.q;
 await finish(() => browser.close());

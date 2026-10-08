@@ -1,6 +1,5 @@
 import { FormEvent, useEffect, useState } from 'react';
 import Head from 'next/head';
-import Link from 'next/link';
 import { useRouter } from 'next/router';
 import { useAuth } from '@/context/AuthContext';
 import { landingFor } from '@/lib/permissions';
@@ -38,16 +37,13 @@ export default function LoginPage() {
   return (
     <>
       <Head>
-        <title>Sign in • Almis Hotel</title>
+        <title>Sign in · Almis Hotel</title>
       </Head>
 
       <div className="min-h-screen grid grid-cols-10">
         <div
           className="hidden md:block md:col-span-7 bg-cover bg-center"
-          style={{
-            backgroundImage:
-              "url('https://lh3.googleusercontent.com/gps-cs-s/AC9h4nogPp2P4sSnMKZYVxPCzmyMzr_cREr_ayZpzkGUmiXEPCja54oMSFPXG08QthTw2SP4pI5_J8eJnVNgR2Eohu_vZD73STrCDRyws_Pfr8OgKQ86kFgmQS3wcZLsGqduw9-0NuiB=s680-w680-h510-rw')",
-          }}
+          style={{ backgroundImage: "url('/login-hotel.jpg')" }}
           aria-hidden="true"
         />
 
@@ -100,16 +96,6 @@ export default function LoginPage() {
                       {showPassword ? 'Hide' : 'Show'}
                     </button>
                   </div>
-                </div>
-
-                <div className="flex items-center justify-between">
-                  <label className="inline-flex items-center gap-2 text-sm text-gray-600">
-                    <input type="checkbox" className="h-4 w-4 rounded border-gray-300" />
-                    Remember me
-                  </label>
-                  <Link href="#" className="text-sm text-indigo-600 hover:underline">
-                    Forgot password?
-                  </Link>
                 </div>
 
                 <button
