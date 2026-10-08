@@ -1,0 +1,19 @@
+{
+  "name": "rooms-modal-escape",
+  "role": "manager",
+  "setup": [
+    { "as": "manager", "method": "POST", "path": "/rooms", "body": { "number": "X${RUN}", "type": "single", "price": 900 }, "expect": 201, "save": "ROOM" }
+  ],
+  "steps": [
+    { "goto": "/rooms" },
+    { "click": { "role": "button", "name": "Add Room" } },
+    { "expectVisible": { "role": "dialog", "name": "Add Room" } },
+    { "press": "Escape" },
+    { "expectHidden": { "role": "dialog", "name": "Add Room" } },
+    { "click": "tr:has-text('X${RUN}') >> role=button[name='Edit']" },
+    { "expectVisible": { "role": "dialog", "name": "Edit Room" } },
+    { "press": "Escape" },
+    { "expectHidden": { "role": "dialog", "name": "Edit Room" } },
+    { "expectNoApi": "PATCH /rooms/${ROOM}" }
+  ]
+}

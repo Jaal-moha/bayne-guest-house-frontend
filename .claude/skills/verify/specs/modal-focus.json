@@ -1,0 +1,16 @@
+{
+  "name": "modal-focus",
+  "role": "manager",
+  "steps": [
+    { "goto": "/rooms" },
+    { "click": { "role": "button", "name": "Add Room" } },
+    { "press": "7" },
+    { "expectValue": { "label": "Number" }, "value": "7" },
+    { "press": "Escape" },
+    { "expectHidden": { "role": "dialog", "name": "Add Room" } },
+    { "press": "Enter" },
+    { "expectVisible": { "role": "dialog", "name": "Add Room" } },
+    { "expectValue": { "label": "Number" }, "value": "" },
+    { "screenshot": "focus" }
+  ]
+}
