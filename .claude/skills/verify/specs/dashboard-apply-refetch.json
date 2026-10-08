@@ -1,0 +1,10 @@
+{
+  "name": "dashboard-apply-refetch",
+  "role": "admin",
+  "steps": [
+    { "goto": "/dashboard" },
+    { "expectApi": "GET /stats/overview 200" },
+    { "click": { "role": "button", "name": "Apply" } },
+    { "expectNoPageErrors": true }
+  ]
+}

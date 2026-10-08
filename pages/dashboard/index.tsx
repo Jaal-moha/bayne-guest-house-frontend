@@ -72,7 +72,9 @@ function DashboardInner() {
   const [stats] = overview.rows;
 
   function applyRange() {
-    setApplied({ start: startDate, end: endDate });
+    const next = { start: startDate, end: endDate };
+    if (JSON.stringify(next) === JSON.stringify(applied)) overview.reload();
+    else setApplied(next);
   }
 
   function clearRange() {
