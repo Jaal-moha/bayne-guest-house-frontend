@@ -1,9 +1,11 @@
 {
   "name": "role-landing-store",
   "role": "store",
-  "knownBug": "Login sends every role to /dashboard, which renders nothing for store, barista, housekeeping and security.",
   "steps": [
     { "goto": "/dashboard" },
-    { "expectVisible": { "role": "link", "name": "Inventory" } }
+    { "expectUrl": "/inventory" },
+    { "expectVisible": { "role": "link", "name": "Inventory" } },
+    { "expectHidden": "aside a:text-is(\"Dashboard\")" },
+    { "expectApi": "GET /inventory 200" }
   ]
 }
