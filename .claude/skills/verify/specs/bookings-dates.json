@@ -1,0 +1,29 @@
+{
+  "name": "bookings-dates",
+  "role": "reception",
+  "setup": [
+    { "as": "reception", "method": "POST", "path": "/guests", "body": { "name": "Dates ${RUN}", "phone": "0911223344" }, "expect": 201, "save": "GUEST" }
+  ],
+  "steps": [
+    { "goto": "/bookings" },
+    { "click": { "role": "button", "name": "Create Booking" } },
+    { "select": { "label": "Guest" }, "value": "${GUEST}" },
+    { "click": { "role": "button", "name": "Next" } },
+    { "fill": { "label": "Check-in" }, "value": "${DATE-1}" },
+    { "fill": { "label": "Check-out" }, "value": "${DATE+2}" },
+    { "expectText": "Check-in can't be in the past." },
+    { "click": { "role": "button", "name": "Next" } },
+    { "expectText": "Check-in can't be in the past." },
+    { "expectVisible": { "label": "Check-in" } },
+    { "screenshot": "past" },
+    { "fill": { "label": "Check-in" }, "value": "${DATE+30}" },
+    { "fill": { "label": "Check-out" }, "value": "${DATE+30}" },
+    { "expectNoText": "Check-in can't be in the past." },
+    { "expectText": "Check-out must be at least one night after check-in." },
+    { "click": { "role": "button", "name": "Next" } },
+    { "expectText": "Check-out must be at least one night after check-in." },
+    { "screenshot": "zero-night" },
+    { "expectNoApi": "GET /rooms/available" },
+    { "expectNoApi": "POST /bookings" }
+  ]
+}

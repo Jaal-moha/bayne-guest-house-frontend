@@ -75,6 +75,8 @@ export function dateErrors({ checkIn, checkOut }: Stay, today: string): FieldErr
   return errors;
 }
 
+const isEmpty = (errors: FieldErrors) => Object.keys(errors).length === 0;
+
 export function guestErrors(guest: GuestChoice): FieldErrors {
   if (guest.kind === 'existing') return guest.guestId === null ? { guestId: 'Pick a guest.' } : {};
   const { name, phone, email } = guest.draft;
@@ -89,11 +91,9 @@ export function stayErrors(stay: Stay, today: string): FieldErrors {
   const errors = dateErrors(stay, today);
   if (!stay.checkIn) errors.checkIn = 'Pick a check-in date.';
   if (!stay.checkOut) errors.checkOut ??= 'Pick a check-out date.';
-  if (stay.roomId === null) errors.roomId = 'Pick a room.';
+  if (stay.roomId === null && isEmpty(errors)) errors.roomId = 'Pick a room.';
   return errors;
 }
-
-const isEmpty = (errors: FieldErrors) => Object.keys(errors).length === 0;
 
 function without(errors: FieldErrors, ...fields: FieldName[]): FieldErrors {
   return Object.fromEntries(Object.entries(errors).filter(([k]) => !fields.includes(k as FieldName)));
