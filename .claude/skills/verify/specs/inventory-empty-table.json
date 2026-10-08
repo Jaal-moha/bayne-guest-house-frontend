@@ -1,0 +1,12 @@
+{
+  "name": "inventory-empty-table",
+  "role": "admin",
+  "steps": [
+    { "goto": "/inventory" },
+    { "expectApi": "GET /inventory 200" },
+    { "expectVisible": { "role": "columnheader", "name": "Category" } },
+    { "expectVisible": { "role": "cell", "name": "No items." } },
+    { "screenshot": "inventory-empty" },
+    { "expectNoPageErrors": true }
+  ]
+}
