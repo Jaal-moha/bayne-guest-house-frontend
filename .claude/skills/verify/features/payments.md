@@ -7,7 +7,7 @@ Reception, finance and managers record a payment against an unpaid booking from 
 - `payments-record` records a paid cash payment with the computed amount.
 - `payments-invalid-amount` blocks `-5` and `0` with a field error and sends no request.
 - `payments-failed-stays-unpaid` records a `failed` payment from the Unpaid tab and requires the booking to stay listed.
-- `payments-unpaid-status` records status `Unpaid`, the exact value the backend DTO lists.
+- `payments-unpaid-status` records status `unpaid`, the value of the backend `PaymentStatus` enum.
 - `payments-laundry-guest` shows the guest of a laundry payment, which has no booking.
 - `format-dashboard-birr`, `format-rooms-birr`, `format-bookings-dates` and `format-inventory-datetime` check birr and date text on the dashboard, rooms, bookings and inventory pages.
 

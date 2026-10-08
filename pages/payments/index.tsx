@@ -59,7 +59,7 @@ const METHOD_LABEL_MAP = new Map(METHODS.map(m => [m.value, m.label]));
 
 const STATUSES = [
   { value: 'paid', label: 'Paid' },
-  { value: 'Unpaid', label: 'Unpaid' },
+  { value: 'unpaid', label: 'Unpaid' },
   { value: 'refunded', label: 'Refunded' },
   { value: 'failed', label: 'Failed' },
 ];

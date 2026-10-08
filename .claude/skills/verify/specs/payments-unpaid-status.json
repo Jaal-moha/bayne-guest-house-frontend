@@ -10,12 +10,12 @@
     { "goto": "/payments" },
     { "click": { "role": "button", "name": "Record Payment" } },
     { "select": { "label": "Booking" }, "value": "${BOOKING}" },
-    { "select": { "label": "Status" }, "value": "Unpaid" },
+    { "select": { "label": "Status" }, "value": "unpaid" },
     { "click": { "role": "button", "name": "Record" } },
     { "expectApi": "POST /payments 201" },
     { "expectHidden": "role=dialog" },
     { "screenshot": "unpaid-status" },
-    { "apiCheck": { "as": "reception", "path": "/payments", "jq": "any(.[]; .bookingId == ${BOOKING} and .status == \"Unpaid\")" } },
+    { "apiCheck": { "as": "reception", "path": "/payments", "jq": "any(.[]; .bookingId == ${BOOKING} and .status == \"unpaid\")" } },
     { "expectNoPageErrors": true }
   ]
 }
