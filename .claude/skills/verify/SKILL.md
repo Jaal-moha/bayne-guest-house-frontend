@@ -67,7 +67,7 @@ A spec is a JSON file in [`specs/`](specs/). Copy the closest one and change it.
 - **Variables.** `${RUN}` is unique per drive, so names never collide across reruns. `${DATE+N}` is today plus N days as `yyyy-mm-dd`. `${NAME}` is a saved setup value or an environment variable.
 - **`failApi`** answers matching browser requests with HTTP 500. Use it only to verify error states. Every other request reaches the real backend.
 - **Targets.** A string is a Playwright selector. An object is `{"label": "Full name"}`, `{"role": "button", "name": "Add Room"}`, `{"placeholder": "Number"}` or `{"text": "…"}`, all exact matches. Object targets search inside the open modal first, so a page button and a modal button with the same name resolve correctly. `label` works with or without `htmlFor`.
-- **Steps.** `goto`, `click` (add `"at": [x, y]` to click at that offset inside the target, for a backdrop partly covered by a panel), `fill` + `value`, `select` + `value` (option value or label), `press`, `wait`, `screenshot`. Assertions are `expectText`, `expectNoText`, `expectVisible`, `expectHidden`, `expectValue` + `value`, `expectUrl` (exact pathname), `expectTitle`, `expectApi` (`"POST /bookings 201"`, query ignored), `expectNoApi`, `expectNoPageErrors`, `expectFits` (no horizontal page scroll, and every visible control outside a table lies inside the viewport), and `apiCheck` (`{"as", "path", "jq", "expect"}`, an independent backend read).
+- **Steps.** `goto`, `click` (add `"at": [x, y]` to click at that offset inside the target, for a backdrop partly covered by a panel), `fill` + `value`, `select` + `value` (option value or label), `press`, `wait`, `screenshot`. Assertions are `expectText`, `expectNoText`, `expectVisible`, `expectHidden`, `expectValue` + `value`, `expectUrl` (exact pathname), `expectTitle`, `expectApi` (`"POST /bookings 201"`, query ignored), `expectNoApi`, `expectNoRequest` (no browser request URL contains the string), `expectNoPageErrors`, `expectFits` (no horizontal page scroll, and every visible control outside a table lies inside the viewport), and `apiCheck` (`{"as", "path", "jq", "expect"}`, an independent backend read).
 
 Output of `drive`, one line each:
 
@@ -76,6 +76,7 @@ Output of `drive`, one line each:
 | `SETUP NN OK …` / `SETUP FAIL …` | A setup call and its result. A failed setup stops before the browser opens. |
 | `STEP NN OK …` / `STEP NN FAIL … :: <reason>` | Each step. The first failure stops the run. |
 | `API <METHOD> <path> <status>` | Every request the page sent to the backend. |
+| `BYTES <n> requests=<m>` | Total response bytes (headers and body) across every browser request. `result.json` lists each under `requests`. |
 | `PAGEERRORS <n>` | Uncaught exceptions on the page. |
 | `EVIDENCE <dir>` | Screenshots and `result.json` for this drive. |
 | `RESULT PASS` (exit 0) | Every step held. |

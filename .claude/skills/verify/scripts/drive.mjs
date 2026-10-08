@@ -24,7 +24,7 @@ const sub = (v) =>
     : v;
 const control = (...a) => execFileSync(CONTROL, a, { encoding: 'utf8', stdio: ['ignore', 'pipe', 'pipe'] }).trim();
 
-const report = { spec: name, role: spec.role ?? 'admin', viewport: spec.viewport ?? 'desktop', setup: [], steps: [], api: [], console: [], pageErrors: [] };
+const report = { spec: name, role: spec.role ?? 'admin', viewport: spec.viewport ?? 'desktop', setup: [], steps: [], api: [], requests: [], console: [], pageErrors: [] };
 let failed = null;
 
 function finish(browserClose) {
@@ -33,6 +33,7 @@ function finish(browserClose) {
   report.failure = failed;
   writeFileSync(join(dir, 'result.json'), JSON.stringify(report, null, 2));
   for (const a of report.api) console.log(`API ${a.method} ${a.path} ${a.status}`);
+  console.log(`BYTES ${report.requests.reduce((t, r) => t + (r.bytes ?? 0), 0)} requests=${report.requests.length}`);
   console.log(`PAGEERRORS ${report.pageErrors.length}`);
   console.log(`EVIDENCE ${dir}`);
   if (result === 'XFAIL') console.log(`KNOWN_BUG ${spec.knownBug}`);
@@ -80,6 +81,9 @@ page.on('response', (r) => {
   report.api.push({ method: r.request().method(), path: apiPath(r.url()), status: r.status(), body: r.request().postData() ?? undefined });
 });
 page.on('requestfailed', (r) => r.url().startsWith(API_URL) && report.api.push({ method: r.request().method(), path: apiPath(r.url()), status: 'failed' }));
+const sizing = [];
+page.on('request', (q) => report.requests.push({ url: q.url().slice(0, 200), q }));
+page.on('requestfinished', (q) => sizing.push(q.sizes().then((z) => { report.requests.find((r) => r.q === q).bytes = z.responseHeadersSize + z.responseBodySize; }).catch(() => {})));
 page.on('console', (m) => m.type() === 'error' && report.console.push(m.text().slice(0, 300)));
 page.on('pageerror', (e) => report.pageErrors.push(e.message.slice(0, 300)));
 
@@ -138,6 +142,7 @@ const actions = {
   expectTitle: (s) => poll(async () => (await page.title()) === s || await page.title(), `title "${s}"`),
   expectApi: (w) => poll(async () => apiMatch(w) || JSON.stringify(report.api.map((a) => `${a.method} ${a.path} ${a.status}`).slice(-4)), `api ${w}`),
   expectNoApi: async (w) => { await settle(); if (apiMatch(w)) throw new Error(`api ${w} was called`); },
+  expectNoRequest: async (s) => { await settle(); const hit = report.requests.find((r) => r.url.includes(s)); if (hit) throw new Error(`request to ${hit.url}`); },
   expectNoPageErrors: async () => { if (report.pageErrors.length) throw new Error(report.pageErrors[0]); },
   expectFits: async () => {
     const w = await page.evaluate(() => [document.documentElement.scrollWidth, window.innerWidth]);
@@ -177,4 +182,6 @@ for (const [i, raw] of spec.steps.entries()) {
 await page.screenshot({ path: join(dir, failed ? 'failure.png' : 'final.png') }).catch(() => {});
 report.finalUrl = page.url();
 report.title = await page.title().catch(() => '');
+await Promise.all(sizing);
+for (const r of report.requests) delete r.q;
 await finish(() => browser.close());
