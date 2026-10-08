@@ -16,15 +16,17 @@ mkdirSync(dir, { recursive: true });
 
 const vars = { ...process.env, RUN: Date.now().toString(36) };
 const iso = (days) => new Date(Date.now() + days * 86_400_000).toISOString().slice(0, 10);
+const text = (x) => (typeof x === 'string' ? x : JSON.stringify(x));
 const sub = (v) =>
   typeof v === 'string'
-    ? v.replace(/\$\{DATE([+-]\d+)\}/g, (_, n) => iso(Number(n))).replace(/\$\{(\w+)\}/g, (m, k) => vars[k] ?? m)
+    ? /^\$\{\w+\}$/.test(v) && v.slice(2, -1) in vars ? vars[v.slice(2, -1)]
+    : v.replace(/\$\{DATE([+-]\d+)\}/g, (_, n) => iso(Number(n))).replace(/\$\{(\w+)\}/g, (m, k) => (k in vars ? text(vars[k]) : m))
     : Array.isArray(v) ? v.map(sub)
     : v && typeof v === 'object' ? Object.fromEntries(Object.entries(v).map(([k, x]) => [k, sub(x)]))
     : v;
 const control = (...a) => execFileSync(CONTROL, a, { encoding: 'utf8', stdio: ['ignore', 'pipe', 'pipe'] }).trim();
 
-const report = { spec: name, role: spec.role ?? 'admin', viewport: spec.viewport ?? 'desktop', setup: [], steps: [], api: [], console: [], pageErrors: [] };
+const report = { spec: name, role: spec.role ?? 'admin', viewport: spec.viewport ?? 'desktop', setup: [], steps: [], visits: [], api: [], console: [], pageErrors: [] };
 let failed = null;
 
 function finish(browserClose) {
@@ -46,9 +48,9 @@ for (const [i, raw] of (spec.setup ?? []).entries()) {
   const label = `${s.as} ${s.method} ${s.path}`;
   try {
     const out = control('api', 'call', '--expect', String(s.expect), s.as, s.method, s.path, ...(s.body ? [JSON.stringify(s.body)] : []));
-    if (s.save) vars[s.save] = control('api', 'last', s.pick ?? '.id');
+    if (s.save) vars[s.save] = JSON.parse(control('api', 'last', `${s.pick ?? '.id'} | select(.) | tojson`));
     report.setup.push({ ...s, evidence: out.match(/^EVIDENCE (.+)$/m)?.[1] });
-    console.log(`SETUP ${String(i + 1).padStart(2, '0')} OK ${label}${s.save ? ` ${s.save}=${vars[s.save]}` : ''}`);
+    console.log(`SETUP ${String(i + 1).padStart(2, '0')} OK ${label}${s.save ? ` ${s.save}=${text(vars[s.save])}` : ''}`);
   } catch (e) {
     failed = `setup ${label}: ${(e.stdout || e.message).split('\n').filter(Boolean).slice(-2).join(' | ')}`;
     console.log(`SETUP FAIL ${failed}`);
@@ -61,23 +63,30 @@ const role = report.role;
 const token = role === 'anon' ? null : control('api', 'token', role);
 const browser = await chromium.launch({ executablePath: CHROME });
 const ctx = await browser.newContext({ viewport: report.viewport === 'phone' ? { width: 390, height: 844 } : { width: 1280, height: 800 } });
-await ctx.addInitScript((t) => { if (t) localStorage.setItem('token', t); else localStorage.removeItem('token'); }, token);
+await ctx.addInitScript((t) => {
+  if (sessionStorage.getItem('verify-seeded')) return;
+  sessionStorage.setItem('verify-seeded', '1');
+  if (t) localStorage.setItem('token', t); else localStorage.removeItem('token');
+}, token);
 const page = await ctx.newPage();
 page.setDefaultTimeout(STEP_TIMEOUT);
 
 const apiPath = (url) => url.slice(API_URL.length) || '/';
-for (const f of sub(spec.failApi ?? [])) {
+const failing = new Set(sub(spec.failApi ?? []));
+const fails = (req) => [...failing].some((f) => {
   const [method, prefix] = f.split(' ');
-  await page.route((u) => u.href.startsWith(API_URL + prefix), (r) =>
-    r.request().method() === method
-      ? r.fulfill({ status: 500, contentType: 'application/json', body: '{"message":"verify-injected failure"}' })
-      : r.fallback());
-}
+  return req.method() === method && req.url().startsWith(API_URL + prefix);
+});
+await page.route((u) => u.href.startsWith(API_URL), (r) =>
+  fails(r.request())
+    ? r.fulfill({ status: 500, contentType: 'application/json', body: '{"message":"verify-injected failure"}' })
+    : r.fallback());
 page.on('response', (r) => {
   if (!r.url().startsWith(API_URL) || r.request().method() === 'OPTIONS') return;
   report.api.push({ method: r.request().method(), path: apiPath(r.url()), status: r.status(), body: r.request().postData() ?? undefined });
 });
 page.on('requestfailed', (r) => r.url().startsWith(API_URL) && report.api.push({ method: r.request().method(), path: apiPath(r.url()), status: 'failed' }));
+page.on('framenavigated', (f) => f === page.mainFrame() && report.visits.push(new URL(f.url()).pathname));
 page.on('console', (m) => m.type() === 'error' && report.console.push(m.text().slice(0, 300)));
 page.on('pageerror', (e) => report.pageErrors.push(e.message.slice(0, 300)));
 
@@ -126,6 +135,8 @@ const actions = {
   },
   press: async (k) => { await page.keyboard.press(k); await settle(); },
   wait: async (ms) => { await page.waitForTimeout(ms); },
+  failApi: async (fs) => { for (const f of fs) failing.add(f); },
+  unfailApi: async (fs) => { for (const f of fs) failing.delete(f); },
   screenshot: async (n) => { await page.screenshot({ path: join(dir, `${n}.png`) }); },
   expectText: (s) => poll(async () => (await bodyText()).includes(s), `text "${s}" not on page`),
   expectNoText: (s) => poll(async () => !(await bodyText()).includes(s), `text "${s}" still on page`),
@@ -136,6 +147,7 @@ const actions = {
   expectTitle: (s) => poll(async () => (await page.title()) === s || await page.title(), `title "${s}"`),
   expectApi: (w) => poll(async () => apiMatch(w) || JSON.stringify(report.api.map((a) => `${a.method} ${a.path} ${a.status}`).slice(-4)), `api ${w}`),
   expectNoApi: async (w) => { await settle(); if (apiMatch(w)) throw new Error(`api ${w} was called`); },
+  expectNoVisit: async (p) => { await settle(); if (report.visits.includes(p)) throw new Error(`visited ${p} (visits: ${report.visits.join(' ')})`); },
   expectNoPageErrors: async () => { if (report.pageErrors.length) throw new Error(report.pageErrors[0]); },
   expectFits: async () => {
     const w = await page.evaluate(() => [document.documentElement.scrollWidth, window.innerWidth]);
