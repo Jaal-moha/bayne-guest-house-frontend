@@ -18,27 +18,26 @@ function errorMessage(what: string, e: unknown): string {
   return `Couldn't load ${what}`;
 }
 
-// `key` refetches when it changes. `load` may close over fresh state on every render.
-export function useList<T>(what: string, load: () => Promise<T[]>, key = ''): List<T> {
+export function useList<T>(what: string, load: () => Promise<T[]>, refetchKey = ''): List<T> {
   const [state, setState] = useState<ListLoad<T>>({ kind: 'loading' });
-  const loadRef = useRef(load);
-  loadRef.current = load;
-  const latest = useRef(0);
+  const latestLoad = useRef(load);
+  latestLoad.current = load;
+  const latestRequest = useRef(0);
 
   const reload = useCallback(async () => {
-    const request = ++latest.current;
+    const request = ++latestRequest.current;
     setState((s) => (s.kind === 'ready' ? s : { kind: 'loading' }));
     try {
-      const rows = await loadRef.current();
-      if (request === latest.current) setState({ kind: 'ready', rows });
+      const rows = await latestLoad.current();
+      if (request === latestRequest.current) setState({ kind: 'ready', rows });
     } catch (e) {
-      if (request === latest.current) setState({ kind: 'error', message: errorMessage(what, e) });
+      if (request === latestRequest.current) setState({ kind: 'error', message: errorMessage(what, e) });
     }
   }, [what]);
 
   useEffect(() => {
     reload();
-  }, [reload, key]);
+  }, [reload, refetchKey]);
 
   const setRows = useCallback((update: (rows: T[]) => T[]) => {
     setState((s) => (s.kind === 'ready' ? { kind: 'ready', rows: update(s.rows) } : s));
