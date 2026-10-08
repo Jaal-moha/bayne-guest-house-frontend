@@ -4,6 +4,8 @@ import { useEffect, useMemo, useState } from 'react';
 import Layout from '@/components/Layout';
 import RequireAuth from '@/components/RequireAuth';
 import axios from '@/utils/axiosInstance';
+import ListState from '@/components/ListState';
+import { useList } from '@/lib/useList';
 
 type UserLite = {
   id: number;
@@ -517,7 +519,7 @@ function StaffTable({
   onDelete?: (s: Staff) => void;
 }) {
   return (
-    <div className="overflow-x-auto rounded-lg bg-white shadow">
+    <>
       <table className="min-w-full border-collapse table-auto">
         <thead className="bg-gray-100">
           <tr>
@@ -579,7 +581,7 @@ function StaffTable({
           ))}
         </tbody>
       </table>
-    </div>
+    </>
   );
 }
 
@@ -647,8 +649,11 @@ function PdfPreviewModal({
 
 /* -------------------- Page -------------------- */
 function StaffPageInner() {
-  const [staff, setStaff] = useState<Staff[]>([]);
-  const [loading, setLoading] = useState(true);
+  const staffList = useList<Staff>('staff', async () => {
+    const res = await axios.get('/staff');
+    return Array.isArray(res.data) ? res.data : res.data?.staff ?? [];
+  });
+  const { rows: staff, setRows: setStaff } = staffList;
   const [q, setQ] = useState('');
   const [modalOpen, setModalOpen] = useState(false);
 
@@ -667,21 +672,6 @@ function StaffPageInner() {
   // Delete confirmation state
   const [deleteConfirmOpen, setDeleteConfirmOpen] = useState(false);
   const [staffToDelete, setStaffToDelete] = useState<Staff | undefined>(undefined);
-
-  const fetchStaff = async () => {
-    try {
-      const res = await axios.get('/staff');
-      setStaff(Array.isArray(res.data) ? res.data : res.data?.staff ?? []);
-    } catch (e) {
-      console.error('Failed to fetch staff', e);
-    } finally {
-      setLoading(false);
-    }
-  };
-
-  useEffect(() => {
-    fetchStaff();
-  }, []);
 
   const filtered = useMemo(() => {
     const term = q.trim().toLowerCase();
@@ -835,13 +825,15 @@ function StaffPageInner() {
         </div>
       </div>
 
-      {loading ? (
-        <div className="rounded-lg bg-white p-6 text-gray-600 shadow">Loading…</div>
-      ) : filtered.length === 0 ? (
-        <div className="rounded-lg bg-white p-6 text-gray-600 shadow">No staff found.</div>
-      ) : (
-        <StaffTable staff={filtered} onPreview={handlePreview} onEdit={handleEdit} onDelete={handleDelete} />
-      )}
+      <div className="overflow-x-auto rounded-lg bg-white shadow">
+        <ListState list={staffList} empty="No staff found.">
+          {filtered.length === 0 ? (
+            <div className="p-6 text-gray-600">No staff found.</div>
+          ) : (
+            <StaffTable staff={filtered} onPreview={handlePreview} onEdit={handleEdit} onDelete={handleDelete} />
+          )}
+        </ListState>
+      </div>
 
       <AddStaffModal open={modalOpen} onClose={() => setModalOpen(false)} onCreated={onCreated} />
 
