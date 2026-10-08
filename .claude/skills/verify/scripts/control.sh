@@ -14,10 +14,13 @@ EVIDENCE_ROOT="$ROOT/.verify/evidence"
 TOOLS="$ROOT/.verify/tools"
 PORT_FILE="$ROOT/.verify/web-port${VERIFY_ID:+-$VERIFY_ID}"
 BACKEND_BUILD_LOCK="$BACKEND_DIR/.verify/build.lock"
+VERIFY_LOCK_WAIT="${VERIFY_LOCK_WAIT:-900}"
+LOCK_TIMEOUT=75
 
 die() { echo "FAIL $*"; exit 1; }
 [[ -z "$VERIFY_ID" || "$VERIFY_ID" =~ ^[A-Za-z0-9_-]+$ ]] || die "bad-verify-id want=[A-Za-z0-9_-]+ got=$VERIFY_ID"
-BACKEND_ID="${VERIFY_ID:-frontend}"
+BACKEND_ID="${VERIFY_ID:+fe-$VERIFY_ID}"
+BACKEND_ID="${BACKEND_ID:-frontend}"
 backend() { VERIFY_ID="$BACKEND_ID" "$BACKEND_CTL" "$@"; }
 
 load_state() {
@@ -87,7 +90,8 @@ cmd_up() {
   local line
   mkdir -p "${BACKEND_BUILD_LOCK%/*}"
   # -o keeps the lock off the backend server that up leaves running.
-  line="$(ALLOWED_ORIGINS="[\"$web\"]" VERIFY_ID="$BACKEND_ID" flock -o -w 900 "$BACKEND_BUILD_LOCK" "$BACKEND_CTL" up | tail -1)"
+  line="$(ALLOWED_ORIGINS="[\"$web\"]" VERIFY_ID="$BACKEND_ID" flock -o -E "$LOCK_TIMEOUT" -w "$VERIFY_LOCK_WAIT" "$BACKEND_BUILD_LOCK" "$BACKEND_CTL" up | tail -1)"
+  (( $? == LOCK_TIMEOUT )) && die "backend-up lock-timeout lock=$BACKEND_BUILD_LOCK"
   [[ "$line" == READY* ]] || die "backend-up $line"
   local api; api="$(sed -E 's/.*base=([^ ]+).*/\1/' <<<"$line")"
 
