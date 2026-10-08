@@ -1,7 +1,6 @@
 {
   "name": "bookings-load-error",
   "role": "reception",
-  "knownBug": "A failed GET /bookings renders the empty state 'No bookings.' instead of an error.",
   "failApi": ["GET /bookings"],
   "steps": [
     {"goto": "/bookings"},
