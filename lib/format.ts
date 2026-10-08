@@ -7,7 +7,7 @@ const dateTimeFormat = new Intl.DateTimeFormat('en-ET', { dateStyle: 'medium', t
 type DateInput = string | Date | null | undefined;
 
 function parse(d: DateInput): Date | null {
-  if (d == null || d === '') return null;
+  if (d == null) return null;
   const x = new Date(d);
   return Number.isNaN(x.getTime()) ? null : x;
 }
