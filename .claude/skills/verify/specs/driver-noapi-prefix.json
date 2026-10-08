@@ -1,0 +1,16 @@
+{
+  "name": "driver-noapi-prefix",
+  "role": "manager",
+  "knownBug": "Driver self-test, keep this flag. Saving a room sends PATCH /rooms/<id>, so expectNoApi \"PATCH /rooms\" must fail here. XPASS means expectNoApi matches exact paths again; fix drive.mjs, not this spec.",
+  "setup": [
+    { "as": "manager", "method": "POST", "path": "/rooms", "body": { "number": "P${RUN}", "type": "single", "price": 900 }, "expect": 201, "save": "ROOM" }
+  ],
+  "steps": [
+    { "goto": "/rooms" },
+    { "click": "tr:has-text('P${RUN}') >> role=button[name='Edit']" },
+    { "fill": { "placeholder": "Price (e.g. 75)" }, "value": "1100" },
+    { "click": { "role": "button", "name": "Save Changes" } },
+    { "expectApi": "PATCH /rooms/${ROOM} 200" },
+    { "expectNoApi": "PATCH /rooms" }
+  ]
+}
