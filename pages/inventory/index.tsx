@@ -91,7 +91,7 @@ function NewItemModal({
 
   if (!open) return null;
   return (
-    <Modal open={open} onClose={onClose} title="New Item" size="xl">
+    <Modal open={open} onClose={onClose} title="New Item" size="xl" locked={loading}>
       {err && <div className="mt-3 rounded border border-red-200 bg-red-50 px-3 py-2 text-sm text-red-700">{err}</div>}
 
       <div className="mt-4 grid gap-3 sm:grid-cols-2">
@@ -207,7 +207,7 @@ function StockModal({
   };
 
   return (
-    <Modal open={open} onClose={onClose} title={title}>
+    <Modal open={open} onClose={onClose} title={title} locked={loading}>
       <div className="mt-2 text-sm text-gray-600">
         Current: {item.quantity} {item.unit || ''}
       </div>
@@ -317,15 +317,25 @@ type ItemActionsProps = {
   onAdjust: () => void;
   onHistory: () => void;
   onRemove: () => Promise<void>;
+  removing: boolean;
 };
 
 function ItemActionsModal({
   open, onClose, item, ...actions
-}: Omit<ItemActionsProps, 'item'> & { open: boolean; onClose: () => void; item: Item | null; }) {
+}: Omit<ItemActionsProps, 'item' | 'removing'> & { open: boolean; onClose: () => void; item: Item | null; }) {
+  const [removing, setRemoving] = useState(false);
   if (!open || !item) return null;
+  const onRemove = async () => {
+    setRemoving(true);
+    try {
+      await actions.onRemove();
+    } finally {
+      setRemoving(false);
+    }
+  };
   return (
-    <Modal open={open} onClose={onClose} title={item.name} size="md">
-      <ItemActions item={item} {...actions} />
+    <Modal open={open} onClose={onClose} title={item.name} size="md" locked={removing}>
+      <ItemActions item={item} {...actions} onRemove={onRemove} removing={removing} />
       <div className="mt-5 flex justify-end">
         <button className="rounded border px-4 py-2" onClick={onClose}>Close</button>
       </div>
@@ -334,20 +344,17 @@ function ItemActionsModal({
 }
 
 // Lives inside Modal so its confirm step unmounts with the dialog and never carries over to the next item.
-function ItemActions({ item, onAdd, onSubtract, onAdjust, onHistory, onRemove }: ItemActionsProps) {
+function ItemActions({ item, onAdd, onSubtract, onAdjust, onHistory, onRemove, removing }: ItemActionsProps) {
   const [confirming, setConfirming] = useState(false);
-  const [loading, setLoading] = useState(false);
   const [err, setErr] = useState('');
 
   const doRemove = async () => {
     setErr('');
     try {
-      setLoading(true);
       await onRemove();
     } catch (e: any) {
       setErr(e?.response?.data?.message || e?.message || 'Remove failed');
     } finally {
-      setLoading(false);
       setConfirming(false);
     }
   };
@@ -376,10 +383,10 @@ function ItemActions({ item, onAdd, onSubtract, onAdjust, onHistory, onRemove }:
           <div className="text-sm font-medium text-red-800">Confirm removal</div>
           <div className="mt-1 text-sm text-red-700">This will permanently delete “{item.name}”.</div>
           <div className="mt-3 flex gap-2">
-            <button className="rounded bg-red-600 px-3 py-2 text-white hover:bg-red-700 disabled:opacity-60" disabled={loading} onClick={doRemove}>
-              {loading ? 'Removing…' : 'Confirm Remove'}
+            <button className="rounded bg-red-600 px-3 py-2 text-white hover:bg-red-700 disabled:opacity-60" disabled={removing} onClick={doRemove}>
+              {removing ? 'Removing…' : 'Confirm Remove'}
             </button>
-            <button className="rounded border px-3 py-2" disabled={loading} onClick={() => setConfirming(false)}>Cancel</button>
+            <button className="rounded border px-3 py-2" disabled={removing} onClick={() => setConfirming(false)}>Cancel</button>
           </div>
         </div>
       )}
