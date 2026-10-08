@@ -1,0 +1,15 @@
+{
+  "name": "staff-load-error",
+  "role": "manager",
+  "failApi": ["GET /staff"],
+  "steps": [
+    {"goto": "/staff"},
+    {"expectApi": "GET /staff 500"},
+    {"expectText": "Couldn't load staff"},
+    {"expectVisible": {"role": "button", "name": "Retry"}},
+    {"expectNoText": "No staff found."},
+    {"expectNoText": "verify-injected failure"},
+    {"screenshot": "staff-error"},
+    {"expectNoPageErrors": true}
+  ]
+}

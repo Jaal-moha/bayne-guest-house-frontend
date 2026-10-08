@@ -1,0 +1,15 @@
+{
+  "name": "inventory-load-error",
+  "role": "store",
+  "failApi": ["GET /inventory"],
+  "steps": [
+    {"goto": "/inventory"},
+    {"expectApi": "GET /inventory 500"},
+    {"expectText": "Couldn't load inventory"},
+    {"expectVisible": {"role": "button", "name": "Retry"}},
+    {"expectNoText": "No items."},
+    {"expectNoText": "verify-injected failure"},
+    {"screenshot": "inventory-error"},
+    {"expectNoPageErrors": true}
+  ]
+}

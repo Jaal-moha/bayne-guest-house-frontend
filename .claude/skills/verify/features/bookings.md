@@ -6,7 +6,7 @@ Reception picks a guest, a date range and an available room, then creates a book
 
 - `bookings-create` creates a booking from the Create Booking modal and shows a success toast and the new row.
 - `bookings-available-rooms` loads rooms for the chosen dates from `GET /rooms/available` before a room can be picked.
-- `bookings-load-error` should show an error when the list fails to load. Today it shows "No bookings.".
+- `bookings-load-error` shows `Couldn't load bookings` and Retry when the list fails to load. See [List load errors](./list-load-errors.md).
 - `bookings-modal-escape` should close the modal on Escape. Today it doesn't.
 
 ## How to get to it (user POV)
@@ -21,7 +21,7 @@ Preconditions:
 - The baseline from the README holds.
 
 - **Create.** Run `$S drive bookings-create`. Setup creates room `V${RUN}` and guest `Guest ${RUN}`. The spec fills the modal as reception and requires `API POST /bookings 201`, the toast `Booking created successfully`, the new row, and an `apiCheck` that a booking with that guest and room exists.
-- **Load error.** Run `$S drive bookings-load-error`. `failApi` makes `GET /bookings` return 500. It reports `RESULT XFAIL` while the page still says `No bookings.`.
+- **Load error.** Run `$S drive bookings-load-error`. `failApi` makes `GET /bookings` return 500. It requires `Couldn't load bookings`, a Retry button and no `No bookings.`.
 - **Escape.** Run `$S drive bookings-modal-escape`. It reports `RESULT XFAIL` while the `Create Booking` heading stays visible after Escape.
 
 ## Gotchas

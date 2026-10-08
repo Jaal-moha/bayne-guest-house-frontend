@@ -2,6 +2,8 @@ import { useEffect, useMemo, useState } from 'react';
 import Layout from '@/components/Layout';
 import RequireAuth from '@/components/RequireAuth';
 import axios from '@/utils/axiosInstance';
+import ListState from '@/components/ListState';
+import { useList, type List } from '@/lib/useList';
 import Link from 'next/link';
 
 type Guest = { id: number; name: string };
@@ -227,10 +229,11 @@ function RecordPaymentModal({
 }
 
 function PaymentsTab({
-  rows, loading, q, setQ, openModal,
+  list, q, setQ, openModal, canRecord,
 }: {
-  rows: Payment[]; loading: boolean; q: string; setQ: (v: string)=>void; openModal: ()=>void;
+  list: List<Payment>; q: string; setQ: (v: string)=>void; openModal: ()=>void; canRecord: boolean;
 }) {
+  const { rows } = list;
   const filtered = useMemo(() => {
     const t = q.toLowerCase();
     return rows.filter(p =>
@@ -259,12 +262,12 @@ function PaymentsTab({
         )}
         <div className="ml-auto flex gap-2">
           <input value={q} onChange={e=>setQ(e.target.value)} placeholder="Search…" className="w-64 rounded border px-3 py-2" />
-          <button onClick={openModal} className="rounded bg-indigo-600 px-4 py-2 font-semibold text-white">Record Payment</button>
+          <button onClick={openModal} disabled={!canRecord} className="rounded bg-indigo-600 px-4 py-2 font-semibold text-white disabled:opacity-60">Record Payment</button>
         </div>
       </div>
 
       <div className="overflow-x-auto rounded bg-white shadow">
-        {loading ? <div className="p-6 text-gray-600">Loading…</div> : (
+        <ListState list={list}>
           <table className="min-w-full table-auto">
             <thead className="bg-gray-100">
               <tr>
@@ -300,17 +303,18 @@ function PaymentsTab({
               {filtered.length===0 && <tr><td className="px-4 py-6 text-gray-500" colSpan={8}>No payments.</td></tr>}
             </tbody>
           </table>
-        )}
+        </ListState>
       </div>
     </>
   );
 }
 
 function UnpaidTab({
-  rows, loading, q, setQ, openForBooking,
+  list, q, setQ, openForBooking,
 }: {
-  rows: Booking[]; loading: boolean; q: string; setQ: (v: string)=>void; openForBooking: (b: Booking)=>void;
+  list: List<Booking>; q: string; setQ: (v: string)=>void; openForBooking: (b: Booking)=>void;
 }) {
+  const { rows } = list;
   const filtered = useMemo(() => {
     const t = q.toLowerCase();
     return rows.filter(b =>
@@ -334,7 +338,7 @@ function UnpaidTab({
       </div>
 
       <div className="overflow-x-auto rounded bg-white shadow">
-        {loading ? <div className="p-6 text-gray-600">Loading…</div> : (
+        <ListState list={list}>
           <table className="min-w-full table-auto">
             <thead className="bg-gray-100">
               <tr>
@@ -373,7 +377,7 @@ function UnpaidTab({
               {filtered.length===0 && <tr><td className="px-4 py-6 text-gray-500" colSpan={6}>No unpaid bookings.</td></tr>}
             </tbody>
           </table>
-        )}
+        </ListState>
       </div>
     </>
   );
@@ -382,10 +386,14 @@ function UnpaidTab({
 function PaymentsInner() {
   const [tab, setTab] = useState<'payments'|'unpaid'>('payments');
 
-  const [payments, setPayments] = useState<Payment[]>([]);
-  const [unpaid, setUnpaid] = useState<Booking[]>([]);
-  const [loadingPay, setLoadingPay] = useState(true);
-  const [loadingUnpaid, setLoadingUnpaid] = useState(true);
+  const payments = useList<Payment>('payments', async () => {
+    const res = await axios.get('/payments');
+    return Array.isArray(res.data) ? res.data : res.data?.payments ?? [];
+  });
+  const unpaid = useList<Booking>('unpaid bookings', async () => {
+    const res = await axios.get('/bookings', { params: { unpaid: 'true' } });
+    return Array.isArray(res.data) ? res.data : res.data?.bookings ?? [];
+  });
 
   const [qPay, setQPay] = useState('');
   const [qUnpaid, setQUnpaid] = useState('');
@@ -393,105 +401,53 @@ function PaymentsInner() {
   const [modalOpen, setModalOpen] = useState(false);
   const [presetBooking, setPresetBooking] = useState<Booking | null>(null);
 
-  const [unauthorized, setUnauthorized] = useState(false);
-
-  // Load payments
-  useEffect(() => {
-    (async () => {
-      try {
-        const res = await axios.get('/payments');
-        setPayments(Array.isArray(res.data) ? res.data : res.data?.payments ?? []);
-      } catch (e: unknown) {
-        const status = (e as { response?: { status?: number } })?.response?.status;
-        if (status === 403) {
-          setUnauthorized(true);
-        }
-      } finally {
-        setLoadingPay(false);
-      }
-    })();
-  }, []);
-
-  // Load unpaid bookings
-  useEffect(() => {
-    (async () => {
-      try {
-        const res = await axios.get('/bookings', { params: { unpaid: 'true' } });
-        setUnpaid(Array.isArray(res.data) ? res.data : res.data?.bookings ?? []);
-      } catch (e: unknown) {
-        const status = (e as { response?: { status?: number } })?.response?.status;
-        if (status === 403) {
-          setUnauthorized(true);
-        }
-      } finally {
-        setLoadingUnpaid(false);
-      }
-    })();
-  }, []);
-
   const openNewPayment = () => { setPresetBooking(null); setModalOpen(true); };
   const openForBooking = (b: Booking) => { setPresetBooking(b); setModalOpen(true); };
 
   const onCreated = (p: Payment) => {
     // Add to payments list
-    setPayments(prev => [p, ...prev]);
+    payments.setRows(prev => [p, ...prev]);
     // Remove booking from unpaid
-    setUnpaid(prev => prev.filter(b => b.id !== p.booking.id));
+    unpaid.setRows(prev => prev.filter(b => b.id !== p.booking.id));
   };
 
   return (
     <Layout>
-      {unauthorized && (
-        <div className="mb-4 rounded border border-amber-300 bg-amber-50 px-4 py-3 text-sm text-amber-800">
-          You do not have permission to view full payment data. (403)
-        </div>
-      )}
       {/* Tabs */}
       <div className="mb-4 flex gap-2 border-b">
         <button
           onClick={()=>setTab('payments')}
           className={`-mb-px rounded-t px-4 py-2 ${tab==='payments' ? 'border-b-2 border-indigo-600 font-semibold' : 'text-gray-600'}`}
-          disabled={unauthorized}
         >
           Payments
         </button>
         <button
           onClick={()=>setTab('unpaid')}
           className={`-mb-px rounded-t px-4 py-2 ${tab==='unpaid' ? 'border-b-2 border-indigo-600 font-semibold' : 'text-gray-600'}`}
-          disabled={unauthorized}
         >
           Unpaid Bookings
         </button>
       </div>
 
-      {unauthorized ? (
-        <div className="rounded bg-white p-6 text-gray-600 shadow">
-          Limited access. Contact an administrator if this is unexpected.
-        </div>
+      {tab === 'payments' ? (
+        <PaymentsTab
+          list={payments}
+          q={qPay}
+          setQ={setQPay}
+          openModal={openNewPayment}
+          canRecord={payments.state.kind !== 'forbidden' && unpaid.state.kind !== 'forbidden'}
+        />
       ) : (
-        <>
-          {tab === 'payments' ? (
-            <PaymentsTab
-              rows={payments}
-              loading={loadingPay}
-              q={qPay}
-              setQ={setQPay}
-              openModal={openNewPayment}
-            />
-          ) : (
-            <UnpaidTab
-              rows={unpaid}
-              loading={loadingUnpaid}
-              q={qUnpaid}
-              setQ={setQUnpaid}
-              openForBooking={openForBooking}
-            />
-          )}
-        </>
+        <UnpaidTab
+          list={unpaid}
+          q={qUnpaid}
+          setQ={setQUnpaid}
+          openForBooking={openForBooking}
+        />
       )}
 
       <RecordPaymentModal
-        open={modalOpen && !unauthorized}
+        open={modalOpen}
         onClose={()=>setModalOpen(false)}
         onCreated={onCreated}
         presetBooking={presetBooking}

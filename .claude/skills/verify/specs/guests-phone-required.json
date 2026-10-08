@@ -1,0 +1,19 @@
+{
+  "name": "guests-phone-required",
+  "role": "reception",
+  "setup": [
+    { "as": "reception", "method": "POST", "path": "/guests", "body": { "name": "Ph ${RUN}", "phone": "0911000555" }, "expect": 201, "save": "GID" }
+  ],
+  "steps": [
+    { "goto": "/guests" },
+    { "click": "tr:has-text('Ph ${RUN}') >> role=button[name='Edit']" },
+    { "fill": { "label": "Phone" }, "value": "" },
+    { "click": { "role": "button", "name": "Save changes" } },
+    { "expectText": "Phone is required" },
+    { "expectText": "Edit Guest" },
+    { "expectNoApi": "PATCH /guests/${GID}" },
+    { "screenshot": "phone-required" },
+    { "apiCheck": { "as": "reception", "path": "/guests/${GID}", "jq": ".phone == \"0911000555\"" } },
+    { "expectNoPageErrors": true }
+  ]
+}

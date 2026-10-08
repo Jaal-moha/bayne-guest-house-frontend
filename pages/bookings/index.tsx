@@ -3,6 +3,8 @@ import Layout from '@/components/Layout';
 import RequireAuth from '@/components/RequireAuth';
 import axios from '@/utils/axiosInstance';
 import { useToast } from '@/components/Toast';
+import ListState from '@/components/ListState';
+import { useList } from '@/lib/useList';
 
 type Guest = { id: number; name: string; phone: string; email?: string | null; };
 type Room = { id: number; number: string; type: string; price: number; };
@@ -349,23 +351,14 @@ function CreateBookingModal({
 }
 
 function BookingsInner() {
-  const [rows, setRows] = useState<Booking[]>([]);
+  const bookings = useList<Booking>('bookings', async () => {
+    const res = await axios.get('/bookings');
+    return Array.isArray(res.data) ? res.data : res.data.bookings ?? [];
+  });
+  const { rows, setRows } = bookings;
   const [q, setQ] = useState('');
-  const [loading, setLoading] = useState(true);
   const [modal, setModal] = useState(false);
   const [edit, setEdit] = useState<Booking | null>(null);
-
-  const fetchRows = async () => {
-    try {
-      const res = await axios.get('/bookings');
-      const data = Array.isArray(res.data) ? res.data : res.data.bookings ?? [];
-      setRows(data);
-    } finally {
-      setLoading(false);
-    }
-  };
-
-  useEffect(() => { fetchRows(); }, []);
 
   const filtered = useMemo(() => {
     const t = q.toLowerCase();
@@ -400,9 +393,7 @@ function BookingsInner() {
       </div>
 
       <div className="overflow-x-auto rounded bg-white shadow">
-        {loading ? (
-          <div className="p-6 text-gray-600">Loading…</div>
-        ) : (
+        <ListState list={bookings}>
           <table className="min-w-full table-auto">
             <thead className="bg-gray-100">
               <tr>
@@ -443,7 +434,7 @@ function BookingsInner() {
               )}
             </tbody>
           </table>
-        )}
+        </ListState>
       </div>
 
       <CreateBookingModal

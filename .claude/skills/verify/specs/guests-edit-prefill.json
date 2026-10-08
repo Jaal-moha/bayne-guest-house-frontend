@@ -1,7 +1,6 @@
 {
   "name": "guests-edit-prefill",
   "role": "reception",
-  "knownBug": "The guest row's Edit button opens an empty Add Guest form, so saving creates a duplicate.",
   "setup": [
     { "as": "reception", "method": "POST", "path": "/guests", "body": { "name": "Edit ${RUN}", "phone": "0911998877" }, "expect": 201 }
   ],

@@ -1,0 +1,15 @@
+{
+  "name": "dashboard-load-error",
+  "role": "admin",
+  "failApi": ["GET /stats/overview"],
+  "steps": [
+    {"goto": "/dashboard"},
+    {"expectApi": "GET /stats/overview 500"},
+    {"expectText": "Couldn't load dashboard stats"},
+    {"expectVisible": {"role": "button", "name": "Retry"}},
+    {"expectNoText": "No stats available."},
+    {"expectNoText": "verify-injected failure"},
+    {"screenshot": "dashboard-error"},
+    {"expectNoPageErrors": true}
+  ]
+}

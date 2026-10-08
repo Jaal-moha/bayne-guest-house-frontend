@@ -1,0 +1,23 @@
+{
+  "name": "guests-edit-save",
+  "role": "reception",
+  "setup": [
+    { "as": "reception", "method": "POST", "path": "/guests", "body": { "name": "Before ${RUN}", "phone": "0911223344" }, "expect": 201, "save": "GID" },
+    { "as": "reception", "method": "GET", "path": "/guests", "expect": 200, "save": "COUNT", "pick": "length" }
+  ],
+  "steps": [
+    { "goto": "/guests" },
+    { "click": "tr:has-text('Before ${RUN}') >> role=button[name='Edit']" },
+    { "expectText": "Edit Guest" },
+    { "expectValue": { "label": "Phone" }, "value": "0911223344" },
+    { "fill": { "label": "Full name" }, "value": "After ${RUN}" },
+    { "fill": { "label": "Email" }, "value": "after-${RUN}@example.com" },
+    { "click": { "role": "button", "name": "Save changes" } },
+    { "expectApi": "PATCH /guests/${GID} 200" },
+    { "expectNoApi": "POST /guests" },
+    { "expectText": "after-${RUN}@example.com" },
+    { "expectNoText": "Before ${RUN}" },
+    { "apiCheck": { "as": "reception", "path": "/guests/${GID}", "jq": ".name == \"After ${RUN}\" and .email == \"after-${RUN}@example.com\" and .phone == \"0911223344\"" } },
+    { "apiCheck": { "as": "reception", "path": "/guests", "jq": "length == ${COUNT}" } }
+  ]
+}

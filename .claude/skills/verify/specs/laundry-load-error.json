@@ -1,0 +1,15 @@
+{
+  "name": "laundry-load-error",
+  "role": "manager",
+  "failApi": ["GET /laundry"],
+  "steps": [
+    {"goto": "/laundry"},
+    {"expectApi": "GET /laundry 500"},
+    {"expectText": "Couldn't load laundry records"},
+    {"expectVisible": {"role": "button", "name": "Retry"}},
+    {"expectNoText": "No laundry records."},
+    {"expectNoText": "verify-injected failure"},
+    {"screenshot": "laundry-error"},
+    {"expectNoPageErrors": true}
+  ]
+}

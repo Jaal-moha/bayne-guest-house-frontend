@@ -1,8 +1,10 @@
-import { useCallback, useEffect, useMemo, useState } from 'react';
+import { useEffect, useMemo, useState } from 'react';
 import Layout from '@/components/Layout';
 import axios from '@/utils/axiosInstance';
 import Link from 'next/link';
 import RequireAuth from '@/components/RequireAuth';
+import ListState from '@/components/ListState';
+import { useList, type List } from '@/lib/useList';
 
 const ALLOWED_STATUSES = ['pending', 'in_progress', 'done'] as const;
 const STATUS_LABELS: Record<string, string> = {
@@ -20,7 +22,7 @@ function AddLaundryModal({
 }: {
   open: boolean;
   onClose: () => void;
-  guests: { id: number; name: string; }[];
+  guests: List<Guest>;
   onCreated: (row: any) => void;
   submitting: boolean;
   setSubmitting: (v: boolean) => void;
@@ -89,14 +91,16 @@ function AddLaundryModal({
           <div className="grid gap-3 md:grid-cols-3">
             <div className="md:col-span-2">
               <label className="mb-1 block text-xs font-medium text-gray-600">Guest</label>
+              <ListState list={guests} empty="No guests yet.">
               <select
                 className="w-full rounded border px-3 py-2"
                 value={guestId}
                 onChange={e => setGuestId(e.target.value)}
               >
                 <option value="">Select guest…</option>
-                {guests.map(g => <option key={g.id} value={g.id}>{g.name}</option>)}
+                {guests.rows.map(g => <option key={g.id} value={g.id}>{g.name}</option>)}
               </select>
+              </ListState>
             </div>
             <div>
               <label className="mb-1 block text-xs font-medium text-gray-600">Status</label>
@@ -190,9 +194,11 @@ function AddLaundryModal({
   );
 }
 
-export default function LaundryPage() {
-  const [rows, setRows] = useState<Laundry[]>([]); const [guests, setGuests] = useState<Guest[]>([]);
-  const [loading, setLoading] = useState(true);
+function LaundryInner() {
+  const n = (d: any, k: string) => Array.isArray(d) ? d : (Array.isArray(d?.[k]) ? d[k] : []);
+  const laundry = useList<Laundry>('laundry records', async () => n((await axios.get('/laundry')).data, 'laundry'));
+  const guests = useList<Guest>('guests', async () => n((await axios.get('/guests')).data, 'guests'));
+  const { rows, setRows } = laundry;
   const [q, setQ] = useState(''); const [status, setStatus] = useState<'All' | string>('All');
   const [page, setPage] = useState(1); const [pageSize, setPageSize] = useState(10);
   const [addModalOpen, setAddModalOpen] = useState(false);
@@ -210,16 +216,6 @@ export default function LaundryPage() {
       return () => clearTimeout(t);
     }
   }, [justSaved]);
-
-  const n = (d: any, k: string) => Array.isArray(d) ? d : (Array.isArray(d?.[k]) ? d[k] : []);
-  const fetchAll = useCallback(async () => {
-    setLoading(true);
-    try {
-      const [lr, gr] = await Promise.all([axios.get('/laundry'), axios.get('/guests')]);
-      setRows(n(lr.data, 'laundry')); setGuests(n(gr.data, 'guests'));
-    } finally { setLoading(false); }
-  }, []);
-  useEffect(() => { fetchAll(); }, [fetchAll]);
 
   useEffect(() => {
     let cancelled = false;
@@ -262,7 +258,7 @@ export default function LaundryPage() {
   const cur = Math.min(page, totalPages); const start = (cur - 1) * pageSize; const slice = filtered.slice(start, start + pageSize);
 
   const handleCreated = (created: Laundry) => {
-    const guest = guests.find(g => g.id === created.guestId);
+    const guest = guests.rows.find(g => g.id === created.guestId);
     setRows(p => [{ ...created, guest }, ...p]);
   };
 
@@ -283,7 +279,7 @@ export default function LaundryPage() {
       const payload = { items: editForm.items.trim(), status: editForm.status };
       const res = await axios.patch(`/laundry/${id}`, payload);
       const updated: Laundry = res.data?.laundry ?? res.data ?? { id, ...payload };
-      const guest = guests.find(g => g.id === updated.guestId) || rows.find(r => r.id === id)?.guest;
+      const guest = guests.rows.find(g => g.id === updated.guestId) || rows.find(r => r.id === id)?.guest;
       setRows(p => p.map(r => r.id === id ? { ...r, ...updated, guest } : r));
       setJustSaved(id);
       cancelEdit();
@@ -301,158 +297,164 @@ export default function LaundryPage() {
   }
 
   return (
-    <RequireAuth>
-      <Layout>
-        <div className="mb-4 flex flex-wrap items-center gap-3">
-          <h1 className="text-2xl font-bold text-teal-700">Laundry</h1>
-          {typeof window !== 'undefined' && !location.pathname.startsWith('/dashboard') && (
-            <Link
-              href="/dashboard"
-              className="rounded border px-3 py-1 text-sm text-gray-600 hover:bg-gray-50"
-            >
-              Dashboard
-            </Link>
-          )}
-          <div className="ml-auto">
-            <button
-              onClick={() => setAddModalOpen(true)}
-              className="rounded-md bg-teal-600 px-4 py-2 font-semibold text-white hover:bg-teal-700"
-            >
-              + Add Laundry
-            </button>
-          </div>
+    <Layout>
+      <div className="mb-4 flex flex-wrap items-center gap-3">
+        <h1 className="text-2xl font-bold text-teal-700">Laundry</h1>
+        {typeof window !== 'undefined' && !location.pathname.startsWith('/dashboard') && (
+          <Link
+            href="/dashboard"
+            className="rounded border px-3 py-1 text-sm text-gray-600 hover:bg-gray-50"
+          >
+            Dashboard
+          </Link>
+        )}
+        <div className="ml-auto">
+          <button
+            onClick={() => setAddModalOpen(true)}
+            className="rounded-md bg-teal-600 px-4 py-2 font-semibold text-white hover:bg-teal-700"
+          >
+            + Add Laundry
+          </button>
         </div>
+      </div>
 
-        <div className="mb-4 flex flex-wrap items-center gap-3">
-          <input value={q} onChange={e => { setQ(e.target.value); setPage(1); }} placeholder="Search by guest, items, status…" className="w-full rounded-md border px-3 py-2 sm:w-96" />
-          <div className="flex items-center gap-2">
-            <label className="text-sm text-gray-600">Status</label>
-            <select className="rounded-md border px-2 py-2" value={status} onChange={e => { setStatus(e.target.value); setPage(1); }} disabled={statusesLoading}>
-              <option value="All">All</option>
-              {statuses.map(s => <option key={s} value={s}>{STATUS_LABELS[s] || s}</option>)}
-            </select>
-          </div>
-          <div className="flex items-center gap-2">
-            <label className="text-sm text-gray-600">Rows</label>
-            <select
-              className="rounded-md border px-2 py-2"
-              value={pageSize}
-              onChange={e => { setPageSize(Number(e.target.value)); setPage(1); }}
-            >
-              {[5, 10, 20, 50].map(n => <option key={n} value={n}>{n}</option>)}
-            </select>
-          </div>
+      <div className="mb-4 flex flex-wrap items-center gap-3">
+        <input value={q} onChange={e => { setQ(e.target.value); setPage(1); }} placeholder="Search by guest, items, status…" className="w-full rounded-md border px-3 py-2 sm:w-96" />
+        <div className="flex items-center gap-2">
+          <label className="text-sm text-gray-600">Status</label>
+          <select className="rounded-md border px-2 py-2" value={status} onChange={e => { setStatus(e.target.value); setPage(1); }} disabled={statusesLoading}>
+            <option value="All">All</option>
+            {statuses.map(s => <option key={s} value={s}>{STATUS_LABELS[s] || s}</option>)}
+          </select>
         </div>
+        <div className="flex items-center gap-2">
+          <label className="text-sm text-gray-600">Rows</label>
+          <select
+            className="rounded-md border px-2 py-2"
+            value={pageSize}
+            onChange={e => { setPageSize(Number(e.target.value)); setPage(1); }}
+          >
+            {[5, 10, 20, 50].map(n => <option key={n} value={n}>{n}</option>)}
+          </select>
+        </div>
+      </div>
 
-        {/* Table (moved out of the select; previously malformed) */}
-        <div className="overflow-x-auto rounded bg-white shadow">
-          {loading ? (
-            <div className="p-6 text-gray-600">Loading…</div>
-          ) : slice.length === 0 ? (
+      {/* Table (moved out of the select; previously malformed) */}
+      <div className="overflow-x-auto rounded bg-white shadow">
+        <ListState list={laundry} empty="No laundry records.">
+          {slice.length === 0 ? (
             <div className="p-6 text-gray-600">No laundry records.</div>
           ) : (
-            <table className="min-w-full table-auto border-collapse">
-              <thead className="bg-gray-100">
-                <tr>
-                  <th className="px-4 py-3 text-left text-sm font-semibold text-gray-700">Guest</th>
-                  <th className="px-4 py-3 text-left text-sm font-semibold text-gray-700">Items</th>
-                  <th className="px-4 py-3 text-left text-sm font-semibold text-gray-700">Status</th>
-                  <th className="px-4 py-3 text-left text-sm font-semibold text-gray-700">Created</th>
-                  <th className="px-4 py-3 text-right text-sm font-semibold text-gray-700">Actions</th>
-                </tr>
-              </thead>
-              <tbody>
-                {slice.map(r => {
-                  const isEditing = editing === r.id;
-                  return (
-                    <tr key={r.id} className="border-t">
-                      <td className="px-4 py-3">{r.guest?.name ?? `Guest #${r.guestId}`}</td>
-                      <td className="px-4 py-3">
-                        {isEditing ? (
-                          <div className="space-y-1">
-                            <textarea
-                              className="w-full rounded-md border px-3 py-2"
-                              value={editForm.items}
-                              onChange={e => setEditForm(f => ({ ...f, items: e.target.value }))}
-                              rows={3}
-                            />
-                            {editError && <div className="text-xs text-red-600">{editError}</div>}
-                          </div>
-                        ) : r.items}
-                      </td>
-                      <td className="px-4 py-3">
-                        {isEditing ? (
-                          <select
-                            className="rounded-md border px-2 py-2"
-                            value={editForm.status}
-                            onChange={e => setEditForm(f => ({ ...f, status: e.target.value }))}
-                          >
-                            {statuses.map(s => <option key={s} value={s}>{s}</option>)}
-                          </select>
-                        ) : (
-                          <span className="rounded-full bg-gray-100 px-2 py-1 text-xs">{r.status}</span>
-                        )}
-                      </td>
-                      <td className="px-4 py-3">{fmt(r.createdAt)}</td>
-                      <td className="px-4 py-3">
-                        <div className="flex items-center justify-end gap-2">
-                          {isEditing ? (
-                            <>
-                              <button
-                                onClick={() => saveEdit(r.id)}
-                                disabled={submitting}
-                                className="rounded-md border px-3 py-1 text-indigo-700 hover:bg-indigo-50 disabled:opacity-60"
-                              >
-                                Save
-                              </button>
-                              <button
-                                onClick={cancelEdit}
-                                className="rounded-md border px-3 py-1 hover:bg-gray-50"
-                              >
-                                Cancel
-                              </button>
-                            </>
-                          ) : (
-                            <>
-                              <button
-                                onClick={() => beginEdit(r)}
-                                className="rounded-md border px-3 py-1 hover:bg-gray-50"
-                              >
-                                Edit
-                              </button>
-                              <button
-                                onClick={() => remove(r.id)}
-                                className="rounded-md border px-3 py-1 text-red-600 hover:bg-red-50"
-                              >
-                                Delete
-                              </button>
-                            </>
-                          )}
-                          {justSaved === r.id && !isEditing && (
-                            <span className="rounded bg-green-100 px-2 py-0.5 text-xs font-semibold text-green-700">
-                              Saved
-                            </span>
-                          )}
+          <table className="min-w-full table-auto border-collapse">
+            <thead className="bg-gray-100">
+              <tr>
+                <th className="px-4 py-3 text-left text-sm font-semibold text-gray-700">Guest</th>
+                <th className="px-4 py-3 text-left text-sm font-semibold text-gray-700">Items</th>
+                <th className="px-4 py-3 text-left text-sm font-semibold text-gray-700">Status</th>
+                <th className="px-4 py-3 text-left text-sm font-semibold text-gray-700">Created</th>
+                <th className="px-4 py-3 text-right text-sm font-semibold text-gray-700">Actions</th>
+              </tr>
+            </thead>
+            <tbody>
+              {slice.map(r => {
+                const isEditing = editing === r.id;
+                return (
+                  <tr key={r.id} className="border-t">
+                    <td className="px-4 py-3">{r.guest?.name ?? `Guest #${r.guestId}`}</td>
+                    <td className="px-4 py-3">
+                      {isEditing ? (
+                        <div className="space-y-1">
+                          <textarea
+                            className="w-full rounded-md border px-3 py-2"
+                            value={editForm.items}
+                            onChange={e => setEditForm(f => ({ ...f, items: e.target.value }))}
+                            rows={3}
+                          />
+                          {editError && <div className="text-xs text-red-600">{editError}</div>}
                         </div>
-                      </td>
-                    </tr>
-                  );
-                })}
-              </tbody>
-            </table>
+                      ) : r.items}
+                    </td>
+                    <td className="px-4 py-3">
+                      {isEditing ? (
+                        <select
+                          className="rounded-md border px-2 py-2"
+                          value={editForm.status}
+                          onChange={e => setEditForm(f => ({ ...f, status: e.target.value }))}
+                        >
+                          {statuses.map(s => <option key={s} value={s}>{s}</option>)}
+                        </select>
+                      ) : (
+                        <span className="rounded-full bg-gray-100 px-2 py-1 text-xs">{r.status}</span>
+                      )}
+                    </td>
+                    <td className="px-4 py-3">{fmt(r.createdAt)}</td>
+                    <td className="px-4 py-3">
+                      <div className="flex items-center justify-end gap-2">
+                        {isEditing ? (
+                          <>
+                            <button
+                              onClick={() => saveEdit(r.id)}
+                              disabled={submitting}
+                              className="rounded-md border px-3 py-1 text-indigo-700 hover:bg-indigo-50 disabled:opacity-60"
+                            >
+                              Save
+                            </button>
+                            <button
+                              onClick={cancelEdit}
+                              className="rounded-md border px-3 py-1 hover:bg-gray-50"
+                            >
+                              Cancel
+                            </button>
+                          </>
+                        ) : (
+                          <>
+                            <button
+                              onClick={() => beginEdit(r)}
+                              className="rounded-md border px-3 py-1 hover:bg-gray-50"
+                            >
+                              Edit
+                            </button>
+                            <button
+                              onClick={() => remove(r.id)}
+                              className="rounded-md border px-3 py-1 text-red-600 hover:bg-red-50"
+                            >
+                              Delete
+                            </button>
+                          </>
+                        )}
+                        {justSaved === r.id && !isEditing && (
+                          <span className="rounded bg-green-100 px-2 py-0.5 text-xs font-semibold text-green-700">
+                            Saved
+                          </span>
+                        )}
+                      </div>
+                    </td>
+                  </tr>
+                );
+              })}
+            </tbody>
+          </table>
           )}
-        </div>
+        </ListState>
+      </div>
 
-        <AddLaundryModal
-          open={addModalOpen}
-          onClose={() => setAddModalOpen(false)}
-          guests={guests}
-          onCreated={handleCreated}
-          submitting={submitting}
-          setSubmitting={setSubmitting}
-          statuses={statuses}
-        />
-      </Layout>
+      <AddLaundryModal
+        open={addModalOpen}
+        onClose={() => setAddModalOpen(false)}
+        guests={guests}
+        onCreated={handleCreated}
+        submitting={submitting}
+        setSubmitting={setSubmitting}
+        statuses={statuses}
+      />
+    </Layout>
+  );
+}
+
+export default function LaundryPage() {
+  return (
+    <RequireAuth>
+      <LaundryInner />
     </RequireAuth>
   );
 }
