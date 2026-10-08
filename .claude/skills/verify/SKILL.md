@@ -62,12 +62,12 @@ A spec is a JSON file in [`specs/`](specs/). Copy the closest one and change it.
 ```
 
 - **`role`** is any backend role, or `anon`. The driver gets the role's JWT from the backend skill and puts it in `localStorage.token` before the first page loads, so the app starts signed in. Only `login-*` specs go through the real login form.
-- **`viewport`** is `desktop` (1280x800) or `phone` (390x844).
+- **`viewport`** is `desktop` (1280x800), `tablet` (768x1024) or `phone` (390x844).
 - **`setup`** creates data through the real API before the browser opens. Each entry runs `api call --expect`. `save` stores `api last .id`, or the `pick` jq path, in a variable.
 - **Variables.** `${RUN}` is unique per drive, so names never collide across reruns. `${DATE+N}` is today plus N days as `yyyy-mm-dd`. `${NAME}` is a saved setup value or an environment variable.
 - **`failApi`** answers matching browser requests with HTTP 500. Use it only to verify error states. Every other request reaches the real backend.
 - **Targets.** A string is a Playwright selector. An object is `{"label": "Full name"}`, `{"role": "button", "name": "Add Room"}`, `{"placeholder": "Number"}` or `{"text": "…"}`, all exact matches. Object targets search inside the open modal first, so a page button and a modal button with the same name resolve correctly. `label` works with or without `htmlFor`.
-- **Steps.** `goto`, `click`, `fill` + `value`, `select` + `value` (option value or label), `press`, `wait`, `screenshot`. Assertions are `expectText`, `expectNoText`, `expectVisible`, `expectHidden`, `expectValue` + `value`, `expectUrl` (exact pathname), `expectTitle`, `expectApi` (`"POST /bookings 201"`, query ignored), `expectNoApi`, `expectNoPageErrors`, `expectFits` (no horizontal scroll), and `apiCheck` (`{"as", "path", "jq", "expect"}`, an independent backend read).
+- **Steps.** `goto`, `click` (add `"at": [x, y]` to click at that offset inside the target, for a backdrop partly covered by a panel), `fill` + `value`, `select` + `value` (option value or label), `press`, `wait`, `screenshot`. Assertions are `expectText`, `expectNoText`, `expectVisible`, `expectHidden`, `expectValue` + `value`, `expectUrl` (exact pathname), `expectTitle`, `expectApi` (`"POST /bookings 201"`, query ignored), `expectNoApi`, `expectNoPageErrors`, `expectFits` (no horizontal page scroll, and every visible control outside a table lies inside the viewport), and `apiCheck` (`{"as", "path", "jq", "expect"}`, an independent backend read).
 
 Output of `drive`, one line each:
 

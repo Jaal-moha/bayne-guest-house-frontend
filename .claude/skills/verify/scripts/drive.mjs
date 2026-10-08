@@ -59,8 +59,10 @@ for (const [i, raw] of (spec.setup ?? []).entries()) {
 
 const role = report.role;
 const token = role === 'anon' ? null : control('api', 'token', role);
+const VIEWPORTS = { desktop: { width: 1280, height: 800 }, tablet: { width: 768, height: 1024 }, phone: { width: 390, height: 844 } };
+if (!VIEWPORTS[report.viewport]) throw new Error(`viewport must be one of ${Object.keys(VIEWPORTS).join(', ')}`);
 const browser = await chromium.launch({ executablePath: CHROME });
-const ctx = await browser.newContext({ viewport: report.viewport === 'phone' ? { width: 390, height: 844 } : { width: 1280, height: 800 } });
+const ctx = await browser.newContext({ viewport: VIEWPORTS[report.viewport] });
 await ctx.addInitScript((t) => { if (t) localStorage.setItem('token', t); else localStorage.removeItem('token'); }, token);
 const page = await ctx.newPage();
 page.setDefaultTimeout(STEP_TIMEOUT);
@@ -81,7 +83,7 @@ page.on('requestfailed', (r) => r.url().startsWith(API_URL) && report.api.push({
 page.on('console', (m) => m.type() === 'error' && report.console.push(m.text().slice(0, 300)));
 page.on('pageerror', (e) => report.pageErrors.push(e.message.slice(0, 300)));
 
-const scope = () => (page.locator('.fixed.inset-0').count().then((n) => (n ? page.locator('.fixed.inset-0').last() : page)));
+const scope = () => (page.locator('[role="dialog"]').count().then((n) => (n ? page.locator('[role="dialog"]').last() : page)));
 async function target(t) {
   if (typeof t === 'string') return page.locator(t).first();
   const root = await scope();
@@ -116,7 +118,7 @@ const apiMatch = (want) => {
 
 const actions = {
   goto: async (p) => { await page.goto(WEB_URL + p, { waitUntil: 'networkidle', timeout: 60_000 }); },
-  click: async (t) => { await (await target(t)).click(); await settle(); },
+  click: async (t, s) => { await (await target(t)).click(s.at ? { position: { x: s.at[0], y: s.at[1] } } : {}); await settle(); },
   fill: async (t, s) => { await (await target(t)).fill(String(s.value)); },
   select: async (t, s) => {
     const el = await target(t);
@@ -140,6 +142,12 @@ const actions = {
   expectFits: async () => {
     const w = await page.evaluate(() => [document.documentElement.scrollWidth, window.innerWidth]);
     if (w[0] > w[1]) throw new Error(`page is ${w[0]}px wide in a ${w[1]}px viewport`);
+    const off = await page.evaluate(() => [...document.querySelectorAll('button, a[href], input, select, textarea')]
+      .filter((el) => !el.closest('table'))
+      .map((el) => [el, el.getBoundingClientRect()])
+      .filter(([, r]) => r.width > 0 && (r.left < 0 || r.right > window.innerWidth))
+      .map(([el, r]) => `${el.tagName.toLowerCase()} "${(el.textContent || el.getAttribute('placeholder') || '').trim().slice(0, 30)}" spans ${Math.round(r.left)}..${Math.round(r.right)}px`));
+    if (off.length) throw new Error(`${off[0]} in a ${w[1]}px viewport`);
   },
   apiCheck: async (c) => {
     try {
