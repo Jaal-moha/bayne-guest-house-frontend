@@ -1,0 +1,29 @@
+{
+  "name": "bookings-new-guest",
+  "role": "reception",
+  "setup": [
+    { "as": "admin", "method": "POST", "path": "/rooms", "body": { "number": "N${RUN}", "type": "single", "price": 900 }, "expect": 201, "save": "ROOM" }
+  ],
+  "steps": [
+    { "goto": "/bookings" },
+    { "click": { "role": "button", "name": "Create Booking" } },
+    { "click": { "role": "button", "name": "New guest" } },
+    { "fill": { "label": "Full name" }, "value": "New ${RUN}" },
+    { "fill": { "label": "Phone" }, "value": "0911556677" },
+    { "click": { "role": "button", "name": "Next" } },
+    { "expectNoApi": "POST /guests" },
+    { "fill": { "label": "Check-in" }, "value": "${DATE+50}" },
+    { "fill": { "label": "Check-out" }, "value": "${DATE+53}" },
+    { "select": { "label": "Room" }, "value": "${ROOM}" },
+    { "click": { "role": "button", "name": "Next" } },
+    { "expectText": "New ${RUN} — 0911556677 (new)" },
+    { "screenshot": "new-guest-review" },
+    { "click": { "role": "button", "name": "Create booking" } },
+    { "expectApi": "POST /guests 201" },
+    { "expectApi": "POST /bookings 201" },
+    { "expectText": "Booking created successfully" },
+    { "expectText": "New ${RUN}" },
+    { "screenshot": "new-guest" },
+    { "apiCheck": { "as": "reception", "path": "/bookings", "jq": "any(.[]; .guest.name == \"New ${RUN}\" and .roomId == ${ROOM})" } }
+  ]
+}

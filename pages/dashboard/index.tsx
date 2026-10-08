@@ -4,7 +4,7 @@ import Layout from '@/components/Layout';
 import RequireAuth from '@/components/RequireAuth';
 import { useAuth } from '@/context/AuthContext';
 import axios from '@/utils/axiosInstance';
-import BookingStepper from '@/components/BookingStepper';
+import BookingFlow from '@/components/BookingFlow';
 import ListState from '@/components/ListState';
 import { useList } from '@/lib/useList';
 import { money } from '@/lib/format';
@@ -93,7 +93,7 @@ function DashboardInner() {
         </div>
       </div>
 
-      <BookingStepper open={showStepper} onClose={() => setShowStepper(false)} onCreated={overview.reload} />
+      <BookingFlow open={showStepper} onClose={() => setShowStepper(false)} onCreated={overview.reload} />
 
 
       {/* Range controls */}

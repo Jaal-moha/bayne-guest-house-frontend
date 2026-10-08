@@ -1,0 +1,29 @@
+{
+  "name": "dashboard-new-booking",
+  "role": "manager",
+  "setup": [
+    { "as": "admin", "method": "POST", "path": "/rooms", "body": { "number": "H${RUN}", "type": "double", "price": 1200 }, "expect": 201, "save": "ROOM" },
+    { "as": "manager", "method": "POST", "path": "/guests", "body": { "name": "Dash ${RUN}", "phone": "0911223344" }, "expect": 201, "save": "GUEST" }
+  ],
+  "steps": [
+    { "goto": "/dashboard" },
+    { "click": { "role": "button", "name": "New Booking" } },
+    { "expectVisible": { "role": "heading", "name": "Create Booking" } },
+    { "expectVisible": { "role": "button", "name": "Existing guest" } },
+    { "expectVisible": { "role": "button", "name": "New guest" } },
+    { "select": { "label": "Guest" }, "value": "${GUEST}" },
+    { "click": { "role": "button", "name": "Next" } },
+    { "fill": { "label": "Check-in" }, "value": "${DATE+70}" },
+    { "fill": { "label": "Check-out" }, "value": "${DATE+72}" },
+    { "select": { "label": "Room" }, "value": "${ROOM}" },
+    { "click": { "role": "button", "name": "Next" } },
+    { "expectText": "2 nights" },
+    { "click": { "role": "button", "name": "Create booking" } },
+    { "expectApi": "POST /bookings 201" },
+    { "expectText": "Booking created successfully" },
+    { "expectHidden": { "role": "heading", "name": "Create Booking" } },
+    { "screenshot": "dashboard" },
+    { "expectNoApi": "POST /guests" },
+    { "apiCheck": { "as": "manager", "path": "/bookings", "jq": "any(.[]; .guestId == ${GUEST} and .roomId == ${ROOM})" } }
+  ]
+}

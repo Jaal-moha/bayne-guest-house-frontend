@@ -1,0 +1,37 @@
+{
+  "name": "bookings-back-no-dup",
+  "role": "reception",
+  "setup": [
+    { "as": "admin", "method": "POST", "path": "/rooms", "body": { "number": "D${RUN}", "type": "single", "price": 900 }, "expect": 201, "save": "ROOM" }
+  ],
+  "steps": [
+    { "goto": "/bookings" },
+    { "click": { "role": "button", "name": "Create Booking" } },
+    { "click": { "role": "button", "name": "New guest" } },
+    { "fill": { "label": "Full name" }, "value": "Dup ${RUN}" },
+    { "fill": { "label": "Phone" }, "value": "0911889900" },
+    { "click": { "role": "button", "name": "Next" } },
+    { "fill": { "label": "Check-in" }, "value": "${DATE+60}" },
+    { "fill": { "label": "Check-out" }, "value": "${DATE+61}" },
+    { "select": { "label": "Room" }, "value": "${ROOM}" },
+    { "click": { "role": "button", "name": "Next" } },
+    { "failApi": ["POST /bookings"] },
+    { "click": { "role": "button", "name": "Create booking" } },
+    { "expectApi": "POST /guests 201" },
+    { "expectApi": "POST /bookings 500" },
+    { "expectText": "verify-injected failure" },
+    { "expectVisible": { "role": "heading", "name": "Create Booking" } },
+    { "unfailApi": ["POST /bookings"] },
+    { "click": { "role": "button", "name": "Back" } },
+    { "click": { "role": "button", "name": "Back" } },
+    { "fill": { "label": "Full name" }, "value": "Dup ${RUN} edited" },
+    { "click": { "role": "button", "name": "Next" } },
+    { "click": { "role": "button", "name": "Next" } },
+    { "click": { "role": "button", "name": "Create booking" } },
+    { "expectApi": "POST /bookings 201" },
+    { "expectText": "Booking created successfully" },
+    { "screenshot": "back" },
+    { "apiCheck": { "as": "reception", "path": "/guests", "jq": "([.[] | select(.name | startswith(\"Dup ${RUN}\"))] | length == 1) and any(.[]; .name == \"Dup ${RUN} edited\")" } },
+    { "apiCheck": { "as": "reception", "path": "/bookings", "jq": "any(.[]; .guest.name == \"Dup ${RUN} edited\" and .roomId == ${ROOM})" } }
+  ]
+}

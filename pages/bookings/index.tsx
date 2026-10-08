@@ -6,6 +6,7 @@ import { useToast } from '@/components/Toast';
 import Modal from '@/components/Modal';
 import Field from '@/components/Field';
 import ListState from '@/components/ListState';
+import BookingFlow from '@/components/BookingFlow';
 import { useList } from '@/lib/useList';
 import { money, date } from '@/lib/format';
 
@@ -205,160 +206,6 @@ function EditBookingModal({
   );
 }
 
-function CreateBookingModal({
-  open, onClose, onCreated,
-}: {
-  open: boolean;
-  onClose: () => void;
-  onCreated: (b: Booking) => void;
-}) {
-  const [guests, setGuests] = useState<Guest[]>([]);
-  const [rooms, setRooms] = useState<Room[]>([]);
-  const [guestId, setGuestId] = useState<number | ''>('');
-  const [roomId, setRoomId] = useState<number | ''>('');
-  const [checkIn, setCheckIn] = useState('');
-  const [checkOut, setCheckOut] = useState('');
-  const [loading, setLoading] = useState(false);
-  const [err, setErr] = useState('');
-  const { push } = useToast();
-
-  // Load guests once when modal opens
-  useEffect(() => {
-    if (!open) return;
-    setGuestId(''); setRoomId(''); setCheckIn(''); setCheckOut(''); setErr('');
-    axios.get('/guests').then(res => {
-      const data = Array.isArray(res.data) ? res.data : res.data.guests ?? [];
-      setGuests(data);
-    });
-  }, [open]);
-
-  // Whenever dates change, fetch available rooms
-  useEffect(() => {
-    const fetchAvailable = async () => {
-      setRooms([]);
-      if (!checkIn || !checkOut) return;
-      try {
-        const res = await axios.get('/rooms/available', { params: { checkIn, checkOut } });
-        const list = Array.isArray(res.data) ? res.data : res.data.rooms ?? res.data;
-        setRooms(list);
-        if (roomId && !list.find((r: Room) => r.id === roomId)) setRoomId('');
-      } catch (e: any) {
-        setErr(e?.response?.data?.message || 'Failed to load available rooms');
-      }
-    };
-    fetchAvailable();
-    // eslint-disable-next-line react-hooks/exhaustive-deps
-  }, [checkIn, checkOut]);
-
-  const submit = async () => {
-    setErr('');
-    if (!guestId) return setErr('Select a guest');
-    if (!checkIn || !checkOut) return setErr('Select check-in and check-out');
-    if (!roomId) return setErr('Select a room');
-    try {
-      setLoading(true);
-      const res = await axios.post('/bookings', {
-        guestId, roomId, checkIn: new Date(checkIn), checkOut: new Date(checkOut),
-      });
-      onCreated(res.data);
-      try { push('Booking created successfully', 'success'); } catch (e) { /* noop */ }
-      onClose();
-    } catch (e: any) {
-      const msg = e?.response?.data?.message || e?.message || 'Failed to create booking';
-      setErr(msg);
-      try { push(msg, 'error'); } catch (er) { /* noop */ }
-    } finally {
-      setLoading(false);
-    }
-  };
-
-  if (!open) return null;
-
-  return (
-    <Modal open={open} onClose={onClose} title="Create Booking" size="2xl" locked={loading}>
-      {err && <div className="mt-3 rounded border border-red-200 bg-red-50 px-3 py-2 text-sm text-red-700">{err}</div>}
-
-      <div className="mt-4 grid gap-4 sm:grid-cols-2">
-        <Field label="Guest" className="sm:col-span-2">
-          {(id) => (
-            <select
-              id={id}
-              className="w-full rounded border px-3 py-2"
-              value={guestId}
-              onChange={(e) => setGuestId(Number(e.target.value))}
-            >
-              <option value="">Select guest…</option>
-              {guests.map(g => <option key={g.id} value={g.id}>{g.name} — {g.phone}</option>)}
-            </select>
-          )}
-        </Field>
-
-        <Field label="Check-in">
-          {(id) => (
-            <input
-              id={id}
-              type="date"
-              className="w-full rounded border px-3 py-2"
-              value={checkIn}
-              onChange={(e) => setCheckIn(e.target.value)}
-            />
-          )}
-        </Field>
-        <Field label="Check-out">
-          {(id) => (
-            <input
-              id={id}
-              type="date"
-              className="w-full rounded border px-3 py-2"
-              value={checkOut}
-              onChange={(e) => setCheckOut(e.target.value)}
-              min={checkIn || undefined}
-            />
-          )}
-        </Field>
-
-        <Field label={<>Available Rooms {checkIn && checkOut ? '' : <span className="text-gray-400">(select dates first)</span>}</>} className="sm:col-span-2">
-          {(id) => (
-            <select
-              id={id}
-              className="w-full rounded border px-3 py-2"
-              value={roomId}
-              onChange={(e) => setRoomId(Number(e.target.value))}
-              disabled={!checkIn || !checkOut || rooms.length === 0}
-            >
-              {!checkIn || !checkOut ? (
-                <option value="">Select dates first</option>
-              ) : rooms.length === 0 ? (
-                <option value="">No rooms available</option>
-              ) : (
-                <>
-                  <option value="">Select room…</option>
-                  {rooms.map(r => (
-                    <option key={r.id} value={r.id}>
-                      {r.number} — {r.type} — ${r.price.toFixed(2)}
-                    </option>
-                  ))}
-                </>
-              )}
-            </select>
-          )}
-        </Field>
-      </div>
-
-      <div className="mt-6 flex justify-end gap-2">
-        <button onClick={onClose} className="rounded border px-4 py-2">Cancel</button>
-        <button
-          onClick={submit}
-          disabled={loading}
-          className="rounded bg-emerald-600 px-4 py-2 font-semibold text-white disabled:opacity-60"
-        >
-          {loading ? 'Saving…' : 'Create'}
-        </button>
-      </div>
-    </Modal>
-  );
-}
-
 function BookingsInner() {
   const bookings = useList<Booking>('bookings', async () => {
     const res = await axios.get('/bookings');
@@ -446,7 +293,7 @@ function BookingsInner() {
         </ListState>
       </div>
 
-      <CreateBookingModal
+      <BookingFlow<Booking>
         open={modal}
         onClose={() => setModal(false)}
         onCreated={(b) => setRows(prev => [b, ...prev])}
