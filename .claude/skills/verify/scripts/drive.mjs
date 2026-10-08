@@ -61,7 +61,11 @@ const role = report.role;
 const token = role === 'anon' ? null : control('api', 'token', role);
 const browser = await chromium.launch({ executablePath: CHROME });
 const ctx = await browser.newContext({ viewport: report.viewport === 'phone' ? { width: 390, height: 844 } : { width: 1280, height: 800 } });
-await ctx.addInitScript((t) => { if (t) localStorage.setItem('token', t); else localStorage.removeItem('token'); }, token);
+await ctx.addInitScript((t) => {
+  if (sessionStorage.getItem('verify-seeded')) return;
+  sessionStorage.setItem('verify-seeded', '1');
+  if (t) localStorage.setItem('token', t); else localStorage.removeItem('token');
+}, token);
 const page = await ctx.newPage();
 page.setDefaultTimeout(STEP_TIMEOUT);
 
