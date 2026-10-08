@@ -1,10 +1,12 @@
 // pages/dashboard/index.tsx
-import { useEffect, useState, useCallback } from 'react';
+import { useState } from 'react';
 import Layout from '@/components/Layout';
 import RequireAuth from '@/components/RequireAuth';
 import { useAuth } from '@/context/AuthContext';
 import axios from '@/utils/axiosInstance';
 import BookingStepper from '@/components/BookingStepper';
+import ListState from '@/components/ListState';
+import { useList } from '@/lib/useList';
 
 type Stats = {
   guests: number;
@@ -51,9 +53,6 @@ const money = (v: number, currency = 'USD') =>
 const integer = (v: number) => Number(v).toLocaleString();
 
 function DashboardInner() {
-  const [stats, setStats] = useState<Stats | null>(null);
-  const [loading, setLoading] = useState(true);
-  const [errMsg, setErrMsg] = useState<string | null>(null);
   const [showStepper, setShowStepper] = useState(false);
 
   const { user, loading: authLoading } = useAuth();
@@ -61,49 +60,25 @@ function DashboardInner() {
   // date range state (ISO yyyy-mm-dd)
   const [startDate, setStartDate] = useState<string | undefined>(undefined);
   const [endDate, setEndDate] = useState<string | undefined>(undefined);
+  const [applied, setApplied] = useState<{ start?: string; end?: string; }>({});
 
-  // helper to extract readable error message
-  const getErrMsg = (e: unknown) =>
-    (e as { response?: { data?: { message?: string; }; }; message?: string; })?.response?.data?.message
-    || (e as { message?: string; })?.message
-    || 'Failed to load stats';
-
-  // fetch overview, optional range object with start/end (yyyy-mm-dd)
-  const fetchOverview = useCallback(async (range?: { start?: string; end?: string; }) => {
-    setLoading(true);
-    setErrMsg(null);
-    try {
-      const params: Record<string, string> = {};
-      if (range?.start) params.start = range.start;
-      if (range?.end) params.end = range.end;
-      const res = await axios.get('/stats/overview', { params });
-      setStats(normalizeStats(res.data));
-    } catch (e: unknown) {
-      console.error('Stats fetch failed', e);
-      setErrMsg(getErrMsg(e));
-      setStats(null);
-    } finally {
-      setLoading(false);
-    }
-  }, []);
-
-  useEffect(() => {
-    fetchOverview();
-  }, [fetchOverview]);
+  const overview = useList<Stats>('dashboard stats', async () => {
+    const params: Record<string, string> = {};
+    if (applied.start) params.start = applied.start;
+    if (applied.end) params.end = applied.end;
+    const res = await axios.get('/stats/overview', { params });
+    return [normalizeStats(res.data)];
+  }, JSON.stringify(applied));
+  const [stats] = overview.rows;
 
   function applyRange() {
-    // if neither provided -> lifetime
-    if (!startDate && !endDate) {
-      fetchOverview();
-      return;
-    }
-    fetchOverview({ start: startDate, end: endDate });
+    setApplied({ start: startDate, end: endDate });
   }
 
   function clearRange() {
     setStartDate(undefined);
     setEndDate(undefined);
-    fetchOverview();
+    setApplied({});
   }
 
   return (
@@ -118,7 +93,7 @@ function DashboardInner() {
         </div>
       </div>
 
-      <BookingStepper open={showStepper} onClose={() => setShowStepper(false)} onCreated={async (b) => { await fetchOverview(); }} />
+      <BookingStepper open={showStepper} onClose={() => setShowStepper(false)} onCreated={overview.reload} />
 
 
       {/* Range controls */}
@@ -151,13 +126,8 @@ function DashboardInner() {
         </button>
       </div>
 
-      {loading ? (
-        <div className="text-gray-600">Loading…</div>
-      ) : errMsg ? (
-        <div className="text-red-600">{errMsg}</div>
-      ) : !stats ? (
-        <div className="text-gray-600">No stats available.</div>
-      ) : (
+      <ListState list={overview} empty="No stats available.">
+        {stats && (
         <div className="grid gap-4 sm:grid-cols-2 lg:grid-cols-4">
           <StatCard label="Guests" value={integer(stats.guests)} />
           <StatCard label="Bookings" value={integer(stats.bookings)} />
@@ -168,7 +138,8 @@ function DashboardInner() {
           <StatCard label="Laundry" value={integer(stats.laundry)} />
           <StatCard label="Revenue" value={money(stats.revenue)} />
         </div>
-      )}
+        )}
+      </ListState>
     </Layout>
   );
 }
