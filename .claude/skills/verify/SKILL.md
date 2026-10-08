@@ -17,18 +17,20 @@ S=.claude/skills/verify/scripts/control.sh   # run from the repo root
 $S up
 ```
 
-`up` installs `node_modules` if `next` is missing and puts `playwright-core` in `.verify/tools/`. It then starts the backend through the backend repo's own verify skill, under the same `VERIFY_ID` (default `frontend`), with CORS opened for the web origin. Last, it starts `next dev --turbopack` on `127.0.0.1` with `NEXT_PUBLIC_API_BASE` and `NEXT_PUBLIC_API_BASE_URL` pointed at that backend. The first run takes about 20 seconds, and later runs reuse the backend build.
+`up` installs `node_modules` if `next` is missing and puts `playwright-core` in `.verify/tools/`. It then starts the backend through the backend repo's own verify skill, with CORS opened for the web origin. The backend id is `fe-$VERIFY_ID`, or `frontend` when `VERIFY_ID` is unset, so no frontend run shares a backend with another frontend run or with a standalone backend run. Last, it starts `next dev --turbopack` on `127.0.0.1` with `NEXT_PUBLIC_API_BASE` and `NEXT_PUBLIC_API_BASE_URL` pointed at that backend. The first run takes about 20 seconds, and later runs reuse the backend build. The backend build writes one shared `dist/`, so `up` takes a lock in `$BACKEND_DIR/.verify/` around the backend start. Concurrent `up`s from other worktrees wait their turn, up to `VERIFY_LOCK_WAIT` seconds (default 900).
 
 | First line | Meaning | Do this |
 | --- | --- | --- |
 | `READY web=<url> api=<url> rev=<sha> evidence=<dir>` | Up and checked. | Drive. Use no other URL. |
 | `FAIL backend-missing want=<path>` | The backend repo isn't next to this one. | Set `BACKEND_DIR=<path to bayne-guest-house-backend>` and rerun `up`. |
 | `FAIL web-busy pids=<pids>` | Another `next dev` runs in this checkout and shares `.next`. | Stop it if you started it. Otherwise ask the user. Never kill it by name. |
+| `FAIL backend-up lock-timeout lock=<path>` | Another `up` held the backend lock longer than `VERIFY_LOCK_WAIT` seconds. | Check what holds it with `fuser <path>`, then rerun `up`. |
 | `FAIL backend-up <line>` | The backend skill failed. | Read the step and log named in `<line>`. |
+| `FAIL bad-verify-id …` | `VERIFY_ID` has a character outside `A-Za-z0-9_-`. | Pick an id such as `owner-ux-1`. |
 | `FAIL cors …` | The reused backend allows a different origin. | `$S down && $S up` |
 | `FAIL npm-ci`, `install-playwright`, `web-exited`, `web-timeout`, `no-chromium` | A local setup step failed. | Read the `log=` file it names, or set `CHROMIUM=<binary>`. |
 
-`up` is idempotent. A healthy instance prints `READY` again. The web port is kept in `.verify/web-port-$VERIFY_ID` so the backend's CORS origin stays valid across restarts. Give each worktree its own `VERIFY_ID`, such as `VERIFY_ID=owner-ux-1`, so instances in separate worktrees get separate backends, databases and ports. Every subcommand reads it, so export it once per shell. `next dev` hot-reloads, so code edits need no restart. Only one web instance can run per checkout, because `.next` can't be shared.
+`up` is idempotent. A healthy instance prints `READY` again. The web port is kept in `.verify/web-port` so the backend's CORS origin stays valid across restarts. Give each worktree its own `VERIFY_ID`, such as `VERIFY_ID=owner-ux-1`, so instances in separate worktrees get separate backends, databases and ports. Every subcommand reads it, so export it once per shell. A set id keys the state as `.verify/run-$VERIFY_ID/` and `.verify/web-port-$VERIFY_ID`. Unset, the paths stay `.verify/run/` and `.verify/web-port`. `next dev` hot-reloads, so code edits need no restart. Only one web instance can run per checkout, because `.next` can't be shared.
 
 ## Doctor
 
@@ -65,9 +67,9 @@ A spec is a JSON file in [`specs/`](specs/). Copy the closest one and change it.
 - **`viewport`** is `desktop` (1280x800) or `phone` (390x844).
 - **`setup`** creates data through the real API before the browser opens. Each entry runs `api call --expect`. `save` stores `api last .id`, or the `pick` jq path, in a variable.
 - **Variables.** `${RUN}` is unique per drive, so names never collide across reruns. `${DATE+N}` is today plus N days as `yyyy-mm-dd`. `${NAME}` is a saved setup value or an environment variable.
-- **`failApi`** answers matching browser requests with HTTP 500. Use it only to verify error states. Every other request reaches the real backend.
+- **`failApi`** answers matching browser requests with HTTP 500. Each entry is a method and a path prefix. Use it only to verify error states. Every other request reaches the real backend.
 - **Targets.** A string is a Playwright selector. An object is `{"label": "Full name"}`, `{"role": "button", "name": "Add Room"}`, `{"placeholder": "Number"}` or `{"text": "…"}`, all exact matches. Object targets search inside the open modal first, so a page button and a modal button with the same name resolve correctly. `label` works with or without `htmlFor`.
-- **Steps.** `goto`, `click`, `fill` + `value`, `select` + `value` (option value or label), `press`, `wait`, `screenshot`. Assertions are `expectText`, `expectNoText`, `expectVisible`, `expectHidden`, `expectValue` + `value`, `expectUrl` (exact pathname), `expectTitle`, `expectApi` (`"POST /bookings 201"`, query ignored), `expectNoApi`, `expectNoPageErrors`, `expectFits` (no horizontal scroll), and `apiCheck` (`{"as", "path", "jq", "expect"}`, an independent backend read).
+- **Steps.** `goto`, `click`, `fill` + `value`, `select` + `value` (option value or label), `press`, `wait`, `screenshot`. `failApi` and `unfailApi` take a list like the spec-level `failApi` and add or remove failing routes from that step on, so a spec can fail a load, lift the failure, and prove the retry. Assertions are `expectText`, `expectNoText`, `expectVisible`, `expectHidden`, `expectValue` + `value`, `expectUrl` (exact pathname), `expectTitle`, `expectApi` (`"POST /bookings 201"`, query ignored), `expectNoApi`, `expectNoVisit` (the tab never showed that pathname, even for a moment before a redirect), `expectNoPageErrors`, `expectFits` (no horizontal scroll), and `apiCheck` (`{"as", "path", "jq", "expect"}`, an independent backend read).
 
 Output of `drive`, one line each:
 
@@ -104,7 +106,7 @@ A proof needs all of these.
 $S down
 ```
 
-It kills only the process group recorded at `up`, after checking that its cwd is this repo and its cmdline is `next dev`. It runs the backend skill's `down`, which stops Postgres and deletes the database, then removes `.verify/run-$VERIFY_ID/` and prints `DOWN ok evidence=<dir>`. Evidence survives. It's safe to run when nothing is up and prints `DOWN nothing-running`. Run it at the end of every session, including after a failed `up`.
+It kills only the process group recorded at `up`, after checking that its cwd is this repo and its cmdline is `next dev`. It runs the backend skill's `down`, which stops Postgres and deletes the database, then removes the run directory and prints `DOWN ok evidence=<dir>`. Evidence survives. It's safe to run when nothing is up and prints `DOWN nothing-running`. Run it at the end of every session, including after a failed `up`.
 
 ## Helpers
 

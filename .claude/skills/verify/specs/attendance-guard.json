@@ -1,0 +1,9 @@
+{
+  "name": "attendance-guard",
+  "role": "finance",
+  "steps": [
+    { "goto": "/attendance" },
+    { "expectUrl": "/dashboard" },
+    { "expectNoApi": "GET /attendance" }
+  ]
+}
