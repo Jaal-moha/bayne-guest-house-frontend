@@ -16,9 +16,11 @@ mkdirSync(dir, { recursive: true });
 
 const vars = { ...process.env, RUN: Date.now().toString(36) };
 const iso = (days) => new Date(Date.now() + days * 86_400_000).toISOString().slice(0, 10);
+const text = (x) => (typeof x === 'string' ? x : JSON.stringify(x));
 const sub = (v) =>
   typeof v === 'string'
-    ? v.replace(/\$\{DATE([+-]\d+)\}/g, (_, n) => iso(Number(n))).replace(/\$\{(\w+)\}/g, (m, k) => vars[k] ?? m)
+    ? /^\$\{\w+\}$/.test(v) && v.slice(2, -1) in vars ? vars[v.slice(2, -1)]
+    : v.replace(/\$\{DATE([+-]\d+)\}/g, (_, n) => iso(Number(n))).replace(/\$\{(\w+)\}/g, (m, k) => (k in vars ? text(vars[k]) : m))
     : Array.isArray(v) ? v.map(sub)
     : v && typeof v === 'object' ? Object.fromEntries(Object.entries(v).map(([k, x]) => [k, sub(x)]))
     : v;
@@ -46,9 +48,9 @@ for (const [i, raw] of (spec.setup ?? []).entries()) {
   const label = `${s.as} ${s.method} ${s.path}`;
   try {
     const out = control('api', 'call', '--expect', String(s.expect), s.as, s.method, s.path, ...(s.body ? [JSON.stringify(s.body)] : []));
-    if (s.save) vars[s.save] = control('api', 'last', s.pick ?? '.id');
+    if (s.save) vars[s.save] = JSON.parse(control('api', 'last', `${s.pick ?? '.id'} | select(.) | tojson`));
     report.setup.push({ ...s, evidence: out.match(/^EVIDENCE (.+)$/m)?.[1] });
-    console.log(`SETUP ${String(i + 1).padStart(2, '0')} OK ${label}${s.save ? ` ${s.save}=${vars[s.save]}` : ''}`);
+    console.log(`SETUP ${String(i + 1).padStart(2, '0')} OK ${label}${s.save ? ` ${s.save}=${text(vars[s.save])}` : ''}`);
   } catch (e) {
     failed = `setup ${label}: ${(e.stdout || e.message).split('\n').filter(Boolean).slice(-2).join(' | ')}`;
     console.log(`SETUP FAIL ${failed}`);
