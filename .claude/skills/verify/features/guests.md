@@ -25,7 +25,7 @@ Preconditions:
 - **Create.** Run `$S drive guests-create`. It requires `API POST /guests 201`, the row `Walk-in ${RUN}`, and an `apiCheck` that the guest exists.
 - **Edit prefill.** Run `$S drive guests-edit-prefill`. It requires the Full name field to hold the row's name after Edit.
 - **Edit save.** Run `$S drive guests-edit-save`. It requires `API PATCH /guests/${GID} 200`, no `POST /guests`, the new email in the row, an `apiCheck` on `/guests/${GID}`, and an `apiCheck` that the guest count is unchanged.
-- **Phone required.** Run `$S drive guests-phone-required`. It requires "Phone is required", the modal still open, no `PATCH /guests` request, and an `apiCheck` that the phone is unchanged.
+- **Phone required.** Run `$S drive guests-phone-required`. It requires "Phone is required", the modal still open, no `PATCH /guests/${GID}` request, and an `apiCheck` that the phone is unchanged.
 - **Edit fail.** Run `$S drive guests-edit-fail`. It fails `PATCH /guests/` and requires `API PATCH /guests/${GID} 500`, the "Couldn't save guest" toast, the modal still open with the typed Full name, and an `apiCheck` that the name is unchanged.
 
 ## Gotchas

@@ -11,7 +11,7 @@
     { "click": { "role": "button", "name": "Save changes" } },
     { "expectText": "Phone is required" },
     { "expectText": "Edit Guest" },
-    { "expectNoApi": "PATCH /guests" },
+    { "expectNoApi": "PATCH /guests/${GID}" },
     { "screenshot": "phone-required" },
     { "apiCheck": { "as": "reception", "path": "/guests/${GID}", "jq": ".phone == \"0911000555\"" } },
     { "expectNoPageErrors": true }
