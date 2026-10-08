@@ -3,6 +3,8 @@ import Layout from '@/components/Layout';
 import RequireAuth from '@/components/RequireAuth';
 import axios from '@/utils/axiosInstance';
 import ListState from '@/components/ListState';
+import Modal from '@/components/Modal';
+import Field from '@/components/Field';
 import { useList, type List } from '@/lib/useList';
 import Link from 'next/link';
 
@@ -134,15 +136,14 @@ function RecordPaymentModal({
   };
 
   return (
-    <div className="fixed inset-0 z-50 grid place-items-center bg-black/40 p-4">
-      <div className="w-full max-w-lg rounded-xl bg-white p-6 shadow-lg">
-        <h3 className="text-lg font-semibold">Record Payment</h3>
-        {err && <div className="mt-3 rounded border border-red-200 bg-red-50 px-3 py-2 text-sm text-red-700">{err}</div>}
+    <Modal open={open} onClose={onClose} title="Record Payment">
+      {err && <div className="mt-3 rounded border border-red-200 bg-red-50 px-3 py-2 text-sm text-red-700">{err}</div>}
 
-        <div className="mt-4 space-y-3">
-          <div>
-            <label className="mb-1 block text-sm font-medium text-gray-700">Booking</label>
+      <div className="mt-4 space-y-3">
+        <Field label="Booking">
+          {(id) => (
             <select
+              id={id}
               className="w-full rounded border px-3 py-2 disabled:bg-gray-100"
               value={presetBooking ? presetBooking.id : bookingId}
               onChange={e=>setBookingId(Number(e.target.value))}
@@ -165,66 +166,76 @@ function RecordPaymentModal({
                 </>
               )}
             </select>
-          </div>
-
-          {selected && (
-            <div className="rounded-md bg-gray-50 p-3 text-sm text-gray-700">
-              Nights: <b>{nightsBetween(selected.checkIn, selected.checkOut)}</b> × Rate:{' '}
-              <b>${selected.room?.price?.toFixed(2)}</b> = <b>${computed?.toFixed(2)}</b>
-            </div>
           )}
+        </Field>
 
-          <div>
-            <label className="mb-1 block text-sm font-medium text-gray-700">Amount (optional)</label>
-            <input
-              type="number"
-              min={0}
-              step="0.01"
-              className="w-full rounded border px-3 py-2"
-              placeholder={selected && computed != null ? `${computed}` : 'e.g. 120'}
-              value={amount}
-              onChange={e=>setAmount(e.target.value)}
-            />
-            <p className="mt-1 text-xs text-gray-500">Leave empty to use the calculated total.</p>
+        {selected && (
+          <div className="rounded-md bg-gray-50 p-3 text-sm text-gray-700">
+            Nights: <b>{nightsBetween(selected.checkIn, selected.checkOut)}</b> × Rate:{' '}
+            <b>${selected.room?.price?.toFixed(2)}</b> = <b>${computed?.toFixed(2)}</b>
           </div>
+        )}
 
-          <div className="grid gap-3 sm:grid-cols-2">
-            <div>
-              <label className="mb-1 block text-sm font-medium text-gray-700">Method</label>
-              <select className="w-full rounded border px-3 py-2" value={method} onChange={e=>setMethod(e.target.value)}>
+        <Field label="Amount (optional)">
+          {(id) => (
+            <>
+              <input
+                id={id}
+                type="number"
+                min={0}
+                step="0.01"
+                className="w-full rounded border px-3 py-2"
+                placeholder={selected && computed != null ? `${computed}` : 'e.g. 120'}
+                value={amount}
+                onChange={e=>setAmount(e.target.value)}
+              />
+              <p className="mt-1 text-xs text-gray-500">Leave empty to use the calculated total.</p>
+            </>
+          )}
+        </Field>
+
+        <div className="grid gap-3 sm:grid-cols-2">
+          <Field label="Method">
+            {(id) => (
+              <select id={id} className="w-full rounded border px-3 py-2" value={method} onChange={e=>setMethod(e.target.value)}>
                 {METHODS.map(m => <option key={m.value} value={m.value}>{m.label}</option>)}
               </select>
-            </div>
-            <div>
-              <label className="mb-1 block text-sm font-medium text-gray-700">Status</label>
-              <select className="w-full rounded border px-3 py-2" value={status} onChange={e=>setStatus(e.target.value)}>
+            )}
+          </Field>
+          <Field label="Status">
+            {(id) => (
+              <select id={id} className="w-full rounded border px-3 py-2" value={status} onChange={e=>setStatus(e.target.value)}>
                 {STATUSES.map(s => <option key={s.value} value={s.value}>{s.label}</option>)}
               </select>
-            </div>
-          </div>
-
-          <div>
-            <label className="mb-1 block text-sm font-medium text-gray-700">Description / Reason (optional)</label>
-            <textarea
-              className="w-full rounded border px-3 py-2"
-              placeholder="e.g. Paid cash at reception; includes minibar charge"
-              value={description}
-              onChange={(e)=>setDescription(e.target.value)}
-              rows={3}
-              maxLength={300}
-            />
-            <p className="mt-1 text-xs text-gray-500">Max 300 characters.</p>
-          </div>
+            )}
+          </Field>
         </div>
 
-        <div className="mt-6 flex justify-end gap-2">
-          <button onClick={onClose} className="rounded border px-4 py-2">Cancel</button>
-          <button onClick={submit} disabled={loading} className="rounded bg-indigo-600 px-4 py-2 font-semibold text-white disabled:opacity-60">
-            {loading ? 'Saving…' : 'Record'}
-          </button>
-        </div>
+        <Field label="Description / Reason (optional)">
+          {(id) => (
+            <>
+              <textarea
+                id={id}
+                className="w-full rounded border px-3 py-2"
+                placeholder="e.g. Paid cash at reception; includes minibar charge"
+                value={description}
+                onChange={(e)=>setDescription(e.target.value)}
+                rows={3}
+                maxLength={300}
+              />
+              <p className="mt-1 text-xs text-gray-500">Max 300 characters.</p>
+            </>
+          )}
+        </Field>
       </div>
-    </div>
+
+      <div className="mt-6 flex justify-end gap-2">
+        <button onClick={onClose} className="rounded border px-4 py-2">Cancel</button>
+        <button onClick={submit} disabled={loading} className="rounded bg-indigo-600 px-4 py-2 font-semibold text-white disabled:opacity-60">
+          {loading ? 'Saving…' : 'Record'}
+        </button>
+      </div>
+    </Modal>
   );
 }
 
