@@ -229,9 +229,9 @@ function RecordPaymentModal({
 }
 
 function PaymentsTab({
-  list, q, setQ, openModal,
+  list, q, setQ, openModal, canRecord,
 }: {
-  list: List<Payment>; q: string; setQ: (v: string)=>void; openModal: ()=>void;
+  list: List<Payment>; q: string; setQ: (v: string)=>void; openModal: ()=>void; canRecord: boolean;
 }) {
   const { rows } = list;
   const filtered = useMemo(() => {
@@ -262,12 +262,12 @@ function PaymentsTab({
         )}
         <div className="ml-auto flex gap-2">
           <input value={q} onChange={e=>setQ(e.target.value)} placeholder="Search…" className="w-64 rounded border px-3 py-2" />
-          <button onClick={openModal} className="rounded bg-indigo-600 px-4 py-2 font-semibold text-white">Record Payment</button>
+          <button onClick={openModal} disabled={!canRecord} className="rounded bg-indigo-600 px-4 py-2 font-semibold text-white disabled:opacity-60">Record Payment</button>
         </div>
       </div>
 
       <div className="overflow-x-auto rounded bg-white shadow">
-        <ListState list={list} empty="No payments.">
+        <ListState list={list}>
           <table className="min-w-full table-auto">
             <thead className="bg-gray-100">
               <tr>
@@ -338,7 +338,7 @@ function UnpaidTab({
       </div>
 
       <div className="overflow-x-auto rounded bg-white shadow">
-        <ListState list={list} empty="No unpaid bookings.">
+        <ListState list={list}>
           <table className="min-w-full table-auto">
             <thead className="bg-gray-100">
               <tr>
@@ -435,6 +435,7 @@ function PaymentsInner() {
           q={qPay}
           setQ={setQPay}
           openModal={openNewPayment}
+          canRecord={payments.state.kind !== 'forbidden' && unpaid.state.kind !== 'forbidden'}
         />
       ) : (
         <UnpaidTab

@@ -8,7 +8,7 @@
     { "expectNoText": "Couldn't load laundry records" },
     { "click": { "role": "button", "name": "+ Add Laundry" } },
     { "expectText": "You don't have access to this list" },
-    { "expectVisible": { "role": "button", "name": "Retry" } },
+    { "expectHidden": { "role": "button", "name": "Retry" } },
     { "screenshot": "forbidden" },
     { "expectNoPageErrors": true }
   ]

@@ -476,7 +476,7 @@ function InventoryInner() {
       </div>
 
       <div className="overflow-x-auto rounded bg-white shadow">
-        <ListState list={items} empty="No items.">
+        <ListState list={items}>
           <table className="min-w-full table-auto">
             <thead className="bg-gray-100">
               <tr>

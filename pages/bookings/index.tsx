@@ -393,7 +393,7 @@ function BookingsInner() {
       </div>
 
       <div className="overflow-x-auto rounded bg-white shadow">
-        <ListState list={bookings} empty="No bookings.">
+        <ListState list={bookings}>
           <table className="min-w-full table-auto">
             <thead className="bg-gray-100">
               <tr>

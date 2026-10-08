@@ -3,8 +3,9 @@ import { useCallback, useEffect, useRef, useState } from 'react';
 
 export type ListLoad<T> =
   | { kind: 'loading' }
+  | { kind: 'forbidden' }
   | { kind: 'error'; message: string }
-  | { kind: 'ready'; rows: T[] };
+  | { kind: 'ready'; rows: T[]; updating: boolean };
 
 export type List<T> = {
   state: ListLoad<T>;
@@ -13,9 +14,13 @@ export type List<T> = {
   setRows: (update: (rows: T[]) => T[]) => void;
 };
 
-function errorMessage(what: string, e: unknown): string {
-  if (isAxiosError(e) && e.response?.status === 403) return "You don't have access to this list";
-  return `Couldn't load ${what}`;
+export function loadFailure(what: string, e: unknown): ListLoad<never> {
+  if (isAxiosError(e) && e.response?.status === 403) return { kind: 'forbidden' };
+  return { kind: 'error', message: `Couldn't load ${what}` };
+}
+
+export function refetching<T>(s: ListLoad<T>): ListLoad<T> {
+  return s.kind === 'ready' ? { ...s, updating: true } : { kind: 'loading' };
 }
 
 export function useList<T>(what: string, load: () => Promise<T[]>, refetchKey = ''): List<T> {
@@ -26,12 +31,12 @@ export function useList<T>(what: string, load: () => Promise<T[]>, refetchKey = 
 
   const reload = useCallback(async () => {
     const request = ++latestRequest.current;
-    setState((s) => (s.kind === 'ready' ? s : { kind: 'loading' }));
+    setState(refetching);
     try {
       const rows = await latestLoad.current();
-      if (request === latestRequest.current) setState({ kind: 'ready', rows });
+      if (request === latestRequest.current) setState({ kind: 'ready', rows, updating: false });
     } catch (e) {
-      if (request === latestRequest.current) setState({ kind: 'error', message: errorMessage(what, e) });
+      if (request === latestRequest.current) setState(loadFailure(what, e));
     }
   }, [what]);
 
@@ -40,7 +45,7 @@ export function useList<T>(what: string, load: () => Promise<T[]>, refetchKey = 
   }, [reload, refetchKey]);
 
   const setRows = useCallback((update: (rows: T[]) => T[]) => {
-    setState((s) => (s.kind === 'ready' ? { kind: 'ready', rows: update(s.rows) } : s));
+    setState((s) => (s.kind === 'ready' ? { ...s, rows: update(s.rows) } : s));
   }, []);
 
   return { state, rows: state.kind === 'ready' ? state.rows : [], reload, setRows };

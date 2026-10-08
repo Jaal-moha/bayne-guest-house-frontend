@@ -1,0 +1,12 @@
+{
+  "name": "payments-empty-table",
+  "role": "admin",
+  "steps": [
+    { "goto": "/payments" },
+    { "expectApi": "GET /payments 200" },
+    { "expectVisible": { "role": "columnheader", "name": "Method" } },
+    { "expectVisible": { "role": "cell", "name": "No payments." } },
+    { "screenshot": "payments-empty" },
+    { "expectNoPageErrors": true }
+  ]
+}
