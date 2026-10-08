@@ -46,6 +46,7 @@ function Flow<B>({ onClose, onCreated }: { onClose: () => void; onCreated: (book
   const pickedRoom = rooms.rows.find((r) => r.id === stay.roomId);
 
   async function create() {
+    if (submit.kind === 'saving') return;
     const plan = planSubmit(state, todayYMD());
     if (plan.kind === 'invalid') {
       dispatch({ type: 'submitRejected', step: plan.step, errors: plan.errors });
@@ -190,12 +191,12 @@ function Flow<B>({ onClose, onCreated }: { onClose: () => void; onCreated: (book
                   className={INPUT}
                   value={stay.roomId ?? ''}
                   onChange={(e) => dispatch({ type: 'pickRoom', roomId: e.target.value ? Number(e.target.value) : null })}
-                  disabled={!datesReady || rooms.state.kind !== 'ready' || rooms.rows.length === 0}
+                  disabled={!datesReady || rooms.state.kind !== 'ready' || rooms.state.updating || rooms.rows.length === 0}
                   aria-invalid={!!errors.roomId}
                 >
                   <option value="">
                     {!datesReady ? 'Pick valid dates first'
-                      : rooms.state.kind === 'loading' ? 'Loading rooms…'
+                      : rooms.state.kind === 'loading' || (rooms.state.kind === 'ready' && rooms.state.updating) ? 'Loading rooms…'
                       : rooms.state.kind !== 'ready' ? "Couldn't load rooms"
                       : rooms.rows.length === 0 ? 'No rooms free for these dates'
                       : 'Select room…'}
