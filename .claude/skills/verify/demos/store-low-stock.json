@@ -1,0 +1,30 @@
+{
+  "name": "store-low-stock",
+  "role": "store",
+  "demo": {
+    "group": "store",
+    "title": "Find low stock",
+    "summary": "The storekeeper lists items at or below their minimum to plan the next purchase."
+  },
+  "setup": [
+    { "as": "store", "method": "POST", "path": "/inventory", "body": { "name": "Shampoo sachets", "category": "Housekeeping", "unit": "pcs", "quantity": 300, "minThreshold": 100 }, "expect": 201 },
+    { "as": "store", "method": "POST", "path": "/inventory", "body": { "name": "Habesha beer", "category": "Bar", "unit": "pcs", "quantity": 96, "minThreshold": 48 }, "expect": 201 },
+    { "as": "store", "method": "POST", "path": "/inventory", "body": { "name": "Fresh milk", "category": "Kitchen", "unit": "L", "quantity": 6, "minThreshold": 12 }, "expect": 201 },
+    { "as": "store", "method": "POST", "path": "/inventory", "body": { "name": "Laundry detergent", "category": "Housekeeping", "unit": "kg", "quantity": 4, "minThreshold": 10 }, "expect": 201 }
+  ],
+  "steps": [
+    { "goto": "/inventory" },
+    { "caption": "Items at or below their minimum get a Low badge." },
+    { "click": { "label": "Low stock only" } },
+    { "expectNoText": "Shampoo sachets" },
+    { "expectText": "Laundry detergent" },
+    { "expectText": "Fresh milk" },
+    { "caption": "Narrow it to one category for the housekeeping order." },
+    { "select": "select:has(option:text-is('All categories'))", "value": "Housekeeping" },
+    { "expectNoText": "Fresh milk" },
+    { "expectText": "Laundry detergent" },
+    { "expectApi": "GET /inventory 200" },
+    { "caption": "Laundry detergent needs reordering." },
+    { "apiCheck": { "as": "store", "path": "/inventory?low=true&category=Housekeeping", "jq": "any(.[]; .name == \"Laundry detergent\") and all(.[]; .name != \"Shampoo sachets\")" } }
+  ]
+}

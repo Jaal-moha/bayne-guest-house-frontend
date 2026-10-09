@@ -1,0 +1,27 @@
+{
+  "name": "manager-edit-room-price",
+  "role": "manager",
+  "demo": {
+    "group": "manager",
+    "title": "Change a room price",
+    "summary": "The manager raises the nightly price of a double room for the new season."
+  },
+  "setup": [
+    { "as": "manager", "method": "POST", "path": "/rooms", "body": { "number": "510", "type": "Single", "price": 1200 }, "expect": 201 },
+    { "as": "manager", "method": "POST", "path": "/rooms", "body": { "number": "511", "type": "Double", "price": 1800 }, "expect": 201, "save": "ROOM" },
+    { "as": "manager", "method": "POST", "path": "/rooms", "body": { "number": "512", "type": "Suite", "price": 3500 }, "expect": 201 }
+  ],
+  "steps": [
+    { "goto": "/rooms" },
+    { "caption": "Room 511 costs 1,800 birr a night. Open it to change the price." },
+    { "click": "tr:has-text('511') >> role=button[name='Edit']" },
+    { "expectValue": { "label": "Number" }, "value": "511" },
+    { "caption": "Set the new price and save." },
+    { "fill": { "label": "Price" }, "value": "2000" },
+    { "click": { "role": "button", "name": "Save Changes" } },
+    { "expectApi": "PATCH /rooms/${ROOM} 200" },
+    { "expectText": "ETB\u00a02,000.00" },
+    { "caption": "Room 511 now shows 2,000 birr." },
+    { "apiCheck": { "as": "manager", "path": "/rooms/${ROOM}", "jq": ".price == 2000" } }
+  ]
+}

@@ -1,0 +1,40 @@
+{
+  "name": "manager-dashboard",
+  "role": "manager",
+  "demo": {
+    "group": "manager",
+    "title": "Check today's numbers",
+    "summary": "The manager opens the dashboard for the hotel's totals, then narrows the revenue to today and to last month."
+  },
+  "setup": [
+    { "as": "reception", "method": "POST", "path": "/guests", "body": { "name": "Bethlehem Asfaw", "phone": "0911820453" }, "expect": 201, "save": "GUEST1" },
+    { "as": "reception", "method": "POST", "path": "/guests", "body": { "name": "Ermias Wondimu", "phone": "0929045716" }, "expect": 201, "save": "GUEST2" },
+    { "as": "admin", "method": "POST", "path": "/rooms", "body": { "number": "357", "type": "double", "price": 1700 }, "expect": 201, "save": "ROOM1" },
+    { "as": "admin", "method": "POST", "path": "/rooms", "body": { "number": "358", "type": "suite", "price": 3200 }, "expect": 201, "save": "ROOM2" },
+    { "as": "reception", "method": "POST", "path": "/bookings", "body": { "guestId": "${GUEST1}", "roomId": "${ROOM1}", "checkIn": "${DATE+0}", "checkOut": "${DATE+2}" }, "expect": 201, "save": "BOOKING1" },
+    { "as": "reception", "method": "POST", "path": "/bookings", "body": { "guestId": "${GUEST2}", "roomId": "${ROOM2}", "checkIn": "${DATE+0}", "checkOut": "${DATE+3}" }, "expect": 201, "save": "BOOKING2" },
+    { "as": "reception", "method": "POST", "path": "/payments", "body": { "bookingId": "${BOOKING1}", "method": "cash", "status": "paid" }, "expect": 201 },
+    { "as": "reception", "method": "POST", "path": "/payments", "body": { "bookingId": "${BOOKING2}", "method": "cbe", "status": "paid" }, "expect": 201 },
+    { "as": "reception", "method": "POST", "path": "/laundry", "body": { "guestId": "${GUEST2}", "items": "3 Shirts", "price": 135 }, "expect": 201 }
+  ],
+  "steps": [
+    { "goto": "/dashboard" },
+    { "expectApi": "GET /stats/overview 200" },
+    { "caption": "The dashboard opens with the hotel's lifetime totals." },
+    { "caption": "Revenue can be narrowed to any dates. Start with today." },
+    { "fill": { "label": "Start" }, "value": "${DATE+0}" },
+    { "fill": { "label": "End" }, "value": "${DATE+0}" },
+    { "click": { "role": "button", "name": "Apply" } },
+    { "expectApi": "GET /stats/overview 200" },
+    { "caption": "Revenue now counts only payments taken today." },
+    { "caption": "Now last month." },
+    { "fill": { "label": "Start" }, "value": "${DATE-30}" },
+    { "fill": { "label": "End" }, "value": "${DATE-1}" },
+    { "click": { "role": "button", "name": "Apply" } },
+    { "expectVisible": "div.rounded-xl:has-text('Revenue'):has-text('ETB\u00a00.00')" },
+    { "caption": "Nothing was paid in that range. Clear goes back to lifetime totals." },
+    { "click": { "role": "button", "name": "Clear (lifetime)" } },
+    { "expectHidden": "div.rounded-xl:has-text('Revenue'):has-text('ETB\u00a00.00')" },
+    { "apiCheck": { "as": "manager", "path": "/stats/overview?start=${DATE+0}&end=${DATE+0}", "jq": ".revenue >= 13135" } }
+  ]
+}

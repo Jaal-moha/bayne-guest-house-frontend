@@ -5,6 +5,8 @@ set -uo pipefail
 ROOT="$(git -C "$(dirname "${BASH_SOURCE[0]}")" rev-parse --show-toplevel)"
 SELF="$ROOT/.claude/skills/verify/scripts/control.sh"
 SPECS="$ROOT/.claude/skills/verify/specs"
+DEMOS="$ROOT/.claude/skills/verify/demos"
+DEMO_DIR="${DEMO_DIR:-$ROOT/.verify/demos}"
 BACKEND_DIR="${BACKEND_DIR:-$(cd "$ROOT/.." && pwd)/bayne-guest-house-backend}"
 BACKEND_CTL="$BACKEND_DIR/.claude/skills/verify/scripts/control.sh"
 VERIFY_ID="${VERIFY_ID:-}"
@@ -160,7 +162,33 @@ cmd_suite() {
   (( fail == 0 && xpass == 0 ))
 }
 
-cmd_api() { load_state; backend "$@"; }
+cmd_demo() {
+  local filter="${1:-}" f name out pass=0 fail=0
+  load_state
+  command -v ffmpeg >/dev/null || die "no-ffmpeg install ffmpeg"
+  mkdir -p "$DEMO_DIR"
+  for f in "$DEMOS"/*.json; do
+    name="$(basename "$f" .json)"
+    [[ -n "$filter" && "$name" != $filter ]] && continue
+    out="$(DEMO_OUT="$DEMO_DIR/$name.webm" cmd_drive "$f")"
+    if grep -qx 'RESULT PASS' <<<"$out" &&
+      ffmpeg -loglevel error -y -i "$DEMO_DIR/$name.webm" -an -c:v libx264 -preset slow -crf 20 -pix_fmt yuv420p -movflags +faststart "$DEMO_DIR/$name.mp4" &&
+      ffmpeg -loglevel error -y -sseof -1 -i "$DEMO_DIR/$name.mp4" -frames:v 1 -vf scale=640:-2 "$DEMO_DIR/$name.jpg"; then
+      rm -f "$DEMO_DIR/$name.webm"
+      pass=$((pass+1)); echo "DEMO PASS $name $DEMO_DIR/$name.mp4"
+    else
+      rm -f "$DEMO_DIR/$name.webm"
+      fail=$((fail+1)); echo "DEMO FAIL $name $(grep -E '^EVIDENCE ' <<<"$out" | cut -d' ' -f2)"
+      grep -E '^(STEP [0-9]+ FAIL|SETUP FAIL|RESULT) ' <<<"$out" | sed 's/^/  /'
+    fi
+  done
+  node "$ROOT/.claude/skills/verify/scripts/demo-index.mjs" "$DEMOS" "$DEMO_DIR"
+  echo "DEMOS pass=$pass fail=$fail index=$DEMO_DIR/index.html"
+  (( fail == 0 ))
+}
+
+# The backend skill keeps each response in one shared last.body, so concurrent drives must take turns.
+cmd_api() { load_state; { flock 9; backend "$@"; } 9>"$RUN_DIR/api.lock"; }
 
 cmd_down() {
   [[ -f "$STATE" ]] || { backend down >/dev/null; echo "DOWN nothing-running evidence=$EVIDENCE_ROOT"; return 0; }
@@ -173,6 +201,6 @@ cmd_down() {
 }
 
 case "${1:-}" in
-  up|doctor|drive|suite|api|down) c="$1"; shift; "cmd_$c" "$@" ;;
-  *) echo "usage: control.sh up|doctor|drive <spec>|suite [glob]|api <backend control.sh args>|down"; exit 1 ;;
+  up|doctor|drive|suite|demo|api|down) c="$1"; shift; "cmd_$c" "$@" ;;
+  *) echo "usage: control.sh up|doctor|drive <spec>|suite [glob]|demo [glob]|api <backend control.sh args>|down"; exit 1 ;;
 esac

@@ -1,0 +1,43 @@
+{
+  "name": "reception-payment-unpaid-list",
+  "role": "reception",
+  "demo": {
+    "group": "reception",
+    "title": "Settle an unpaid booking",
+    "summary": "Reception opens the list of bookings nobody has paid for yet, finds a guest, and records the payment straight from that list."
+  },
+  "setup": [
+    { "as": "reception", "method": "POST", "path": "/guests", "body": { "name": "Dawit Haile", "phone": "0911902134" }, "expect": 201, "save": "GUEST1" },
+    { "as": "reception", "method": "POST", "path": "/guests", "body": { "name": "Tigist Mengistu", "phone": "0930554418" }, "expect": 201, "save": "GUEST2" },
+    { "as": "reception", "method": "POST", "path": "/guests", "body": { "name": "Biruk Tadesse", "phone": "0947120983" }, "expect": 201, "save": "GUEST3" },
+    { "as": "admin", "method": "POST", "path": "/rooms", "body": { "number": "346", "type": "double", "price": 1600 }, "expect": 201, "save": "ROOM1" },
+    { "as": "admin", "method": "POST", "path": "/rooms", "body": { "number": "347", "type": "single", "price": 1100 }, "expect": 201, "save": "ROOM2" },
+    { "as": "admin", "method": "POST", "path": "/rooms", "body": { "number": "348", "type": "twin", "price": 1400 }, "expect": 201, "save": "ROOM3" },
+    { "as": "reception", "method": "POST", "path": "/bookings", "body": { "guestId": "${GUEST1}", "roomId": "${ROOM1}", "checkIn": "${DATE+0}", "checkOut": "${DATE+2}" }, "expect": 201, "save": "BOOKING1" },
+    { "as": "reception", "method": "POST", "path": "/bookings", "body": { "guestId": "${GUEST2}", "roomId": "${ROOM2}", "checkIn": "${DATE+1}", "checkOut": "${DATE+5}" }, "expect": 201, "save": "BOOKING2" },
+    { "as": "reception", "method": "POST", "path": "/bookings", "body": { "guestId": "${GUEST3}", "roomId": "${ROOM3}", "checkIn": "${DATE+3}", "checkOut": "${DATE+4}" }, "expect": 201, "save": "BOOKING3" }
+  ],
+  "steps": [
+    { "goto": "/payments" },
+    { "caption": "Unpaid Bookings shows who still owes for their stay." },
+    { "click": { "role": "button", "name": "Unpaid Bookings" } },
+    { "expectVisible": "tr:has-text('#${BOOKING2}'):has-text('Tigist Mengistu')" },
+    { "caption": "Search for the guest who is at the desk." },
+    { "fill": { "placeholder": "Search…" }, "value": "Tigist" },
+    { "expectVisible": "tr:has-text('#${BOOKING2}'):has-text('ETB\u00a04,400.00')" },
+    { "caption": "Each row shows the total due. Record it." },
+    { "click": "tr:has-text('#${BOOKING2}') >> role=button[name='Record']" },
+    { "caption": "The booking is filled in. Choose the method." },
+    { "select": { "label": "Method" }, "value": "mobile" },
+    { "fill": { "label": "Description / Reason (optional)" }, "value": "Paid with telebirr" },
+    { "click": { "role": "button", "name": "Record" } },
+    { "expectApi": "POST /payments 201" },
+    { "expectHidden": "role=dialog" },
+    { "expectHidden": "tr:has-text('#${BOOKING2}')" },
+    { "caption": "The booking leaves the unpaid list." },
+    { "click": { "role": "button", "name": "Payments" } },
+    { "expectVisible": "tr:has-text('#${BOOKING2}'):has-text('Mobile Money')" },
+    { "caption": "And the payment shows on the Payments tab." },
+    { "apiCheck": { "as": "reception", "path": "/payments", "jq": "any(.[]; .bookingId == ${BOOKING2} and .amount == 4400 and .status == \"paid\" and .method == \"mobile\")" } }
+  ]
+}

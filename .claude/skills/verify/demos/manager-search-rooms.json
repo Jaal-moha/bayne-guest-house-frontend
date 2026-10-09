@@ -1,0 +1,28 @@
+{
+  "name": "manager-search-rooms",
+  "role": "manager",
+  "demo": {
+    "group": "manager",
+    "title": "Find rooms by type",
+    "summary": "The manager narrows the room list to suites to review their prices."
+  },
+  "setup": [
+    { "as": "manager", "method": "POST", "path": "/rooms", "body": { "number": "520", "type": "Suite", "price": 3500 }, "expect": 201 },
+    { "as": "manager", "method": "POST", "path": "/rooms", "body": { "number": "521", "type": "Single", "price": 1200 }, "expect": 201 },
+    { "as": "manager", "method": "POST", "path": "/rooms", "body": { "number": "522", "type": "Suite", "price": 4000 }, "expect": 201 }
+  ],
+  "steps": [
+    { "goto": "/rooms" },
+    { "caption": "Type in the search box to filter rooms by number, type or price." },
+    { "fill": { "placeholder": "Search…" }, "value": "suite" },
+    { "expectText": "ETB\u00a04,000.00" },
+    { "expectNoText": "Single" },
+    { "caption": "Only the suites remain, 520 and 522 among them." },
+    { "expectApi": "GET /rooms 200" },
+    { "caption": "Search by number too. Type 52 to find the 520s." },
+    { "fill": { "placeholder": "Search…" }, "value": "52" },
+    { "expectText": "521" },
+    { "expectNoText": "503" },
+    { "apiCheck": { "as": "manager", "path": "/rooms", "jq": "any(.[]; .number == \"522\" and .type == \"Suite\")" } }
+  ]
+}

@@ -1,0 +1,27 @@
+{
+  "name": "store-count-stock",
+  "role": "store",
+  "demo": {
+    "group": "store",
+    "title": "Correct stock after a count",
+    "summary": "The storekeeper sets the bed sheet quantity to what the monthly count found."
+  },
+  "setup": [
+    { "as": "store", "method": "POST", "path": "/inventory", "body": { "name": "Pillowcases", "category": "Housekeeping", "unit": "pcs", "quantity": 90, "minThreshold": 30 }, "expect": 201 },
+    { "as": "store", "method": "POST", "path": "/inventory", "body": { "name": "Bed sheets", "category": "Housekeeping", "unit": "pcs", "quantity": 80, "minThreshold": 30 }, "expect": 201, "save": "ITEM" }
+  ],
+  "steps": [
+    { "goto": "/inventory" },
+    { "caption": "The system says 80 bed sheets, but the count found 74." },
+    { "click": "tr:has-text('Bed sheets')" },
+    { "click": { "role": "button", "name": "Adjust" } },
+    { "caption": "Adjust sets the exact quantity instead of adding or subtracting." },
+    { "fill": { "label": "Quantity (pcs)" }, "value": "74" },
+    { "fill": { "label": "Reason (optional)" }, "value": "Monthly stock count" },
+    { "click": { "role": "button", "name": "Confirm" } },
+    { "expectApi": "POST /inventory/${ITEM}/movements 201" },
+    { "expectText": "74 pcs" },
+    { "caption": "The list now matches the shelf." },
+    { "apiCheck": { "as": "store", "path": "/inventory/${ITEM}", "jq": ".quantity == 74" } }
+  ]
+}

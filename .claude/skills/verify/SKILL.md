@@ -101,6 +101,16 @@ A proof needs all of these.
 - A `failApi` spec when the change touches loading or error states, and a disallowed `role` when it touches role gates.
 - The `EVIDENCE` paths cited in your report.
 
+## Demos
+
+```bash
+$S down && $S up              # demos use fixed room numbers, so record on a fresh database
+$S demo                       # every spec in demos/, one DEMO PASS|FAIL line each, then DEMOS pass= fail= index=
+$S demo 'store-*'             # a glob over demo names
+```
+
+A demo is a spec in [`demos/`](demos/) recorded as a silent 1280x800 mp4 in `.verify/demos/<name>.mp4`, with a poster `<name>.jpg` and a gallery `index.html` that groups videos by `demo.group`. Set `DEMO_DIR` to write somewhere else. It needs `ffmpeg`. A demo spec is a normal spec plus a `demo` block, `{"group": "reception", "title": "Create a booking", "summary": "One plain sentence."}`, which the video opens with as a title card. The card's badge shows `role`; a sign-in demo runs as `anon`, so give it `demo.as` to name the role it signs in as. In recording mode the driver paints a cursor dot, glides it to each target, types `fill` values key by key (date inputs are set at once), pauses after each action, and holds the last frame. The `caption` step shows a caption bar that survives navigation until the next `caption`; outside recording mode it does nothing. Assertions still run, so a failing demo produces no video. Name a demo `<role>-<task>`, give visible data realistic names, and keep `${RUN}` for fields that must be unique.
+
 ## Cleanup
 
 ```bash
@@ -112,4 +122,5 @@ It kills only the process group recorded at `up`, after checking that its cwd is
 ## Helpers
 
 - `scripts/control.sh` is the entry point. It needs `node`, `npm`, `curl`, `ss`, `pgrep`, a Chromium binary and the backend repo.
-- `scripts/drive.mjs` runs one spec. `control.sh drive` and `suite` call it with the instance's environment. Don't call it directly.
+- `scripts/drive.mjs` runs one spec. `control.sh drive`, `suite` and `demo` call it with the instance's environment. Don't call it directly.
+- `scripts/demo-index.mjs` writes the demo gallery. `control.sh demo` calls it.
