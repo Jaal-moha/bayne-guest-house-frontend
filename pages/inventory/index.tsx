@@ -394,7 +394,7 @@ function ItemActions({ item, onAdd, onSubtract, onAdjust, onHistory, onRemove, r
       ) : (
         <div className="mt-5 rounded-lg border border-red-200 bg-red-50 p-3">
           <div className="text-sm font-medium text-red-800">Confirm removal</div>
-          <div className="mt-1 text-sm text-red-700">This will permanently delete “{item.name}”.</div>
+          <div className="mt-1 text-sm text-red-700">Remove “{item.name}” from inventory? Its stock history is kept.</div>
           <div className="mt-3 flex gap-2">
             <button className="rounded bg-red-600 px-3 py-2 text-white hover:bg-red-700 disabled:opacity-60" disabled={removing} onClick={doRemove}>
               {removing ? 'Removing…' : 'Confirm Remove'}

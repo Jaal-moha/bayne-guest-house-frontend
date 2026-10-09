@@ -1,0 +1,26 @@
+{
+  "name": "inventory-remove-keeps-history",
+  "role": "store",
+  "setup": [
+    { "as": "store", "method": "POST", "path": "/inventory", "body": { "name": "Archive ${RUN}", "category": "Verify", "unit": "pcs", "quantity": 3 }, "expect": 201, "save": "ITEM" }
+  ],
+  "steps": [
+    { "goto": "/inventory" },
+    { "click": "tr:has-text('Archive ${RUN}')" },
+    { "expectVisible": { "role": "dialog", "name": "Archive ${RUN}" } },
+    { "click": { "role": "button", "name": "Remove Item" } },
+    { "expectText": "Confirm removal" },
+    { "expectText": "Remove “Archive ${RUN}” from inventory? Its stock history is kept." },
+    { "expectNoText": "permanently delete" },
+    { "expectVisible": { "role": "button", "name": "Confirm Remove" } },
+    { "expectVisible": { "role": "button", "name": "Cancel" } },
+    { "screenshot": "remove-confirm" },
+    { "expectNoApi": "DELETE /inventory/${ITEM}" },
+    { "click": { "role": "button", "name": "Confirm Remove" } },
+    { "expectApi": "DELETE /inventory/${ITEM} 200" },
+    { "expectHidden": { "role": "dialog", "name": "Archive ${RUN}" } },
+    { "expectNoText": "Archive ${RUN}" },
+    { "apiCheck": { "as": "store", "path": "/inventory", "jq": "[(if type == \"array\" then . else (.inventory // .items // .data) end)[] | select(.id == ${ITEM})] | length == 0" } },
+    { "expectNoPageErrors": true }
+  ]
+}
