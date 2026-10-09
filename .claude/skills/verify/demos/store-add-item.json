@@ -1,0 +1,31 @@
+{
+  "name": "store-add-item",
+  "role": "store",
+  "demo": {
+    "group": "store",
+    "title": "Add an inventory item",
+    "summary": "The storekeeper adds coffee beans to inventory with an opening quantity and a low-stock threshold."
+  },
+  "setup": [
+    { "as": "store", "method": "POST", "path": "/inventory", "body": { "name": "Bath towels", "category": "Housekeeping", "unit": "pcs", "quantity": 120, "minThreshold": 40 }, "expect": 201 },
+    { "as": "store", "method": "POST", "path": "/inventory", "body": { "name": "Teff flour", "category": "Kitchen", "unit": "kg", "quantity": 35, "minThreshold": 10 }, "expect": 201 },
+    { "as": "store", "method": "POST", "path": "/inventory", "body": { "name": "Ambo mineral water", "category": "Bar", "unit": "pcs", "quantity": 48, "minThreshold": 24 }, "expect": 201 }
+  ],
+  "steps": [
+    { "goto": "/inventory" },
+    { "caption": "Inventory lists every stocked item. Add a new one." },
+    { "click": { "role": "button", "name": "New Item" } },
+    { "caption": "Name it, pick a category and unit, and set the opening stock." },
+    { "fill": { "label": "Name" }, "value": "Yirgacheffe coffee beans" },
+    { "fill": { "label": "Category" }, "value": "Bar" },
+    { "select": { "label": "Unit" }, "value": "kg" },
+    { "fill": { "label": "Initial Quantity (optional)" }, "value": "25" },
+    { "fill": { "label": "Min Threshold (optional)" }, "value": "5" },
+    { "click": { "role": "button", "name": "Create" } },
+    { "expectApi": "POST /inventory 201" },
+    { "expectHidden": { "role": "dialog", "name": "New Item" } },
+    { "expectText": "Yirgacheffe coffee beans" },
+    { "caption": "The beans are in stock with 25 kg." },
+    { "apiCheck": { "as": "store", "path": "/inventory?q=Yirgacheffe", "jq": "any(.[]; .name == \"Yirgacheffe coffee beans\" and .quantity == 25 and .unit == \"kg\" and .minThreshold == 5)" } }
+  ]
+}

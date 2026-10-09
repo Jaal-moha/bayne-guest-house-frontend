@@ -1,0 +1,30 @@
+{
+  "name": "store-search-inventory",
+  "role": "store",
+  "demo": {
+    "group": "store",
+    "title": "Search inventory",
+    "summary": "The storekeeper searches for bottled water to see how much is left."
+  },
+  "setup": [
+    { "as": "store", "method": "POST", "path": "/inventory", "body": { "name": "Highland bottled water", "category": "Bar", "unit": "pcs", "quantity": 72, "minThreshold": 24 }, "expect": 201 },
+    { "as": "store", "method": "POST", "path": "/inventory", "body": { "name": "Injera", "category": "Kitchen", "unit": "pcs", "quantity": 40, "minThreshold": 20 }, "expect": 201 },
+    { "as": "store", "method": "POST", "path": "/inventory", "body": { "name": "Hand soap", "category": "Housekeeping", "unit": "pcs", "quantity": 50, "minThreshold": 15 }, "expect": 201 },
+    { "as": "store", "method": "POST", "path": "/inventory", "body": { "name": "Ambo sparkling water", "category": "Bar", "unit": "pcs", "quantity": 36, "minThreshold": 24 }, "expect": 201 }
+  ],
+  "steps": [
+    { "goto": "/inventory" },
+    { "caption": "Search by name, SKU or category." },
+    { "fill": { "placeholder": "Search name, SKU, category…" }, "value": "water" },
+    { "expectNoText": "Hand soap" },
+    { "expectText": "Highland bottled water" },
+    { "expectText": "Ambo sparkling water" },
+    { "expectApi": "GET /inventory 200" },
+    { "caption": "Only the water items are left, with their quantities." },
+    { "caption": "Search matches categories too. Try Kitchen." },
+    { "fill": { "placeholder": "Search name, SKU, category…" }, "value": "kitchen" },
+    { "expectText": "Injera" },
+    { "expectNoText": "Highland bottled water" },
+    { "apiCheck": { "as": "store", "path": "/inventory?q=water", "jq": "any(.[]; .name == \"Highland bottled water\") and all(.[]; .name != \"Hand soap\")" } }
+  ]
+}

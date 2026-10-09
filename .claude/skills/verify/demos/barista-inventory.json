@@ -1,0 +1,29 @@
+{
+  "name": "barista-inventory",
+  "role": "barista",
+  "demo": {
+    "group": "barista",
+    "title": "Take stock for the bar",
+    "summary": "A barista signs in, lands on Inventory, and records the coffee beans taken for the morning shift."
+  },
+  "setup": [
+    { "as": "store", "method": "POST", "path": "/inventory", "body": { "name": "Sugar sachets", "category": "Bar", "unit": "pcs", "quantity": 400, "minThreshold": 100 }, "expect": 201 },
+    { "as": "store", "method": "POST", "path": "/inventory", "body": { "name": "Whole milk", "category": "Bar", "unit": "L", "quantity": 20, "minThreshold": 5 }, "expect": 201 },
+    { "as": "store", "method": "POST", "path": "/inventory", "body": { "name": "Espresso beans", "category": "Bar", "unit": "kg", "quantity": 12, "minThreshold": 3 }, "expect": 201, "save": "ITEM" }
+  ],
+  "steps": [
+    { "goto": "/" },
+    { "expectUrl": "/inventory" },
+    { "caption": "A barista lands on Inventory, the only page in their menu." },
+    { "click": "tr:has-text('Espresso beans')" },
+    { "caption": "Take out what the bar used and say why." },
+    { "click": { "role": "button", "name": "Subtract" } },
+    { "fill": { "label": "Quantity (kg)" }, "value": "2" },
+    { "fill": { "label": "Reason (optional)" }, "value": "Morning shift, coffee bar" },
+    { "click": { "role": "button", "name": "Confirm" } },
+    { "expectApi": "POST /inventory/${ITEM}/movements 201" },
+    { "expectText": "10 kg" },
+    { "caption": "The store sees 10 kg left." },
+    { "apiCheck": { "as": "store", "path": "/inventory/${ITEM}", "jq": ".quantity == 10" } }
+  ]
+}

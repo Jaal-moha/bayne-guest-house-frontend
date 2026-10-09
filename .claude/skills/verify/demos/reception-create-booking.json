@@ -1,0 +1,32 @@
+{
+  "name": "reception-create-booking",
+  "role": "reception",
+  "demo": {
+    "group": "reception",
+    "title": "Create a booking",
+    "summary": "Reception books a room for a returning guest in three steps: guest, dates and room, review."
+  },
+  "setup": [
+    { "as": "admin", "method": "POST", "path": "/rooms", "body": { "number": "201", "type": "double", "price": 1500 }, "expect": 201, "save": "ROOM" },
+    { "as": "reception", "method": "POST", "path": "/guests", "body": { "name": "Hana Tesfaye", "phone": "0911223344" }, "expect": 201, "save": "GUEST" }
+  ],
+  "steps": [
+    { "goto": "/bookings" },
+    { "caption": "The Bookings page lists every stay. Start a new one." },
+    { "click": { "role": "button", "name": "Create Booking" } },
+    { "caption": "Step 1. Pick the guest." },
+    { "select": { "label": "Guest" }, "value": "${GUEST}" },
+    { "click": { "role": "button", "name": "Next" } },
+    { "caption": "Step 2. Choose the dates and a free room." },
+    { "fill": { "label": "Check-in" }, "value": "${DATE+3}" },
+    { "fill": { "label": "Check-out" }, "value": "${DATE+5}" },
+    { "select": { "label": "Room" }, "value": "${ROOM}" },
+    { "click": { "role": "button", "name": "Next" } },
+    { "caption": "Step 3. Review and confirm." },
+    { "click": { "role": "button", "name": "Create booking" } },
+    { "expectApi": "POST /bookings 201" },
+    { "expectText": "Booking created successfully" },
+    { "caption": "The booking appears in the list." },
+    { "apiCheck": { "as": "reception", "path": "/bookings", "jq": "any(.[]; .guestId == ${GUEST} and .roomId == ${ROOM})" } }
+  ]
+}

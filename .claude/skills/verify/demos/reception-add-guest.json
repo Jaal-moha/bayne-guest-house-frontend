@@ -1,0 +1,23 @@
+{
+  "name": "reception-add-guest",
+  "role": "reception",
+  "demo": {
+    "group": "reception",
+    "title": "Add a guest",
+    "summary": "Reception saves a guest profile so the guest can be picked for bookings later."
+  },
+  "steps": [
+    { "goto": "/guests" },
+    { "caption": "The Guests page keeps a profile for everyone who stays." },
+    { "click": { "role": "button", "name": "Add Guest" } },
+    { "caption": "Enter the guest's name and phone. Email is optional." },
+    { "fill": { "label": "Full name" }, "value": "Yonas Girma" },
+    { "fill": { "label": "Phone" }, "value": "0933445566" },
+    { "fill": { "label": "Email" }, "value": "yonas.${RUN}@example.com" },
+    { "click": { "role": "button", "name": "Add Guest" } },
+    { "expectApi": "POST /guests 201" },
+    { "expectText": "yonas.${RUN}@example.com" },
+    { "caption": "Yonas is now in the list and can be booked." },
+    { "apiCheck": { "as": "reception", "path": "/guests", "jq": "any(.[]; .name == \"Yonas Girma\" and .email == \"yonas.${RUN}@example.com\")" } }
+  ]
+}

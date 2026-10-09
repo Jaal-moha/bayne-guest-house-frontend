@@ -1,10 +1,10 @@
 import { execFileSync } from 'node:child_process';
-import { mkdirSync, readFileSync, readdirSync, writeFileSync } from 'node:fs';
+import { mkdirSync, readFileSync, readdirSync, renameSync, writeFileSync } from 'node:fs';
 import { createRequire } from 'node:module';
 import { join } from 'node:path';
 
 const { chromium } = createRequire(process.env.NODE_PATH + '/')('playwright-core');
-const { WEB_URL, API_URL, CHROME, EVIDENCE_DIR, CONTROL } = process.env;
+const { WEB_URL, API_URL, CHROME, EVIDENCE_DIR, CONTROL, DEMO_OUT } = process.env;
 const STEP_TIMEOUT = 10_000;
 
 const arg = process.argv[2];
@@ -25,6 +25,8 @@ const sub = (v) =>
     : v && typeof v === 'object' ? Object.fromEntries(Object.entries(v).map(([k, x]) => [k, sub(x)]))
     : v;
 const control = (...a) => execFileSync(CONTROL, a, { encoding: 'utf8', stdio: ['ignore', 'pipe', 'pipe'] }).trim();
+const responseBody = (out) => out.split('\n')[out.split('\n').findIndex((l) => l.startsWith('EVIDENCE ')) + 1];
+const jq = (filter, input) => execFileSync('jq', ['-e', filter], { input, encoding: 'utf8', stdio: ['pipe', 'pipe', 'pipe'] }).trim();
 
 const report = { spec: name, role: spec.role ?? 'admin', viewport: spec.viewport ?? 'desktop', setup: [], steps: [], visits: [], api: [], requests: [], console: [], pageErrors: [] };
 let failed = null;
@@ -49,7 +51,7 @@ for (const [i, raw] of (spec.setup ?? []).entries()) {
   const label = `${s.as} ${s.method} ${s.path}`;
   try {
     const out = control('api', 'call', '--expect', String(s.expect), s.as, s.method, s.path, ...(s.body ? [JSON.stringify(s.body)] : []));
-    if (s.save) vars[s.save] = JSON.parse(control('api', 'last', `${s.pick ?? '.id'} | select(.) | tojson`));
+    if (s.save) vars[s.save] = JSON.parse(jq(`${s.pick ?? '.id'} | select(.)`, responseBody(out)));
     report.setup.push({ ...s, evidence: out.match(/^EVIDENCE (.+)$/m)?.[1] });
     console.log(`SETUP ${String(i + 1).padStart(2, '0')} OK ${label}${s.save ? ` ${s.save}=${text(vars[s.save])}` : ''}`);
   } catch (e) {
@@ -65,7 +67,9 @@ const token = role === 'anon' ? null : control('api', 'token', role);
 const VIEWPORTS = { desktop: { width: 1280, height: 800 }, tablet: { width: 768, height: 1024 }, phone: { width: 390, height: 844 } };
 if (!VIEWPORTS[report.viewport]) throw new Error(`viewport must be one of ${Object.keys(VIEWPORTS).join(', ')}`);
 const browser = await chromium.launch({ executablePath: CHROME });
-const ctx = await browser.newContext({ viewport: VIEWPORTS[report.viewport] });
+const viewport = VIEWPORTS[report.viewport];
+const ctx = await browser.newContext({ viewport, ...(DEMO_OUT && { recordVideo: { dir: join(dir, 'video'), size: viewport } }) });
+if (DEMO_OUT) await ctx.addInitScript(demoOverlay);
 await ctx.addInitScript((t) => {
   if (sessionStorage.getItem('verify-seeded')) return;
   sessionStorage.setItem('verify-seeded', '1');
@@ -73,6 +77,52 @@ await ctx.addInitScript((t) => {
 }, token);
 const page = await ctx.newPage();
 page.setDefaultTimeout(STEP_TIMEOUT);
+
+// Headless Chromium draws no cursor and the video has no sound, so demo mode paints both the pointer and a caption bar.
+function demoOverlay() {
+  if (window !== window.top) return;
+  let store;
+  try { store = window.sessionStorage; } catch { return; }
+  const draw = () => {
+    if (!document.body || document.getElementById('demo-cursor')) return;
+    const style = document.createElement('style');
+    style.textContent = 'nextjs-portal{display:none!important}';
+    document.head.appendChild(style);
+    const cursor = document.createElement('div');
+    cursor.id = 'demo-cursor';
+    const [x, y] = JSON.parse(store.getItem('demo-pos') || '[-40,-40]');
+    cursor.style.cssText = `position:fixed;left:${x}px;top:${y}px;width:22px;height:22px;margin:-11px 0 0 -11px;border-radius:50%;background:rgba(239,68,68,.35);border:2px solid #ef4444;z-index:2147483647;pointer-events:none;transition:transform .12s`;
+    document.body.appendChild(cursor);
+    const bar = document.createElement('div');
+    bar.id = 'demo-caption';
+    bar.style.cssText = 'position:fixed;left:50%;bottom:28px;transform:translateX(-50%);max-width:80%;padding:12px 22px;border-radius:12px;background:rgba(15,23,42,.88);color:#fff;font:600 18px/1.35 system-ui,sans-serif;text-align:center;z-index:2147483646;pointer-events:none;box-shadow:0 8px 30px rgba(0,0,0,.3)';
+    document.body.appendChild(bar);
+    window.__demoCaption = (text) => { store.setItem('demo-caption', text); bar.textContent = text; bar.style.display = text ? 'block' : 'none'; };
+    window.__demoCaption(store.getItem('demo-caption') || '');
+    document.addEventListener('mousemove', (e) => { cursor.style.left = e.clientX + 'px'; cursor.style.top = e.clientY + 'px'; store.setItem('demo-pos', JSON.stringify([e.clientX, e.clientY])); }, true);
+    document.addEventListener('mousedown', () => { cursor.style.transform = 'scale(.6)'; }, true);
+    document.addEventListener('mouseup', () => { cursor.style.transform = ''; }, true);
+  };
+  if (document.body) draw(); else document.addEventListener('DOMContentLoaded', draw);
+}
+const esc = (t) => String(t).replace(/[&<>"]/g, (c) => `&#${c.charCodeAt(0)};`);
+const titleCard = (d) => `<body style="margin:0;height:100vh;display:grid;place-items:center;background:linear-gradient(135deg,#0f172a,#1e3a5f);color:#fff;font-family:system-ui,sans-serif">
+  <div style="text-align:center;max-width:80%">
+    <div style="display:inline-block;padding:6px 16px;border-radius:999px;background:#38bdf8;color:#0f172a;font-weight:700;letter-spacing:.08em;text-transform:uppercase;font-size:15px">${esc(report.role === 'anon' ? (d.as ?? 'Any user') : report.role)}</div>
+    <h1 style="font-size:44px;margin:22px 0 14px">${esc(d.title)}</h1>
+    <p style="font-size:21px;color:#cbd5e1;line-height:1.5;margin:0">${esc(d.summary ?? '')}</p>
+  </div></body>`;
+let mouse = [-40, -40];
+async function glide(el) {
+  await el.scrollIntoViewIfNeeded().catch(() => {});
+  const box = await el.boundingBox();
+  if (!box) return;
+  const to = [box.x + box.width / 2, box.y + box.height / 2];
+  await page.mouse.move(...to, { steps: Math.max(8, Math.round(Math.hypot(to[0] - mouse[0], to[1] - mouse[1]) / 25)) });
+  mouse = to;
+  await page.waitForTimeout(250);
+}
+const PACE = 700;
 
 const apiPath = (url) => url.slice(API_URL.length) || '/';
 const failing = new Set(sub(spec.failApi ?? []));
@@ -147,10 +197,27 @@ const apiMatch = (want) => {
 
 const actions = {
   goto: async (p) => { await page.goto(WEB_URL + p, { waitUntil: 'networkidle', timeout: 60_000 }); },
-  click: async (t, s) => { await (await target(t)).click(s.at ? { position: { x: s.at[0], y: s.at[1] } } : {}); await settle(); },
-  fill: async (t, s) => { await (await target(t)).fill(String(s.value)); },
+  click: async (t, s) => {
+    const el = await target(t);
+    if (DEMO_OUT && !s.at) await glide(el);
+    await el.click(s.at ? { position: { x: s.at[0], y: s.at[1] } } : {});
+    await settle();
+  },
+  fill: async (t, s) => {
+    const el = await target(t);
+    if (!DEMO_OUT || /^(date|datetime-local|time|month)$/.test(await el.getAttribute('type') ?? '')) return el.fill(String(s.value));
+    await glide(el);
+    await el.fill('');
+    await el.pressSequentially(String(s.value), { delay: 45 });
+  },
+  caption: async (text) => {
+    if (!DEMO_OUT) return;
+    await page.evaluate((t) => window.__demoCaption?.(t), text);
+    await page.waitForTimeout(Math.min(4_000, 1_200 + text.length * 35));
+  },
   select: async (t, s) => {
     const el = await target(t);
+    if (DEMO_OUT) await glide(el);
     await poll(async () => (await el.locator('option').evaluateAll((os, v) => os.some((o) => o.value === v || o.textContent.trim() === v), String(s.value))) || 'option missing', `option ${s.value}`);
     await el.selectOption(String(s.value)).catch(() => el.selectOption({ label: String(s.value) }));
     await settle();
@@ -188,12 +255,18 @@ const actions = {
   },
   apiCheck: async (c) => {
     try {
-      control('api', 'call', '--expect', String(c.expect ?? 200), c.as, 'GET', c.path);
-      if (c.jq) control('api', 'last', c.jq);
+      const out = control('api', 'call', '--expect', String(c.expect ?? 200), c.as, 'GET', c.path);
+      if (c.jq) jq(c.jq, responseBody(out));
     } catch (e) { throw new Error(`apiCheck ${c.path} ${c.jq ?? ''}: ${(e.stdout || e.message).trim().split('\n').pop()}`); }
   },
 };
 
+if (DEMO_OUT) {
+  if (!spec.demo?.title) throw new Error('a demo spec needs demo.title');
+  await page.setContent(titleCard(spec.demo));
+  await page.waitForTimeout(3_000);
+}
+const PACED = new Set(['goto', 'click', 'fill', 'select', 'press']);
 for (const [i, raw] of spec.steps.entries()) {
   const s = sub(raw);
   const verb = Object.keys(actions).find((k) => k in s);
@@ -202,6 +275,7 @@ for (const [i, raw] of spec.steps.entries()) {
   try {
     if (!verb) throw new Error(`unknown step ${JSON.stringify(s)}`);
     await actions[verb](s[verb], s);
+    if (DEMO_OUT && PACED.has(verb)) await page.waitForTimeout(PACE);
     report.steps.push({ n, desc, ok: true });
     console.log(`STEP ${n} OK ${desc}`);
   } catch (e) {
@@ -211,9 +285,15 @@ for (const [i, raw] of spec.steps.entries()) {
     break;
   }
 }
+if (DEMO_OUT) await page.waitForTimeout(2_000);
 await page.screenshot({ path: join(dir, failed ? 'failure.png' : 'final.png') }).catch(() => {});
 report.finalUrl = page.url();
 report.title = await page.title().catch(() => '');
 await Promise.all(sizing);
 for (const r of report.requests) delete r.q;
-await finish(() => browser.close());
+await finish(async () => {
+  const video = page.video();
+  await ctx.close();
+  if (video) renameSync(await video.path(), DEMO_OUT);
+  await browser.close();
+});

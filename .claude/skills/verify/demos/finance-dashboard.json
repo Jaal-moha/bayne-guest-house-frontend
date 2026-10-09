@@ -1,0 +1,35 @@
+{
+  "name": "finance-dashboard",
+  "role": "finance",
+  "demo": {
+    "group": "finance",
+    "title": "Review this week's revenue",
+    "summary": "Finance opens the dashboard and sets a date range to see how much the hotel took this week."
+  },
+  "setup": [
+    { "as": "reception", "method": "POST", "path": "/guests", "body": { "name": "Feven Haile", "phone": "0913508826" }, "expect": 201, "save": "GUEST1" },
+    { "as": "reception", "method": "POST", "path": "/guests", "body": { "name": "Robel Girma", "phone": "0942617390" }, "expect": 201, "save": "GUEST2" },
+    { "as": "admin", "method": "POST", "path": "/rooms", "body": { "number": "372", "type": "single", "price": 1100 }, "expect": 201, "save": "ROOM1" },
+    { "as": "admin", "method": "POST", "path": "/rooms", "body": { "number": "373", "type": "double", "price": 1650 }, "expect": 201, "save": "ROOM2" },
+    { "as": "reception", "method": "POST", "path": "/bookings", "body": { "guestId": "${GUEST1}", "roomId": "${ROOM1}", "checkIn": "${DATE+0}", "checkOut": "${DATE+3}" }, "expect": 201, "save": "BOOKING1" },
+    { "as": "reception", "method": "POST", "path": "/bookings", "body": { "guestId": "${GUEST2}", "roomId": "${ROOM2}", "checkIn": "${DATE+1}", "checkOut": "${DATE+3}" }, "expect": 201, "save": "BOOKING2" },
+    { "as": "reception", "method": "POST", "path": "/payments", "body": { "bookingId": "${BOOKING1}", "method": "bank_transfer", "status": "paid" }, "expect": 201 },
+    { "as": "reception", "method": "POST", "path": "/payments", "body": { "bookingId": "${BOOKING2}", "method": "e_birr", "status": "paid" }, "expect": 201 }
+  ],
+  "steps": [
+    { "goto": "/dashboard" },
+    { "expectApi": "GET /stats/overview 200" },
+    { "caption": "Finance lands on the dashboard. Totals cover the hotel's whole history." },
+    { "caption": "Set the range to the last seven days." },
+    { "fill": { "label": "Start" }, "value": "${DATE-6}" },
+    { "fill": { "label": "End" }, "value": "${DATE+0}" },
+    { "click": { "role": "button", "name": "Apply" } },
+    { "expectApi": "GET /stats/overview 200" },
+    { "expectNoText": "Couldn't load dashboard stats" },
+    { "caption": "Revenue now shows only what was paid this week." },
+    { "caption": "The Payments link shows the payments behind that number." },
+    { "click": { "role": "link", "name": "Payments" } },
+    { "expectVisible": "tr:has-text('Feven Haile'):has-text('Bank Transfer') >> nth=0" },
+    { "apiCheck": { "as": "finance", "path": "/stats/overview?start=${DATE-6}&end=${DATE+0}", "jq": ".revenue >= 6600" } }
+  ]
+}

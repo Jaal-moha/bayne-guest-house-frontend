@@ -1,0 +1,36 @@
+{
+  "name": "manager-laundry-delete",
+  "role": "manager",
+  "demo": {
+    "group": "manager",
+    "title": "Delete a laundry order",
+    "summary": "The manager deletes an order taken by mistake. A paid order must be refunded before it can be deleted."
+  },
+  "setup": [
+    { "as": "reception", "method": "POST", "path": "/guests", "body": { "name": "Rahel Tsegaye", "phone": "0916302958" }, "expect": 201, "save": "GUEST" },
+    { "as": "reception", "method": "POST", "path": "/guests", "body": { "name": "Henok Abate", "phone": "0927761043" }, "expect": 201, "save": "OTHER" },
+    { "as": "reception", "method": "POST", "path": "/laundry", "body": { "guestId": "${OTHER}", "items": "3 T-shirts, 1 Jeans", "price": 150 }, "expect": 201 },
+    { "as": "reception", "method": "POST", "path": "/laundry", "body": { "guestId": "${GUEST}", "items": "5 Towels", "price": 100 }, "expect": 201, "save": "LID" },
+    { "as": "manager", "method": "GET", "path": "/payments", "expect": 200, "save": "PID", "pick": ".[] | select(.laundryId == ${LID}) | .id" }
+  ],
+  "steps": [
+    { "goto": "/laundry" },
+    { "caption": "These towels belong to the hotel, not to the guest. The order was a mistake." },
+    { "fill": { "placeholder": "Search by guest, items, status…" }, "value": "Rahel" },
+    { "caption": "The order is already paid, so refund the payment first." },
+    { "click": "tr:has-text('Rahel Tsegaye'):has-text('5 Towels') >> role=button[name='Refund']" },
+    { "expectText": "Refund this order's payment of ETB\u00a0100.00?" },
+    { "click": { "role": "button", "name": "Refund" } },
+    { "expectApi": "PATCH /payments/${PID} 200" },
+    { "expectText": "Payment refunded" },
+    { "caption": "Refunded. Now the order can be deleted." },
+    { "click": "tr:has-text('Rahel Tsegaye'):has-text('5 Towels') >> role=button[name='Delete']" },
+    { "expectText": "This removes the record for Rahel Tsegaye." },
+    { "click": { "role": "button", "name": "Delete" } },
+    { "expectApi": "DELETE /laundry/${LID} 200" },
+    { "expectNoText": "5 Towels" },
+    { "caption": "The order and its refunded payment are both gone." },
+    { "apiCheck": { "as": "manager", "path": "/laundry", "jq": "all(.[]; .id != ${LID})" } },
+    { "apiCheck": { "as": "manager", "path": "/payments", "jq": "all(.[]; .id != ${PID})" } }
+  ]
+}

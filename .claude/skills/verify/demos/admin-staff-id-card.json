@@ -1,0 +1,26 @@
+{
+  "name": "admin-staff-id-card",
+  "role": "admin",
+  "demo": {
+    "group": "admin",
+    "title": "Print a staff ID card",
+    "summary": "The admin opens a receptionist's ID card with its barcode to download or print it."
+  },
+  "setup": [
+    { "as": "admin", "method": "POST", "path": "/staff", "body": { "name": "Abebe Kebede", "role": "reception", "phone": "0918901234" }, "expect": 201, "save": "STAFF" }
+  ],
+  "steps": [
+    { "goto": "/staff" },
+    { "caption": "Each staff member has an ID card with a barcode for attendance." },
+    { "click": "tr:has-text('Abebe Kebede') >> role=button[name='Preview / Download']" },
+    { "expectApi": "GET /staff/${STAFF}/id-card 200" },
+    { "expectVisible": { "role": "dialog", "name": "ID Card Preview" } },
+    { "expectVisible": { "role": "link", "name": "Download" } },
+    { "caption": "Download the card or print it from here." },
+    { "wait": 1500 },
+    { "click": { "role": "button", "name": "Close" } },
+    { "expectHidden": { "role": "dialog", "name": "ID Card Preview" } },
+    { "caption": "" },
+    { "apiCheck": { "as": "admin", "path": "/staff/${STAFF}", "jq": ".barcode | startswith(\"EMP-\")" } }
+  ]
+}

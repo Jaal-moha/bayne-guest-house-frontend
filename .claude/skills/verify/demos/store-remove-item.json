@@ -1,0 +1,27 @@
+{
+  "name": "store-remove-item",
+  "role": "store",
+  "demo": {
+    "group": "store",
+    "title": "Remove an item",
+    "summary": "The storekeeper removes plastic straws, which the hotel no longer stocks."
+  },
+  "setup": [
+    { "as": "store", "method": "POST", "path": "/inventory", "body": { "name": "Paper napkins", "category": "Bar", "unit": "pcs", "quantity": 500, "minThreshold": 100 }, "expect": 201 },
+    { "as": "store", "method": "POST", "path": "/inventory", "body": { "name": "Dish soap", "category": "Kitchen", "unit": "L", "quantity": 8, "minThreshold": 4 }, "expect": 201 },
+    { "as": "store", "method": "POST", "path": "/inventory", "body": { "name": "Plastic straws", "category": "Bar", "unit": "pcs", "quantity": 0, "minThreshold": 0 }, "expect": 201, "save": "ITEM" }
+  ],
+  "steps": [
+    { "goto": "/inventory" },
+    { "caption": "The hotel stopped using plastic straws. Open the item." },
+    { "click": "tr:has-text('Plastic straws')" },
+    { "click": { "role": "button", "name": "Remove Item" } },
+    { "caption": "The app asks to confirm before removing it." },
+    { "expectText": "Confirm removal" },
+    { "click": { "role": "button", "name": "Confirm Remove" } },
+    { "expectApi": "DELETE /inventory/${ITEM} 200" },
+    { "expectNoText": "Plastic straws" },
+    { "caption": "Plastic straws are gone from the list." },
+    { "apiCheck": { "as": "store", "path": "/inventory?q=straws", "jq": "all(.[]; .id != ${ITEM})" } }
+  ]
+}
