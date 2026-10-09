@@ -1,0 +1,16 @@
+{
+  "name": "shell-phone-menu-focus",
+  "role": "admin",
+  "viewport": "phone",
+  "steps": [
+    { "goto": "/bookings" },
+    { "click": { "role": "button", "name": "Open menu" } },
+    { "press": "Enter" },
+    { "expectUrl": "/dashboard" },
+    { "click": { "role": "button", "name": "Open menu" } },
+    { "press": "Escape" },
+    { "expectHidden": { "role": "link", "name": "Rooms" } },
+    { "press": "Enter" },
+    { "expectVisible": { "role": "link", "name": "Rooms" } }
+  ]
+}

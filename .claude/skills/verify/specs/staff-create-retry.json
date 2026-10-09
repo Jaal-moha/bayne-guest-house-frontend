@@ -1,0 +1,34 @@
+{
+  "name": "staff-create-retry",
+  "role": "admin",
+  "setup": [
+    { "as": "admin", "method": "POST", "path": "/staff", "body": { "name": "Taken ${RUN}", "role": "reception", "phone": "0911000555", "username": "taken${RUN}@example.com", "password": "secret123" }, "expect": 201 }
+  ],
+  "steps": [
+    { "goto": "/staff" },
+    { "click": { "role": "button", "name": "Add Staff" } },
+    { "fill": { "label": "Full name" }, "value": "Retry ${RUN}" },
+    { "select": { "label": "Role" }, "value": "reception" },
+    { "fill": { "label": "Phone" }, "value": "0911000666" },
+    { "fill": { "label": "Email" }, "value": "taken${RUN}@example.com" },
+    { "click": { "role": "button", "name": "Continue" } },
+    { "click": { "role": "button", "name": "Create Staff & Account" } },
+    { "expectApi": "POST /staff 201" },
+    { "expectText": "Email already in use" },
+    { "expectText": "Retry ${RUN} is saved as staff" },
+    { "screenshot": "staff-retry" },
+    { "click": { "role": "button", "name": "Back" } },
+    { "fill": { "label": "Email" }, "value": "retry${RUN}@example.com" },
+    { "click": { "role": "button", "name": "Continue" } },
+    { "click": { "role": "button", "name": "Retry Account" } },
+    { "expectText": "Staff created" },
+    { "click": { "role": "button", "name": "Copy Credentials" } },
+    { "expectText": "Copied" },
+    { "screenshot": "staff-copy" },
+    { "click": { "role": "button", "name": "Done" } },
+    { "expectHidden": { "role": "dialog" } },
+    { "expectText": "retry${RUN}@example.com" },
+    { "apiCheck": { "as": "admin", "path": "/staff", "jq": "[.[] | select(.name == \"Retry ${RUN}\")] | length == 1 and .[0].user.email == \"retry${RUN}@example.com\"" } },
+    { "expectNoPageErrors": true }
+  ]
+}

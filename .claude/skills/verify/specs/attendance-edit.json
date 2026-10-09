@@ -1,0 +1,27 @@
+{
+  "name": "attendance-edit",
+  "role": "manager",
+  "setup": [
+    { "as": "admin", "method": "POST", "path": "/staff", "body": { "name": "Att ${RUN}", "role": "reception", "phone": "0911000777" }, "expect": 201, "save": "STAFF" },
+    { "as": "manager", "method": "POST", "path": "/attendance", "body": { "staffId": "${STAFF}", "date": "${DATE+0}", "checkIn": "${DATE+0}T06:00:00Z" }, "expect": 201, "save": "ATT" }
+  ],
+  "steps": [
+    { "goto": "/attendance" },
+    { "expectApi": "GET /attendance 200" },
+    { "fill": { "placeholder": "Search by staff, role, date…" }, "value": "Att ${RUN}" },
+    { "click": "tr:has-text('Att ${RUN}') >> role=button[name='Edit']" },
+    { "fill": { "label": "Check-in" }, "value": "${DATE+0}T08:00" },
+    { "fill": { "label": "Check-out" }, "value": "${DATE+0}T07:00" },
+    { "click": { "role": "button", "name": "Save" } },
+    { "expectText": "Check-out must be after check-in" },
+    { "expectNoApi": "PATCH /attendance" },
+    { "fill": { "label": "Check-out" }, "value": "${DATE+0}T17:30" },
+    { "click": { "role": "button", "name": "Save" } },
+    { "expectApi": "PATCH /attendance/${ATT} 200" },
+    { "expectHidden": { "role": "dialog" } },
+    { "expectText": "9.50" },
+    { "screenshot": "attendance" },
+    { "apiCheck": { "as": "manager", "path": "/attendance/${ATT}", "jq": "((.checkOut | sub(\"\\\\.[0-9]+Z$\"; \"Z\") | fromdate) - (.checkIn | sub(\"\\\\.[0-9]+Z$\"; \"Z\") | fromdate)) == 34200" } },
+    { "expectNoPageErrors": true }
+  ]
+}

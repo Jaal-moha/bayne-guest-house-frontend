@@ -1,0 +1,28 @@
+{
+  "name": "inventory-adjust-negative",
+  "role": "store",
+  "setup": [
+    { "as": "store", "method": "POST", "path": "/inventory", "body": { "name": "Adj ${RUN}", "category": "Bar", "unit": "pcs", "quantity": 5 }, "expect": 201, "save": "ITEM" }
+  ],
+  "steps": [
+    { "goto": "/inventory" },
+    { "fill": { "placeholder": "Search name, SKU, category…" }, "value": "Adj ${RUN}" },
+    { "click": "tr:has-text('Adj ${RUN}')" },
+    { "click": { "role": "button", "name": "Adjust" } },
+    { "fill": { "label": "Quantity (pcs)" }, "value": "-3" },
+    { "click": { "role": "button", "name": "Confirm" } },
+    { "expectText": "Quantity cannot be negative" },
+    { "fill": { "label": "Quantity (pcs)" }, "value": "1.5" },
+    { "click": { "role": "button", "name": "Confirm" } },
+    { "expectText": "Enter a whole number" },
+    { "screenshot": "adjust" },
+    { "expectNoApi": "POST /inventory/${ITEM}/movements" },
+    { "apiCheck": { "as": "store", "path": "/inventory/${ITEM}", "jq": ".quantity == 5" } },
+    { "fill": { "label": "Quantity (pcs)" }, "value": "2" },
+    { "click": { "role": "button", "name": "Confirm" } },
+    { "expectApi": "POST /inventory/${ITEM}/movements 201" },
+    { "expectHidden": { "role": "dialog" } },
+    { "apiCheck": { "as": "store", "path": "/inventory/${ITEM}", "jq": ".quantity == 2" } },
+    { "expectNoPageErrors": true }
+  ]
+}

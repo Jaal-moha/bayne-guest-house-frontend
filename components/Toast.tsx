@@ -26,9 +26,9 @@ export function ToastProvider({ children }: { children: React.ReactNode; }) {
     return (
         <ToastCtx.Provider value={value}>
             {children}
-            <div className="fixed bottom-6 right-6 z-50 flex flex-col items-end space-y-2">
+            <div className="fixed bottom-4 left-4 right-4 z-50 flex flex-col items-end space-y-2 sm:bottom-6 sm:left-auto sm:right-6">
                 {toasts.map((t) => (
-                    <div key={t.id} className={`max-w-sm rounded-md px-4 py-2 shadow-lg border ${t.type === 'success' ? 'bg-emerald-50 border-emerald-200 text-emerald-800' : t.type === 'error' ? 'bg-red-50 border-red-200 text-red-800' : 'bg-white border-gray-200 text-gray-900'}`}>
+                    <div key={t.id} className={`max-w-full rounded-md sm:max-w-sm px-4 py-2 shadow-lg border ${t.type === 'success' ? 'bg-emerald-50 border-emerald-200 text-emerald-800' : t.type === 'error' ? 'bg-red-50 border-red-200 text-red-800' : 'bg-white border-gray-200 text-gray-900'}`}>
                         {t.message}
                     </div>
                 ))}
