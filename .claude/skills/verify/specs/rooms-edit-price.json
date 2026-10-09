@@ -11,7 +11,7 @@
     { "fill": { "placeholder": "Price (e.g. 75)" }, "value": "1100" },
     { "click": { "role": "button", "name": "Save Changes" } },
     { "expectApi": "PATCH /rooms/${ROOM} 200" },
-    { "expectText": "$1100.00" },
+    { "expectText": "ETB\u00a01,100.00" },
     { "apiCheck": { "as": "manager", "path": "/rooms/${ROOM}", "jq": ".price == 1100" } }
   ]
 }

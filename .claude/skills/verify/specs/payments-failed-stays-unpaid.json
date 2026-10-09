@@ -1,0 +1,23 @@
+{
+  "name": "payments-failed-stays-unpaid",
+  "role": "reception",
+  "setup": [
+    { "as": "admin", "method": "POST", "path": "/rooms", "body": { "number": "P${RUN}", "type": "double", "price": 1500 }, "expect": 201, "save": "ROOM" },
+    { "as": "reception", "method": "POST", "path": "/guests", "body": { "name": "Payer ${RUN}", "phone": "0911223344" }, "expect": 201, "save": "GUEST" },
+    { "as": "reception", "method": "POST", "path": "/bookings", "body": { "guestId": "${GUEST}", "roomId": "${ROOM}", "checkIn": "${DATE+40}", "checkOut": "${DATE+42}" }, "expect": 201, "save": "BOOKING" }
+  ],
+  "steps": [
+    { "goto": "/payments" },
+    { "click": { "role": "button", "name": "Unpaid Bookings" } },
+    { "click": "tr:has-text('Payer ${RUN}') >> role=button[name='Record']" },
+    { "select": { "label": "Status" }, "value": "failed" },
+    { "click": { "role": "button", "name": "Record" } },
+    { "expectApi": "POST /payments 201" },
+    { "expectHidden": "role=dialog" },
+    { "expectText": "Payer ${RUN}" },
+    { "expectVisible": "tr:has-text('Payer ${RUN}') >> role=button[name='Record']" },
+    { "screenshot": "failed" },
+    { "apiCheck": { "as": "reception", "path": "/bookings?unpaid=true", "jq": "any(.[]; .id == ${BOOKING} and .payment.status == \"failed\")" } },
+    { "expectNoPageErrors": true }
+  ]
+}

@@ -6,6 +6,7 @@ import ListState from '@/components/ListState';
 import { useToast } from '@/components/Toast';
 import { useList } from '@/lib/useList';
 import axios from '@/utils/axiosInstance';
+import { money, date } from '@/lib/format';
 import {
   STEPS, addDays, dateErrors, flowReducer, initialFlow, nights, planSubmit, todayYMD,
   type FlowStep, type GuestDraft,
@@ -202,7 +203,7 @@ function Flow<B>({ onClose, onCreated }: { onClose: () => void; onCreated: (book
                       : 'Select room…'}
                   </option>
                   {rooms.rows.map((r) => (
-                    <option key={r.id} value={r.id}>{r.number} — {r.type} — ${Number(r.price).toFixed(2)}</option>
+                    <option key={r.id} value={r.id}>{r.number} — {r.type} — {money(Number(r.price))}</option>
                   ))}
                 </select>
               )}
@@ -215,9 +216,9 @@ function Flow<B>({ onClose, onCreated }: { onClose: () => void; onCreated: (book
             <dt className="text-gray-500">Guest</dt>
             <dd>{pickedGuest?.name} — {pickedGuest?.phone}{guest.kind === 'new' && ' (new)'}</dd>
             <dt className="text-gray-500">Stay</dt>
-            <dd>{stay.checkIn} → {stay.checkOut} ({nights(stay)} {nights(stay) === 1 ? 'night' : 'nights'})</dd>
+            <dd>{date(stay.checkIn)} → {date(stay.checkOut)} ({nights(stay)} {nights(stay) === 1 ? 'night' : 'nights'})</dd>
             <dt className="text-gray-500">Room</dt>
-            <dd>{pickedRoom?.number} — {pickedRoom?.type}</dd>
+            <dd>{pickedRoom?.number} — {pickedRoom?.type} — {money(Number(pickedRoom?.price ?? 0))}</dd>
           </dl>
         )}
 

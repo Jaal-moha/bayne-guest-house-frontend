@@ -8,6 +8,7 @@ import Modal from '@/components/Modal';
 import Field from '@/components/Field';
 import { useToast } from '@/components/Toast';
 import { useList, type List } from '@/lib/useList';
+import { dateTime } from '@/lib/format';
 
 const ALLOWED_STATUSES = ['pending', 'in_progress', 'done'] as const;
 const STATUS_LABELS: Record<string, string> = {
@@ -310,11 +311,6 @@ function LaundryInner() {
     }
   };
 
-  function fmt(createdAt: string | Date) {
-    const d = typeof createdAt === 'string' ? new Date(createdAt) : createdAt;
-    return d.toLocaleDateString(undefined, { year: 'numeric', month: 'short', day: 'numeric', hour: '2-digit', minute: '2-digit' });
-  }
-
   return (
     <Layout>
       <div className="mb-4 flex flex-wrap items-center gap-3">
@@ -406,7 +402,7 @@ function LaundryInner() {
                         <span className="rounded-full bg-gray-100 px-2 py-1 text-xs">{r.status}</span>
                       )}
                     </td>
-                    <td className="px-4 py-3">{fmt(r.createdAt)}</td>
+                    <td className="px-4 py-3">{dateTime(r.createdAt)}</td>
                     <td className="px-4 py-3">
                       <div className="flex items-center justify-end gap-2">
                         {isEditing ? (

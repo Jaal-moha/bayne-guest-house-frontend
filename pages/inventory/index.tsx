@@ -6,6 +6,7 @@ import ListState from '@/components/ListState';
 import Modal from '@/components/Modal';
 import Field from '@/components/Field';
 import { useList } from '@/lib/useList';
+import { dateTime } from '@/lib/format';
 import Link from 'next/link';
 
 type Item = {
@@ -295,7 +296,7 @@ function HistoryModal({
                   </td>
                   <td className="px-3 py-2">{m.quantity} {item.unit || ''}</td>
                   <td className="px-3 py-2">{m.reason || <span className="text-gray-400">—</span>}</td>
-                  <td className="px-3 py-2">{new Date(m.createdAt).toLocaleString()}</td>
+                  <td className="px-3 py-2">{dateTime(m.createdAt)}</td>
                 </tr>
               ))}
             </tbody>
@@ -366,7 +367,7 @@ function ItemActions({ item, onAdd, onSubtract, onAdjust, onHistory, onRemove, r
         <div>SKU: {item.sku || '—'}</div>
         <div>Quantity: {item.quantity} {item.unit || ''}</div>
         <div>Min: {item.minThreshold ?? 0}</div>
-        <div>Updated: {new Date(item.updatedAt).toLocaleString()}</div>
+        <div>Updated: {dateTime(item.updatedAt)}</div>
       </div>
       {err && <div className="mt-3 rounded border border-red-200 bg-red-50 px-3 py-2 text-sm text-red-700">{err}</div>}
 
@@ -509,7 +510,7 @@ function InventoryInner() {
                     </div>
                   </td>
                   <td className="px-4 py-3">{r.minThreshold ?? 0}</td>
-                  <td className="px-4 py-3">{new Date(r.updatedAt).toLocaleString()}</td>
+                  <td className="px-4 py-3">{dateTime(r.updatedAt)}</td>
                   {/* Removed inline Actions cell */}
                 </tr>
               ))}

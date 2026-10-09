@@ -1,0 +1,15 @@
+{
+  "name": "payments-laundry-guest",
+  "role": "finance",
+  "setup": [
+    { "as": "reception", "method": "POST", "path": "/guests", "body": { "name": "Washer ${RUN}", "phone": "0911223344" }, "expect": 201, "save": "GUEST" },
+    { "as": "housekeeping", "method": "POST", "path": "/laundry", "body": { "guestId": "${GUEST}", "items": "3x Shirts ${RUN}", "price": 250 }, "expect": 201 }
+  ],
+  "steps": [
+    { "goto": "/payments" },
+    { "expectApi": "GET /payments 200" },
+    { "expectVisible": "tr:has-text('Washer ${RUN}'):has-text('ETB\u00a0250.00')" },
+    { "screenshot": "laundry-guest" },
+    { "expectNoPageErrors": true }
+  ]
+}

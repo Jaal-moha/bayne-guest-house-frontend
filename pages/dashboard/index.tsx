@@ -7,6 +7,7 @@ import axios from '@/utils/axiosInstance';
 import BookingFlow from '@/components/BookingFlow';
 import ListState from '@/components/ListState';
 import { useList } from '@/lib/useList';
+import { money } from '@/lib/format';
 
 type Stats = {
   guests: number;
@@ -46,9 +47,6 @@ function normalizeStats(raw: unknown): Stats {
     revenue: n(r?.revenue),
   };
 }
-
-const money = (v: number, currency = 'USD') =>
-  new Intl.NumberFormat(undefined, { style: 'currency', currency }).format(v);
 
 const integer = (v: number) => Number(v).toLocaleString();
 
