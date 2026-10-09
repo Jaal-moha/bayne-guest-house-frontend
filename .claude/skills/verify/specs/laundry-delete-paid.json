@@ -1,0 +1,19 @@
+{
+  "name": "laundry-delete-paid",
+  "role": "manager",
+  "setup": [
+    { "as": "reception", "method": "POST", "path": "/guests", "body": { "name": "Paid ${RUN}", "phone": "0911223366" }, "expect": 201, "save": "GUEST" },
+    { "as": "manager", "method": "POST", "path": "/laundry", "body": { "guestId": "${GUEST}", "items": "1x Coat ${RUN}", "price": 150 }, "expect": 201, "save": "LID" }
+  ],
+  "steps": [
+    { "goto": "/laundry" },
+    { "click": "tr:has-text('1x Coat ${RUN}') >> role=button[name='Delete']" },
+    { "click": { "role": "button", "name": "Delete" } },
+    { "expectApi": "DELETE /laundry/${LID} 409" },
+    { "expectText": "This laundry order is paid. Refund its payment first, then delete the order." },
+    { "expectText": "1x Coat ${RUN}" },
+    { "screenshot": "laundry-delete-paid" },
+    { "apiCheck": { "as": "manager", "path": "/laundry", "jq": "any(.[]; .id == ${LID})" } },
+    { "expectNoPageErrors": true }
+  ]
+}

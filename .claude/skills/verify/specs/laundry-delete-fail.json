@@ -12,7 +12,7 @@
     { "expectVisible": { "role": "dialog", "name": "Delete laundry record" } },
     { "click": { "role": "button", "name": "Delete" } },
     { "expectApi": "DELETE /laundry/${LID} 500" },
-    { "expectText": "Delete failed" },
+    { "expectText": "verify-injected failure" },
     { "expectHidden": { "role": "dialog", "name": "Delete laundry record" } },
     { "expectText": "1x Sheet ${RUN}" },
     { "screenshot": "laundry-toast" },

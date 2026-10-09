@@ -1,0 +1,32 @@
+{
+  "name": "laundry-refund-delete",
+  "role": "manager",
+  "setup": [
+    { "as": "reception", "method": "POST", "path": "/guests", "body": { "name": "Refund ${RUN}", "phone": "0911223377" }, "expect": 201, "save": "GUEST" },
+    { "as": "manager", "method": "POST", "path": "/laundry", "body": { "guestId": "${GUEST}", "items": "2x Shirt ${RUN}", "price": 80 }, "expect": 201, "save": "LID" },
+    { "as": "manager", "method": "GET", "path": "/payments", "expect": 200, "save": "PID", "pick": ".[] | select(.laundryId == ${LID}) | .id" }
+  ],
+  "steps": [
+    { "goto": "/laundry" },
+    { "expectApi": "GET /payments 200" },
+    { "click": "tr:has-text('2x Shirt ${RUN}') >> role=button[name='Refund']" },
+    { "expectText": "Refund this order's payment of ETB\u00a080.00?" },
+    { "click": { "role": "button", "name": "Cancel" } },
+    { "expectHidden": "text=Refund this order's payment" },
+    { "expectNoApi": "PATCH /payments" },
+    { "apiCheck": { "as": "manager", "path": "/payments", "jq": "any(.[]; .laundryId == ${LID} and .status == \"paid\")" } },
+    { "click": "tr:has-text('2x Shirt ${RUN}') >> role=button[name='Refund']" },
+    { "click": { "role": "button", "name": "Refund" } },
+    { "expectApi": "PATCH /payments/${PID} 200" },
+    { "expectText": "Payment refunded" },
+    { "expectHidden": "tr:has-text('2x Shirt ${RUN}') >> role=button[name='Refund']" },
+    { "apiCheck": { "as": "manager", "path": "/payments", "jq": "any(.[]; .laundryId == ${LID} and .status == \"refunded\")" } },
+    { "click": "tr:has-text('2x Shirt ${RUN}') >> role=button[name='Delete']" },
+    { "click": { "role": "button", "name": "Delete" } },
+    { "expectApi": "DELETE /laundry/${LID} 200" },
+    { "expectNoText": "2x Shirt ${RUN}" },
+    { "screenshot": "laundry-refund-delete" },
+    { "apiCheck": { "as": "manager", "path": "/laundry", "jq": "any(.[]; .id == ${LID}) | not" } },
+    { "expectNoPageErrors": true }
+  ]
+}
