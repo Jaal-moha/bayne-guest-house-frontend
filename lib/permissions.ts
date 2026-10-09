@@ -37,3 +37,16 @@ export function canSee(role: Role, path: string): boolean {
 export function landingFor(role: Role): string | null {
   return pagesFor(role)[0]?.path ?? null;
 }
+
+export const CHANGE_PASSWORD_PATH = '/change-password';
+
+type Account = { role: Role; forceChangePassword: boolean };
+
+export function homeFor(account: Account): string | null {
+  return account.forceChangePassword ? CHANGE_PASSWORD_PATH : landingFor(account.role);
+}
+
+export function canOpen(account: Account, path: string): boolean {
+  if (path === CHANGE_PASSWORD_PATH) return true;
+  return !account.forceChangePassword && canSee(account.role, path);
+}

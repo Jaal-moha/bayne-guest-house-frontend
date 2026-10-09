@@ -2,12 +2,12 @@ import { useEffect } from 'react';
 import { useRouter } from 'next/router';
 import Layout from '@/components/Layout';
 import { useAuth } from '@/context/AuthContext';
-import { landingFor } from '@/lib/permissions';
+import { homeFor } from '@/lib/permissions';
 
 export default function Home() {
   const router = useRouter();
   const { user, loading } = useAuth();
-  const landing = user ? landingFor(user.role) : null;
+  const landing = user ? homeFor(user) : null;
 
   useEffect(() => {
     if (loading) return;
