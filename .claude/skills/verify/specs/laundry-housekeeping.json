@@ -9,6 +9,8 @@
     { "goto": "/laundry" },
     { "expectApi": "GET /laundry 200" },
     { "expectApi": "GET /guests 403" },
+    { "expectNoApi": "GET /payments" },
+    { "expectHidden": { "role": "button", "name": "Refund" } },
     { "expectText": "2x Towels ${RUN}" },
     { "expectText": "Laundry ${RUN}" },
     { "expectNoText": "Couldn't load laundry records" },

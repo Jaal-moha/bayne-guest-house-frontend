@@ -1,4 +1,5 @@
 import { useEffect, useMemo, useState } from 'react';
+import { isAxiosError } from 'axios';
 import Layout from '@/components/Layout';
 import axios from '@/utils/axiosInstance';
 import Link from 'next/link';
@@ -9,6 +10,8 @@ import Field from '@/components/Field';
 import { useToast } from '@/components/Toast';
 import { useList, type List } from '@/lib/useList';
 import { dateTime } from '@/lib/format';
+import { useAuth } from '@/context/AuthContext';
+import type { Role } from '@/lib/permissions';
 
 const ALLOWED_STATUSES = ['pending', 'in_progress', 'done'] as const;
 const STATUS_LABELS: Record<string, string> = {
@@ -19,6 +22,10 @@ const STATUS_LABELS: Record<string, string> = {
 
 type Laundry = { id: number; guestId: number; items: string; status: 'pending' | 'in_progress' | 'done'; createdAt: string | Date; guest?: { name: string; }; };
 type Guest = { id: number; name: string; };
+type Payment = { id: number; laundryId: number | null; status: string; };
+
+const REFUND_ROLES: readonly Role[] = ['admin', 'finance', 'reception', 'manager'];
+const errMsg = (e: unknown, fallback: string) => (isAxiosError<{ message?: string; }>(e) && e.response?.data?.message) || fallback;
 
 // Add Laundry Modal component
 function AddLaundryModal({
@@ -202,6 +209,10 @@ function LaundryInner() {
   const n = (d: any, k: string) => Array.isArray(d) ? d : (Array.isArray(d?.[k]) ? d[k] : []);
   const laundry = useList<Laundry>('laundry records', async () => n((await axios.get('/laundry')).data, 'laundry'));
   const guests = useList<Guest>('guests', async () => n((await axios.get('/guests')).data, 'guests'));
+  const { user } = useAuth();
+  const canRefund = !!user && REFUND_ROLES.includes(user.role);
+  const payments = useList<Payment>('payments', async () => canRefund ? n((await axios.get('/payments')).data, 'payments') : []);
+  const [refunding, setRefunding] = useState<number | null>(null);
   const { rows, setRows } = laundry;
   const [q, setQ] = useState(''); const [status, setStatus] = useState<'All' | string>('All');
   const [page, setPage] = useState(1); const [pageSize, setPageSize] = useState(10);
@@ -266,11 +277,23 @@ function LaundryInner() {
     try {
       await axios.delete(`/laundry/${id}`);
       setRows(p => p.filter(x => x.id !== id));
-    } catch {
-      push('Delete failed', 'error');
+    } catch (e) {
+      push(errMsg(e, 'Delete failed'), 'error');
     } finally {
       setRemoving(false);
       setDeleting(null);
+    }
+  };
+  const refund = async (paymentId: number) => {
+    setRefunding(paymentId);
+    try {
+      await axios.patch(`/payments/${paymentId}`, { status: 'refunded' });
+      payments.setRows(p => p.map(x => x.id === paymentId ? { ...x, status: 'refunded' } : x));
+      push('Payment refunded', 'success');
+    } catch (e) {
+      push(errMsg(e, 'Refund failed'), 'error');
+    } finally {
+      setRefunding(null);
     }
   };
 
@@ -345,6 +368,7 @@ function LaundryInner() {
             <tbody>
               {slice.map(r => {
                 const isEditing = editing === r.id;
+                const payment = payments.rows.find(p => p.laundryId === r.id);
                 return (
                   <tr key={r.id} className="border-t">
                     <td className="px-4 py-3">{r.guest?.name ?? `Guest #${r.guestId}`}</td>
@@ -401,6 +425,15 @@ function LaundryInner() {
                             >
                               Edit
                             </button>
+                            {payment?.status === 'paid' && (
+                              <button
+                                onClick={() => refund(payment.id)}
+                                disabled={refunding === payment.id}
+                                className="rounded-md border px-3 py-1 text-amber-700 hover:bg-amber-50 disabled:opacity-60"
+                              >
+                                {refunding === payment.id ? 'Refunding…' : 'Refund'}
+                              </button>
+                            )}
                             <button
                               onClick={() => setDeleting(r)}
                               className="rounded-md border px-3 py-1 text-red-600 hover:bg-red-50"
