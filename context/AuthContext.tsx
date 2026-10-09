@@ -3,7 +3,7 @@ import axios from '@/utils/axiosInstance';
 import { useRouter } from 'next/router';
 import type { Role } from '@/lib/permissions';
 
-type User = { userId: number; role: Role; name: string };
+type User = { userId: number; role: Role; name: string; forceChangePassword: boolean };
 
 type AuthState = {
   user: User | null;

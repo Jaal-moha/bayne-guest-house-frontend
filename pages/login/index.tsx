@@ -2,7 +2,7 @@ import { FormEvent, useEffect, useState } from 'react';
 import Head from 'next/head';
 import { useRouter } from 'next/router';
 import { useAuth } from '@/context/AuthContext';
-import { landingFor } from '@/lib/permissions';
+import { homeFor } from '@/lib/permissions';
 
 export default function LoginPage() {
   const router = useRouter();
@@ -14,7 +14,7 @@ export default function LoginPage() {
   const [err, setErr] = useState('');
 
   useEffect(() => {
-    if (user) router.replace(landingFor(user.role) ?? '/');
+    if (user) router.replace(homeFor(user) ?? '/');
   }, [user, router]);
 
   const onSubmit = async (e: FormEvent) => {

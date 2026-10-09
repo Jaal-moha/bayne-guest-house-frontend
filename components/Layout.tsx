@@ -3,7 +3,7 @@ import Head from 'next/head';
 import Link from 'next/link';
 import { useRouter } from 'next/router';
 import { useAuth } from '@/context/AuthContext';
-import { PAGES, pagesFor } from '@/lib/permissions';
+import { CHANGE_PASSWORD_PATH, PAGES, pagesFor } from '@/lib/permissions';
 
 export default function Layout({ children }: { children: ReactNode }) {
   const router = useRouter();
@@ -64,6 +64,9 @@ export default function Layout({ children }: { children: ReactNode }) {
 
         {user && (
           <div className="border-t border-gray-700 p-2 md:hidden">
+            <Link href={CHANGE_PASSWORD_PATH} className="block rounded p-2 hover:bg-gray-700">
+              Change password
+            </Link>
             <button onClick={logout} className="w-full rounded p-2 text-left hover:bg-gray-700">
               Logout
             </button>
@@ -87,9 +90,14 @@ export default function Layout({ children }: { children: ReactNode }) {
             Welcome{user?.name ? `, ${user.name}` : ''}
           </div>
           {user ? (
-            <button onClick={logout} className="hidden rounded-md border px-3 py-1 hover:bg-gray-50 md:block">
-              Logout
-            </button>
+            <>
+              <Link href={CHANGE_PASSWORD_PATH} className="hidden rounded-md border px-3 py-1 hover:bg-gray-50 md:block">
+                Change password
+              </Link>
+              <button onClick={logout} className="hidden rounded-md border px-3 py-1 hover:bg-gray-50 md:block">
+                Logout
+              </button>
+            </>
           ) : (
             <Link href="/login" className="rounded-md border px-3 py-1 hover:bg-gray-50">
               Login
