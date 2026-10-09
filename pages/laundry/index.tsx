@@ -9,7 +9,7 @@ import Modal from '@/components/Modal';
 import Field from '@/components/Field';
 import { useToast } from '@/components/Toast';
 import { useList, type List } from '@/lib/useList';
-import { dateTime } from '@/lib/format';
+import { dateTime, money } from '@/lib/format';
 import { useAuth } from '@/context/AuthContext';
 import type { Role } from '@/lib/permissions';
 
@@ -22,7 +22,7 @@ const STATUS_LABELS: Record<string, string> = {
 
 type Laundry = { id: number; guestId: number; items: string; status: 'pending' | 'in_progress' | 'done'; createdAt: string | Date; guest?: { name: string; }; };
 type Guest = { id: number; name: string; };
-type Payment = { id: number; laundryId: number | null; status: string; };
+type Payment = { id: number; laundryId: number | null; status: string; amount: number; };
 
 const REFUND_ROLES: readonly Role[] = ['admin', 'finance', 'reception', 'manager'];
 const errMsg = (e: unknown, fallback: string) => (isAxiosError<{ message?: string; }>(e) && e.response?.data?.message) || fallback;
@@ -212,6 +212,7 @@ function LaundryInner() {
   const { user } = useAuth();
   const canRefund = !!user && REFUND_ROLES.includes(user.role);
   const payments = useList<Payment>('payments', async () => canRefund ? n((await axios.get('/payments')).data, 'payments') : []);
+  const [confirmingRefund, setConfirmingRefund] = useState<Payment | null>(null);
   const [refunding, setRefunding] = useState<number | null>(null);
   const { rows, setRows } = laundry;
   const [q, setQ] = useState(''); const [status, setStatus] = useState<'All' | string>('All');
@@ -294,6 +295,7 @@ function LaundryInner() {
       push(errMsg(e, 'Refund failed'), 'error');
     } finally {
       setRefunding(null);
+      setConfirmingRefund(null);
     }
   };
 
@@ -427,7 +429,7 @@ function LaundryInner() {
                             </button>
                             {payment?.status === 'paid' && (
                               <button
-                                onClick={() => refund(payment.id)}
+                                onClick={() => setConfirmingRefund(payment)}
                                 disabled={refunding === payment.id}
                                 className="rounded-md border px-3 py-1 text-amber-700 hover:bg-amber-50 disabled:opacity-60"
                               >
@@ -478,6 +480,21 @@ function LaundryInner() {
             className="rounded bg-red-600 px-4 py-2 text-sm font-semibold text-white hover:bg-red-700 disabled:opacity-60"
           >
             Delete
+          </button>
+        </div>
+      </Modal>
+      <Modal open={!!confirmingRefund} onClose={() => setConfirmingRefund(null)} title="Refund payment" size="md" locked={refunding !== null}>
+        <p className="text-sm text-gray-600">
+          Refund this order&apos;s payment of {money(confirmingRefund?.amount ?? 0)}?
+        </p>
+        <div className="mt-6 flex justify-end gap-2">
+          <button onClick={() => setConfirmingRefund(null)} disabled={refunding !== null} className="rounded border px-4 py-2 text-sm hover:bg-gray-50">Cancel</button>
+          <button
+            onClick={() => { if (confirmingRefund) refund(confirmingRefund.id); }}
+            disabled={refunding !== null}
+            className="rounded bg-amber-600 px-4 py-2 text-sm font-semibold text-white hover:bg-amber-700 disabled:opacity-60"
+          >
+            Refund
           </button>
         </div>
       </Modal>
