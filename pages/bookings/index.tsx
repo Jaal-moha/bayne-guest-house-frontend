@@ -8,6 +8,7 @@ import Field from '@/components/Field';
 import ListState from '@/components/ListState';
 import BookingFlow from '@/components/BookingFlow';
 import { useList } from '@/lib/useList';
+import { money, date } from '@/lib/format';
 
 type Guest = { id: number; name: string; phone: string; email?: string | null; };
 type Room = { id: number; number: string; type: string; price: number; };
@@ -181,7 +182,7 @@ function EditBookingModal({
                   <option value="">Select room…</option>
                   {rooms.map(r => (
                     <option key={r.id} value={r.id}>
-                      {r.number} — {r.type} — ${r.price.toFixed(2)}
+                      {r.number} — {r.type} — {money(r.price)}
                     </option>
                   ))}
                 </>
@@ -220,8 +221,8 @@ function BookingsInner() {
     return rows.filter(b =>
       [
         b.guest?.name, b.room?.number, b.room?.type,
-        new Date(b.checkIn).toLocaleDateString(),
-        new Date(b.checkOut).toLocaleDateString(),
+        date(b.checkIn),
+        date(b.checkOut),
         b.payment ? 'paid' : 'unpaid',
       ].some(v => (v || '').toLowerCase().includes(t)),
     );
@@ -265,7 +266,7 @@ function BookingsInner() {
                   <td className="px-4 py-3">{b.guest?.name}</td>
                   <td className="px-4 py-3">{b.room?.number} — {b.room?.type}</td>
                   <td className="px-4 py-3">
-                    {new Date(b.checkIn).toLocaleDateString()} → {new Date(b.checkOut).toLocaleDateString()}
+                    {date(b.checkIn)} → {date(b.checkOut)}
                   </td>
                   <td className="px-4 py-3">
                     {b.payment ? (

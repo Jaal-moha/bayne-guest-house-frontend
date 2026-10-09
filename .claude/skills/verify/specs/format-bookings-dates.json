@@ -1,0 +1,21 @@
+{
+  "name": "format-bookings-dates",
+  "role": "reception",
+  "setup": [
+    { "as": "admin", "method": "POST", "path": "/rooms", "body": { "number": "D${RUN}", "type": "double", "price": 1500 }, "expect": 201, "save": "ROOM" },
+    { "as": "reception", "method": "POST", "path": "/guests", "body": { "name": "Dated ${RUN}", "phone": "0911223344" }, "expect": 201, "save": "GUEST" },
+    { "as": "reception", "method": "POST", "path": "/bookings", "body": { "guestId": "${GUEST}", "roomId": "${ROOM}", "checkIn": "2026-12-01", "checkOut": "2026-12-03" }, "expect": 201 }
+  ],
+  "steps": [
+    { "goto": "/bookings" },
+    { "expectVisible": "tr:has-text('Dated ${RUN}'):has-text('Dec 1, 2026 → Dec 3, 2026')" },
+    { "click": "tr:has-text('Dated ${RUN}') >> role=button[name='Edit']" },
+    { "expectVisible": "role=dialog >> select:has(option:has-text('D${RUN} — double — ETB\u00a01,500.00'))" },
+    { "screenshot": "bookings" },
+    { "goto": "/payments" },
+    { "click": { "role": "button", "name": "Unpaid Bookings" } },
+    { "expectVisible": "tr:has-text('Dated ${RUN}'):has-text('Dec 1, 2026 → Dec 3, 2026'):has-text('ETB\u00a03,000.00')" },
+    { "expectNoText": "$" },
+    { "expectNoPageErrors": true }
+  ]
+}

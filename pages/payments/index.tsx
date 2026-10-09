@@ -6,6 +6,7 @@ import ListState from '@/components/ListState';
 import Modal from '@/components/Modal';
 import Field from '@/components/Field';
 import { useList, type List } from '@/lib/useList';
+import { money, date, dateTime } from '@/lib/format';
 import Link from 'next/link';
 
 type Guest = { id: number; name: string };
@@ -27,7 +28,8 @@ type Payment = {
   status: string;
   description?: string | null;
   createdAt: string;
-  booking: Booking;
+  booking?: Booking | null;
+  guest?: Guest | null;
 };
 
 // Helper types/utilities to avoid `any`
@@ -83,11 +85,12 @@ function RecordPaymentModal({
   const [method, setMethod] = useState<string>('cash');
   const [status, setStatus] = useState<string>('paid');
   const [description, setDescription] = useState<string>('');
+  const [amountError, setAmountError] = useState('');
   const [err, setErr] = useState(''); const [loading, setLoading] = useState(false);
 
   useEffect(() => {
     if (!open) return;
-    setAmount(''); setMethod('cash'); setStatus('paid'); setDescription(''); setErr('');
+    setAmount(''); setMethod('cash'); setStatus('paid'); setDescription(''); setErr(''); setAmountError('');
 
     if (presetBooking) {
       setBookingId(presetBooking.id);
@@ -116,6 +119,7 @@ function RecordPaymentModal({
     setErr('');
     const idToUse = presetBooking?.id ?? bookingId;
     if (!idToUse) return setErr('Select a booking');
+    if (amount.trim() && !(Number(amount) > 0)) return setAmountError('Amount must be more than zero');
     try {
       setLoading(true);
       const payload: PaymentCreatePayload = {
@@ -152,7 +156,7 @@ function RecordPaymentModal({
               {presetBooking ? (
                 <option value={presetBooking.id}>
                   #{presetBooking.id} — {presetBooking.guest?.name} — Room {presetBooking.room?.number} (
-                  {new Date(presetBooking.checkIn).toLocaleDateString()} → {new Date(presetBooking.checkOut).toLocaleDateString()})
+                  {date(presetBooking.checkIn)} → {date(presetBooking.checkOut)})
                 </option>
               ) : (
                 <>
@@ -160,7 +164,7 @@ function RecordPaymentModal({
                   {unpaid.map(b => (
                     <option key={b.id} value={b.id}>
                       #{b.id} — {b.guest?.name} — Room {b.room?.number} (
-                      {new Date(b.checkIn).toLocaleDateString()} → {new Date(b.checkOut).toLocaleDateString()})
+                      {date(b.checkIn)} → {date(b.checkOut)})
                     </option>
                   ))}
                 </>
@@ -172,11 +176,11 @@ function RecordPaymentModal({
         {selected && (
           <div className="rounded-md bg-gray-50 p-3 text-sm text-gray-700">
             Nights: <b>{nightsBetween(selected.checkIn, selected.checkOut)}</b> × Rate:{' '}
-            <b>${selected.room?.price?.toFixed(2)}</b> = <b>${computed?.toFixed(2)}</b>
+            <b>{money(selected.room?.price ?? 0)}</b> = <b>{money(computed ?? 0)}</b>
           </div>
         )}
 
-        <Field label="Amount (optional)">
+        <Field label="Amount (optional)" error={amountError}>
           {(id) => (
             <>
               <input
@@ -187,7 +191,7 @@ function RecordPaymentModal({
                 className="w-full rounded border px-3 py-2"
                 placeholder={selected && computed != null ? `${computed}` : 'e.g. 120'}
                 value={amount}
-                onChange={e=>setAmount(e.target.value)}
+                onChange={e=>{ setAmount(e.target.value); setAmountError(''); }}
               />
               <p className="mt-1 text-xs text-gray-500">Leave empty to use the calculated total.</p>
             </>
@@ -249,12 +253,12 @@ function PaymentsTab({
     const t = q.toLowerCase();
     return rows.filter(p =>
       [
-        p.booking?.guest?.name,
+        p.guest?.name,
         p.booking?.room?.number,
         p.method, p.status,
         p.description ?? '',
         String(p.amount),
-        new Date(p.createdAt).toLocaleDateString(),
+        date(p.createdAt),
       ].some(v => (v || '').toLowerCase().includes(t)),
     );
   }, [q, rows]);
@@ -295,10 +299,10 @@ function PaymentsTab({
             <tbody>
               {filtered.map(p=>(
                 <tr key={p.id} className="border-t">
-                  <td className="px-4 py-3">#{p.booking?.id}</td>
-                  <td className="px-4 py-3">{p.booking?.guest?.name}</td>
-                  <td className="px-4 py-3">{p.booking?.room?.number} — {p.booking?.room?.type}</td>
-                  <td className="px-4 py-3">${p.amount.toFixed(2)}</td>
+                  <td className="px-4 py-3">{p.booking ? `#${p.booking.id}` : '—'}</td>
+                  <td className="px-4 py-3">{p.guest?.name ?? '—'}</td>
+                  <td className="px-4 py-3">{p.booking?.room ? `${p.booking.room.number} — ${p.booking.room.type}` : '—'}</td>
+                  <td className="px-4 py-3">{money(p.amount)}</td>
                   <td className="px-4 py-3">{METHOD_LABEL_MAP.get(p.method) ?? p.method.replace('_', ' ')}</td>
                   <td className="px-4 py-3 capitalize">{p.status}</td>
                   <td className="px-4 py-3">
@@ -308,7 +312,7 @@ function PaymentsTab({
                         </span>
                       : <span className="text-gray-400">—</span>}
                   </td>
-                  <td className="px-4 py-3">{new Date(p.createdAt).toLocaleString()}</td>
+                  <td className="px-4 py-3">{dateTime(p.createdAt)}</td>
                 </tr>
               ))}
               {filtered.length===0 && <tr><td className="px-4 py-6 text-gray-500" colSpan={8}>No payments.</td></tr>}
@@ -333,8 +337,8 @@ function UnpaidTab({
         b.guest?.name,
         b.room?.number,
         b.room?.type,
-        new Date(b.checkIn).toLocaleDateString(),
-        new Date(b.checkOut).toLocaleDateString(),
+        date(b.checkIn),
+        date(b.checkOut),
       ].some(v => (v || '').toLowerCase().includes(t)),
     );
   }, [q, rows]);
@@ -371,9 +375,9 @@ function UnpaidTab({
                     <td className="px-4 py-3">{b.guest?.name}</td>
                     <td className="px-4 py-3">{b.room?.number} — {b.room?.type}</td>
                     <td className="px-4 py-3">
-                      {new Date(b.checkIn).toLocaleDateString()} → {new Date(b.checkOut).toLocaleDateString()}
+                      {date(b.checkIn)} → {date(b.checkOut)}
                     </td>
-                    <td className="px-4 py-3">{nights} × ${b.room?.price?.toFixed(2)} = <b>${total.toFixed(2)}</b></td>
+                    <td className="px-4 py-3">{nights} × {money(b.room?.price ?? 0)} = <b>{money(total)}</b></td>
                     <td className="px-4 py-3 text-right">
                       <button
                         onClick={()=>openForBooking(b)}
@@ -416,10 +420,9 @@ function PaymentsInner() {
   const openForBooking = (b: Booking) => { setPresetBooking(b); setModalOpen(true); };
 
   const onCreated = (p: Payment) => {
-    // Add to payments list
     payments.setRows(prev => [p, ...prev]);
-    // Remove booking from unpaid
-    unpaid.setRows(prev => prev.filter(b => b.id !== p.booking.id));
+    if (p.status === 'paid') unpaid.setRows(prev => prev.filter(b => b.id !== p.booking?.id));
+    else unpaid.reload();
   };
 
   return (

@@ -1,0 +1,14 @@
+{
+  "name": "format-rooms-birr",
+  "role": "manager",
+  "setup": [
+    { "as": "admin", "method": "POST", "path": "/rooms", "body": { "number": "F${RUN}", "type": "suite", "price": 2750.5 }, "expect": 201 }
+  ],
+  "steps": [
+    { "goto": "/rooms" },
+    { "expectVisible": "tr:has-text('F${RUN}'):has-text('ETB\u00a02,750.50')" },
+    { "expectNoText": "$" },
+    { "screenshot": "rooms" },
+    { "expectNoPageErrors": true }
+  ]
+}

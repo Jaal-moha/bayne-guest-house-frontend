@@ -1,0 +1,17 @@
+{
+  "name": "format-inventory-datetime",
+  "role": "store",
+  "setup": [
+    { "as": "admin", "method": "POST", "path": "/inventory", "body": { "name": "Soap ${RUN}", "category": "Housekeeping", "unit": "pcs", "quantity": 5 }, "expect": 201, "save": "ITEM" },
+    { "as": "admin", "method": "POST", "path": "/inventory/${ITEM}/movements", "body": { "type": "IN", "quantity": 3, "reason": "Delivery ${RUN}" }, "expect": 201 }
+  ],
+  "steps": [
+    { "goto": "/inventory" },
+    { "expectVisible": "tr:has-text('Soap ${RUN}') >> text=/^[A-Z][a-z]{2} \\d{1,2}, \\d{4}, \\d{1,2}:\\d{2}\\s[AP]M$/" },
+    { "click": "tr:has-text('Soap ${RUN}')" },
+    { "click": { "role": "button", "name": "History" } },
+    { "expectVisible": "role=dialog >> tr:has-text('Delivery ${RUN}') >> text=/^[A-Z][a-z]{2} \\d{1,2}, \\d{4}, \\d{1,2}:\\d{2}\\s[AP]M$/" },
+    { "screenshot": "inventory" },
+    { "expectNoPageErrors": true }
+  ]
+}

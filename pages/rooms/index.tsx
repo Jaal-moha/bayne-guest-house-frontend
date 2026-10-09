@@ -7,6 +7,7 @@ import ListState from '@/components/ListState';
 import Modal from '@/components/Modal';
 import Field from '@/components/Field';
 import { useList } from '@/lib/useList';
+import { money } from '@/lib/format';
 
 type Room = { id: number; number: string; type: string; price: number; };
 
@@ -165,7 +166,7 @@ function RoomsInner() {
                 <tr key={r.id} className="border-t">
                   <td className="px-4 py-3">{r.number}</td>
                   <td className="px-4 py-3">{r.type}</td>
-                  <td className="px-4 py-3">${r.price.toFixed(2)}</td>
+                  <td className="px-4 py-3">{money(r.price)}</td>
                   <td className="px-4 py-3">
                     <button
                       onClick={() => { setEditing(r); setEditOpen(true); }}

@@ -8,6 +8,7 @@ import Modal from '@/components/Modal';
 import Field from '@/components/Field';
 import { useToast } from '@/components/Toast';
 import { useList } from '@/lib/useList';
+import { date, dateTime } from '@/lib/format';
 
 type Attendance = {
   id: number;
@@ -18,15 +19,6 @@ type Attendance = {
   staff?: { name: string; role?: string | null };
 };
 
-const fmtDateTime = (d?: string | Date | null) => {
-  if (!d) return '—';
-  const x = new Date(d);
-  return Number.isNaN(x.getTime()) ? '—' : x.toLocaleString();
-};
-const fmtDate = (d: string | Date) => {
-  const x = new Date(d);
-  return Number.isNaN(x.getTime()) ? '—' : x.toLocaleDateString();
-};
 const hoursBetween = (a: string | Date, b?: string | Date | null) => {
   const start = new Date(a);
   const end = b ? new Date(b) : new Date();
@@ -124,7 +116,7 @@ function AttendanceInner() {
     return rowsAll.filter(a => {
       const staff = (a.staff?.name ?? '').toLowerCase();
       const role = (a.staff?.role ?? '').toLowerCase();
-      return staff.includes(term) || role.includes(term) || String(a.staffId).includes(term) || fmtDate(a.date).toLowerCase().includes(term);
+      return staff.includes(term) || role.includes(term) || String(a.staffId).includes(term) || date(a.date).toLowerCase().includes(term);
     });
   }, [q, rowsAll]);
 
@@ -196,9 +188,9 @@ function AttendanceInner() {
                 <tr key={r.id} className="border-t">
                   <td className="px-4 py-3">{r.staff?.name ?? `#${r.staffId}`}</td>
                   <td className="px-4 py-3">{r.staff?.role ?? '—'}</td>
-                  <td className="px-4 py-3">{fmtDate(r.date)}</td>
-                  <td className="px-4 py-3">{fmtDateTime(r.checkIn)}</td>
-                  <td className="px-4 py-3">{fmtDateTime(r.checkOut)}</td>
+                  <td className="px-4 py-3">{date(r.date)}</td>
+                  <td className="px-4 py-3">{dateTime(r.checkIn)}</td>
+                  <td className="px-4 py-3">{dateTime(r.checkOut)}</td>
                   <td className="px-4 py-3">{hoursBetween(r.checkIn, r.checkOut)}</td>
                   <td className="px-4 py-3">
                     <div className="flex justify-end gap-2">
