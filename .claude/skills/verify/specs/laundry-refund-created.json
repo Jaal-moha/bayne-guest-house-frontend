@@ -1,0 +1,26 @@
+{
+  "name": "laundry-refund-created",
+  "role": "manager",
+  "setup": [
+    { "as": "reception", "method": "POST", "path": "/guests", "body": { "name": "Fresh ${RUN}", "phone": "0911223388" }, "expect": 201, "save": "GUEST" }
+  ],
+  "steps": [
+    { "goto": "/laundry" },
+    { "expectApi": "GET /payments 200" },
+    { "click": { "role": "button", "name": "+ Add Laundry" } },
+    { "select": { "label": "Guest" }, "value": "Fresh ${RUN}" },
+    { "fill": { "label": "Price" }, "value": "120" },
+    { "fill": { "placeholder": "Item name" }, "value": "Jacket ${RUN}" },
+    { "click": { "role": "button", "name": "Save Laundry" } },
+    { "expectApi": "POST /laundry 201" },
+    { "expectText": "1 Jacket ${RUN}" },
+    { "click": "tr:has-text('1 Jacket ${RUN}') >> role=button[name='Refund']" },
+    { "expectText": "Refund this order's payment of ETB 120.00?" },
+    { "click": { "role": "button", "name": "Refund" } },
+    { "expectText": "Payment refunded" },
+    { "expectHidden": "tr:has-text('1 Jacket ${RUN}') >> role=button[name='Refund']" },
+    { "screenshot": "laundry-refund-created" },
+    { "apiCheck": { "as": "manager", "path": "/payments", "jq": "any(.[]; .laundry.items == \"1 Jacket ${RUN}\" and .status == \"refunded\")" } },
+    { "expectNoPageErrors": true }
+  ]
+}

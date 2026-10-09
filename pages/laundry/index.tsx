@@ -234,6 +234,10 @@ function LaundryInner() {
     }
   }, [justSaved]);
 
+  useEffect(() => {
+    if (payments.state.kind === 'error') push(`${payments.state.message}. Refunds are unavailable.`, 'error');
+  }, [payments.state, push]);
+
   const filtered = useMemo(() => {
     const t = q.toLowerCase().trim();
     return rows.filter(r => {
@@ -248,6 +252,7 @@ function LaundryInner() {
   const handleCreated = (created: Laundry) => {
     const guest = guests.rows.find(g => g.id === created.guestId);
     setRows(p => [{ ...created, guest }, ...p]);
+    payments.reload();
   };
 
   const beginEdit = (r: Laundry) => { setEditing(r.id); setEditForm({ guestId: String(r.guestId), items: r.items, status: r.status }); };

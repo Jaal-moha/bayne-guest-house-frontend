@@ -1,0 +1,19 @@
+{
+  "name": "laundry-payments-load-error",
+  "role": "manager",
+  "failApi": ["GET /payments"],
+  "setup": [
+    { "as": "reception", "method": "POST", "path": "/guests", "body": { "name": "NoPay ${RUN}", "phone": "0911223399" }, "expect": 201, "save": "GUEST" },
+    { "as": "manager", "method": "POST", "path": "/laundry", "body": { "guestId": "${GUEST}", "items": "3x Socks ${RUN}", "price": 60 }, "expect": 201 }
+  ],
+  "steps": [
+    { "goto": "/laundry" },
+    { "expectApi": "GET /payments 500" },
+    { "expectText": "Couldn't load payments. Refunds are unavailable." },
+    { "expectText": "3x Socks ${RUN}" },
+    { "expectHidden": "tr:has-text('3x Socks ${RUN}') >> role=button[name='Refund']" },
+    { "expectNoText": "verify-injected failure" },
+    { "screenshot": "laundry-payments-load-error" },
+    { "expectNoPageErrors": true }
+  ]
+}
