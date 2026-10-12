@@ -150,6 +150,7 @@ const actions = {
   goto: async (p) => { await page.goto(WEB_URL + p, { waitUntil: 'networkidle', timeout: 60_000 }); },
   click: async (t, s) => { await (await target(t)).click(s.at ? { position: { x: s.at[0], y: s.at[1] } } : {}); await settle(); },
   fill: async (t, s) => { await (await target(t)).fill(String(s.value)); },
+  upload: async (t, s) => { await (await target(t)).setInputFiles(String(s.value)); await settle(); },
   select: async (t, s) => {
     const el = await target(t);
     await poll(async () => (await el.locator('option').evaluateAll((os, v) => os.some((o) => o.value === v || o.textContent.trim() === v), String(s.value))) || 'option missing', `option ${s.value}`);

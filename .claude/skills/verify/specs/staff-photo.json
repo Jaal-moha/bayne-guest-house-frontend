@@ -1,0 +1,27 @@
+{
+  "name": "staff-photo",
+  "role": "manager",
+  "setup": [
+    { "as": "admin", "method": "POST", "path": "/staff", "body": { "name": "Photo ${RUN}", "role": "barista", "phone": "0911000881" }, "expect": 201, "save": "SID" },
+    { "as": "admin", "method": "POST", "path": "/staff", "body": { "name": "Plain ${RUN}", "role": "security", "phone": "0911000882" }, "expect": 201, "save": "NID" }
+  ],
+  "steps": [
+    { "goto": "/staff" },
+    { "click": "tr:has-text('Photo ${RUN}') >> role=button[name='Edit']" },
+    { "expectVisible": { "role": "dialog", "name": "Edit Staff" } },
+    { "expectVisible": { "role": "button", "name": "Choose photo" } },
+    { "upload": "input[type=file]", "value": ".claude/skills/verify/fixtures/headshot.jpg" },
+    { "expectApi": "PUT /staff/${SID}/photo 200" },
+    { "expectVisible": { "role": "button", "name": "Change photo" } },
+    { "expectApi": "GET /staff/${SID}/photo 200" },
+    { "expectVisible": "[role=dialog] img[alt='Photo of Photo ${RUN}']" },
+    { "apiCheck": { "as": "admin", "path": "/staff/${SID}", "jq": ".photoUpdatedAt != null and (has(\"photo\") | not)" } },
+    { "screenshot": "edit-photo" },
+    { "press": "Escape" },
+    { "expectHidden": { "role": "dialog", "name": "Edit Staff" } },
+    { "expectVisible": "tr:has-text('Photo ${RUN}') img[alt='Photo of Photo ${RUN}']" },
+    { "expectNoApi": "GET /staff/${NID}/photo" },
+    { "screenshot": "table-thumb" },
+    { "expectNoPageErrors": true }
+  ]
+}
