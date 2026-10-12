@@ -9,6 +9,7 @@ import Modal from '@/components/Modal';
 import Field from '@/components/Field';
 import { useToast } from '@/components/Toast';
 import { useList } from '@/lib/useList';
+import { pdfFilename } from '@/lib/idCard';
 
 type UserLite = {
   id: number;
@@ -605,7 +606,7 @@ function StaffTable({
                       onClick={() => onPreview?.(s)}
                       className="inline-block rounded bg-indigo-50 px-3 py-1 text-xs font-semibold text-indigo-700 hover:bg-indigo-100"
                     >
-                      Preview / Download
+                      ID card
                     </button>
                     <button
                       onClick={() => onEdit?.(s)}
@@ -652,7 +653,7 @@ function PdfPreviewModal({
 }) {
   if (!open) return null;
   return (
-    <Modal open={open} onClose={onClose} title="ID Card Preview" size="3xl">
+    <Modal open={open} onClose={onClose} title="ID card" size="3xl">
       <div className="flex items-center justify-end gap-2">
         {url && (
           <a
@@ -663,7 +664,7 @@ function PdfPreviewModal({
             Download
           </a>
         )}
-        {onPrint && !loading && (
+        {url && onPrint && (
           <button
             onClick={onPrint}
             className="rounded bg-green-600 px-3 py-1 text-xs font-semibold text-white hover:bg-green-700"
@@ -673,6 +674,9 @@ function PdfPreviewModal({
         )}
         <button onClick={onClose} className="rounded border px-3 py-1 text-sm">Close</button>
       </div>
+      <p className="mt-3 text-sm text-gray-600">
+        Print on A4 at 100% (actual size), cut along the crop marks, fold on the dashed line, laminate.
+      </p>
 
       <div className="mt-3 h-[70vh]">
         {loading ? (
@@ -680,7 +684,7 @@ function PdfPreviewModal({
         ) : error ? (
           <div className="rounded-md border border-red-200 bg-red-50 p-4 text-sm text-red-700">{error}</div>
         ) : url ? (
-          <iframe src={url} title="ID Preview" className="h-full w-full rounded" />
+          <iframe src={url} title="ID card PDF" className="h-full w-full rounded" />
         ) : (
           <div className="grid h-full place-items-center text-gray-500">No preview available</div>
         )}
@@ -703,7 +707,6 @@ function StaffPageInner() {
   // Preview state
   const [previewOpen, setPreviewOpen] = useState(false);
   const [previewUrl, setPreviewUrl] = useState<string | undefined>(undefined);
-  const [previewBlob, setPreviewBlob] = useState<Blob | undefined>(undefined);
   const [previewLoading, setPreviewLoading] = useState(false);
   const [previewError, setPreviewError] = useState<string | undefined>(undefined);
   const [previewFilename, setPreviewFilename] = useState<string | undefined>(undefined);
@@ -736,15 +739,10 @@ function StaffPageInner() {
     setPreviewLoading(true);
     setPreviewOpen(true);
     setPreviewUrl(undefined);
-    setPreviewBlob(undefined);
     try {
       const res = await axios.get(`/staff/${s.id}/id-card`, { responseType: 'blob' });
-      const blob = res.data as Blob;
-      setPreviewBlob(blob);
-      const url = URL.createObjectURL(blob);
-      setPreviewUrl(url);
-      const safeName = (s.name ?? 'staff').replace(/\s+/g, '_');
-      setPreviewFilename(`${safeName}_id.pdf`);
+      setPreviewUrl(URL.createObjectURL(res.data as Blob));
+      setPreviewFilename(pdfFilename(res.headers['content-disposition'], s.id));
     } catch (e: any) {
       const msg = e?.response?.data?.message || e?.message || 'Failed to load ID card';
       setPreviewError(Array.isArray(msg) ? msg.join(', ') : msg);
@@ -753,56 +751,21 @@ function StaffPageInner() {
     }
   };
 
-  const blobToBase64 = (blob: Blob) =>
-    new Promise<string>((resolve, reject) => {
-      const reader = new FileReader();
-      reader.onload = () => {
-        const result = reader.result as string;
-        const parts = result.split(',');
-        resolve(parts[1] ?? '');
-      };
-      reader.onerror = reject;
-      reader.readAsDataURL(blob);
-    });
-
-  const handlePrint = async () => {
-    if (!previewBlob) return;
-    try {
-      const base64 = await blobToBase64(previewBlob);
-      const html = `<!doctype html>
-<html>
-<head>
-<meta charset="utf-8">
-<title>Print ID Card</title>
-<style>
-  @page { size: 85.6mm 54mm; margin: 0; }
-  html,body { height: 100%; margin: 0; padding: 0; }
-  .wrap { width: 85.6mm; height: 54mm; margin: 0; }
-  .wrap embed, .wrap object, .wrap iframe { width: 100%; height: 100%; border: 0; }
-  @media print {
-    body { -webkit-print-color-adjust: exact; }
-    .wrap { box-shadow: none; }
-  }
-</style>
-</head>
-<body>
-  <div class="wrap">
-    <embed src="data:application/pdf;base64,${base64}" type="application/pdf">
-  </div>
-<script>
-  window.onload = function(){
-    setTimeout(function(){ window.print(); }, 300);
-  };
-</script>
-</body>
-</html>`;
-      const blob = new Blob([html], { type: 'text/html' });
-      const url = URL.createObjectURL(blob);
-      window.open(url, '_blank');
-    } catch (err) {
-      console.error('Failed to prepare printable view', err);
-      push('Failed to prepare printable view', 'error');
-    }
+  const handlePrint = () => {
+    if (!previewUrl) return;
+    const frame = document.createElement('iframe');
+    frame.style.cssText = 'position:fixed;width:0;height:0;border:0;visibility:hidden';
+    frame.onload = () => {
+      try {
+        frame.contentWindow?.print();
+      } catch {
+        window.open(previewUrl, '_blank');
+      }
+      // print() can return before the dialog closes, and removing the frame then would cancel it.
+      setTimeout(() => frame.remove(), 60_000);
+    };
+    frame.src = previewUrl;
+    document.body.appendChild(frame);
   };
 
   const handleEdit = (s: Staff) => {
@@ -846,7 +809,6 @@ function StaffPageInner() {
       URL.revokeObjectURL(previewUrl);
       setPreviewUrl(undefined);
     }
-    setPreviewBlob(undefined);
     setPreviewError(undefined);
     setPreviewLoading(false);
   };
