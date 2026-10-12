@@ -9,7 +9,7 @@ import Modal from '@/components/Modal';
 import Field from '@/components/Field';
 import { useToast } from '@/components/Toast';
 import { useList } from '@/lib/useList';
-import { pdfFilename } from '@/lib/idCard';
+import { PHOTO_HEIGHT, PHOTO_WIDTH, centerCrop, pdfFilename } from '@/lib/idCard';
 
 type UserLite = {
   id: number;
@@ -81,6 +81,24 @@ function usePhotoUrls(staff: Staff[]) {
   }, []);
 
   return (s: Staff) => (s.photoUpdatedAt ? urls[photoKey(s)] : undefined);
+}
+
+async function toPassportJpeg(file: File): Promise<Blob> {
+  const bitmap = await createImageBitmap(file);
+  const { sx, sy, sw, sh } = centerCrop(bitmap.width, bitmap.height);
+  const canvas = document.createElement('canvas');
+  canvas.width = PHOTO_WIDTH;
+  canvas.height = PHOTO_HEIGHT;
+  const ctx = canvas.getContext('2d');
+  if (!ctx) throw new Error('Canvas is not available');
+  // JPEG has no alpha, so a transparent PNG would otherwise turn black.
+  ctx.fillStyle = '#fff';
+  ctx.fillRect(0, 0, PHOTO_WIDTH, PHOTO_HEIGHT);
+  ctx.drawImage(bitmap, sx, sy, sw, sh, 0, 0, PHOTO_WIDTH, PHOTO_HEIGHT);
+  bitmap.close();
+  return new Promise((resolve, reject) =>
+    canvas.toBlob((b) => (b ? resolve(b) : reject(new Error('Could not encode the photo'))), 'image/jpeg', 0.9),
+  );
 }
 
 function initials(name: string) {
@@ -439,13 +457,19 @@ function AddStaffModal({
 function EditStaffModal({
   open,
   staff,
+  photoUpdatedAt,
+  photoUrl,
   onClose,
   onUpdated,
+  onPhotoChanged,
 }: {
   open: boolean;
   staff?: Staff | null;
+  photoUpdatedAt: string | null;
+  photoUrl?: string;
   onClose: () => void;
   onUpdated: (s: Staff) => void;
+  onPhotoChanged: (staffId: number, photoUpdatedAt: string | null) => void;
 }) {
   const [name, setName] = useState('');
   const [role, setRole] = useState<string>('');
@@ -453,8 +477,19 @@ function EditStaffModal({
   const [emergencyContact, setEmergencyContact] = useState('');
   const [err, setErr] = useState('');
   const [loading, setLoading] = useState(false);
+  const [photoBusy, setPhotoBusy] = useState<'uploading' | 'removing' | null>(null);
+  const [photoErr, setPhotoErr] = useState('');
+  // The cropped JPEG being uploaded, shown until the saved photo has been fetched back.
+  const [localPhoto, setLocalPhoto] = useState<string | undefined>(undefined);
+  const fileInput = useRef<HTMLInputElement>(null);
+
+  useEffect(() => () => {
+    if (localPhoto) URL.revokeObjectURL(localPhoto);
+  }, [localPhoto]);
 
   useEffect(() => {
+    setLocalPhoto(undefined);
+    setPhotoErr('');
     if (open && staff) {
       setName(staff.name ?? '');
       setRole(staff.role ?? '');
@@ -471,6 +506,49 @@ function EditStaffModal({
   }, [open, staff]);
 
   if (!open) return null;
+
+  const shownPhoto = photoBusy === 'uploading' ? localPhoto : photoUpdatedAt ? (photoUrl ?? localPhoto) : undefined;
+
+  const pickPhoto = async (file: File | undefined) => {
+    if (!file || !staff) return;
+    setPhotoErr('');
+    let blob: Blob;
+    try {
+      blob = await toPassportJpeg(file);
+    } catch {
+      return setPhotoErr('Could not read that image. Choose a JPEG or PNG photo.');
+    }
+    setLocalPhoto(URL.createObjectURL(blob));
+    setPhotoBusy('uploading');
+    try {
+      const form = new FormData();
+      form.append('photo', blob, 'photo.jpg');
+      const res = await axios.put(`/staff/${staff.id}/photo`, form);
+      onPhotoChanged(staff.id, res.data.photoUpdatedAt);
+    } catch (e: any) {
+      setLocalPhoto(undefined);
+      const msg = e?.response?.data?.message || e?.message || 'Failed to upload photo';
+      setPhotoErr(Array.isArray(msg) ? msg.join(', ') : msg);
+    } finally {
+      setPhotoBusy(null);
+    }
+  };
+
+  const removePhoto = async () => {
+    if (!staff) return;
+    setPhotoErr('');
+    setPhotoBusy('removing');
+    try {
+      await axios.delete(`/staff/${staff.id}/photo`);
+      setLocalPhoto(undefined);
+      onPhotoChanged(staff.id, null);
+    } catch (e: any) {
+      const msg = e?.response?.data?.message || e?.message || 'Failed to remove photo';
+      setPhotoErr(Array.isArray(msg) ? msg.join(', ') : msg);
+    } finally {
+      setPhotoBusy(null);
+    }
+  };
 
   const submit = async () => {
     setErr('');
@@ -498,7 +576,7 @@ function EditStaffModal({
   };
 
   return (
-    <Modal open={open} onClose={onClose} title="Edit Staff" size="md" locked={loading}>
+    <Modal open={open} onClose={onClose} title="Edit Staff" size="md" locked={loading || !!photoBusy}>
       <p className="mt-1 text-sm text-gray-500">Update staff member details</p>
 
       {err && (
@@ -506,6 +584,46 @@ function EditStaffModal({
           {err}
         </div>
       )}
+
+      <div className="mt-4 flex items-start gap-4">
+        <PhotoThumb name={name || staff?.name || ''} url={shownPhoto} className="h-[135px] w-[105px] shrink-0 text-2xl" />
+        <div className="min-w-0 space-y-2">
+          <div className="text-sm font-medium text-gray-700">ID card photo</div>
+          <div className="flex flex-wrap gap-2">
+            <button
+              type="button"
+              onClick={() => fileInput.current?.click()}
+              disabled={!!photoBusy}
+              className="rounded border px-3 py-1 text-xs font-semibold text-gray-700 hover:bg-gray-50 disabled:opacity-60"
+            >
+              {photoBusy === 'uploading' ? 'Uploading…' : photoUpdatedAt ? 'Change photo' : 'Choose photo'}
+            </button>
+            {photoUpdatedAt && (
+              <button
+                type="button"
+                onClick={removePhoto}
+                disabled={!!photoBusy}
+                className="rounded bg-red-50 px-3 py-1 text-xs font-semibold text-red-700 hover:bg-red-100 disabled:opacity-60"
+              >
+                {photoBusy === 'removing' ? 'Removing…' : 'Remove'}
+              </button>
+            )}
+          </div>
+          <input
+            ref={fileInput}
+            type="file"
+            accept="image/*"
+            aria-label="ID card photo file"
+            className="hidden"
+            onChange={(e) => {
+              void pickPhoto(e.target.files?.[0]);
+              e.target.value = '';
+            }}
+          />
+          <p className="text-xs text-gray-500">Cropped from the center to passport size, 35 x 45 mm.</p>
+          {photoErr && <p className="text-sm text-red-600">{photoErr}</p>}
+        </div>
+      </div>
 
       <div className="mt-4 space-y-3">
         <Field label="Full name">
@@ -564,12 +682,12 @@ function EditStaffModal({
       </div>
 
       <div className="mt-6 flex justify-end gap-2">
-        <button onClick={onClose} className="rounded-md border px-4 py-2 hover:bg-gray-50">
+        <button onClick={onClose} disabled={!!photoBusy} className="rounded-md border px-4 py-2 hover:bg-gray-50">
           Cancel
         </button>
         <button
           onClick={submit}
-          disabled={loading}
+          disabled={loading || !!photoBusy}
           className="rounded-md bg-indigo-600 px-4 py-2 font-semibold text-white hover:bg-indigo-700 disabled:opacity-60"
         >
           {loading ? 'Saving…' : 'Save Changes'}
@@ -849,6 +967,12 @@ function StaffPageInner() {
     setStaff((prev) => prev.map((p) => (p.id === updated.id ? updated : p)));
   };
 
+  const handlePhotoChanged = (staffId: number, photoUpdatedAt: string | null) => {
+    setStaff((prev) => prev.map((p) => (p.id === staffId ? { ...p, photoUpdatedAt } : p)));
+  };
+
+  const editingRow = staff.find((s) => s.id === editingStaff?.id);
+
   const handleDelete = (s: Staff) => {
     setStaffToDelete(s);
     setDeleteConfirmOpen(true);
@@ -920,6 +1044,9 @@ function StaffPageInner() {
       <EditStaffModal
         open={editOpen}
         staff={editingStaff}
+        photoUpdatedAt={editingRow?.photoUpdatedAt ?? null}
+        photoUrl={editingRow && photoUrl(editingRow)}
+        onPhotoChanged={handlePhotoChanged}
         onClose={() => {
           setEditOpen(false);
           setEditingStaff(undefined);
