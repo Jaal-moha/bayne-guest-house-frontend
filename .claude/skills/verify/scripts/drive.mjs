@@ -67,7 +67,8 @@ if (!VIEWPORTS[report.viewport]) throw new Error(`viewport must be one of ${Obje
 const browser = await chromium.launch({ executablePath: CHROME });
 const ctx = await browser.newContext({ viewport: VIEWPORTS[report.viewport] });
 await ctx.addInitScript((t) => {
-  if (sessionStorage.getItem('verify-seeded')) return;
+  // Init scripts also run in subframes such as the PDF viewer, where sessionStorage is null.
+  if (window !== window.top || sessionStorage.getItem('verify-seeded')) return;
   sessionStorage.setItem('verify-seeded', '1');
   if (t) localStorage.setItem('token', t); else localStorage.removeItem('token');
 }, token);
