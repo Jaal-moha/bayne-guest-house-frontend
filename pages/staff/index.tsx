@@ -1,6 +1,6 @@
 /* eslint-disable @typescript-eslint/no-explicit-any */
 // pages/staff/index.tsx
-import { useEffect, useMemo, useState } from 'react';
+import { useEffect, useMemo, useRef, useState } from 'react';
 import Layout from '@/components/Layout';
 import RequireAuth from '@/components/RequireAuth';
 import axios from '@/utils/axiosInstance';
@@ -28,11 +28,75 @@ type Staff = {
   barcode: string;
   user?: UserLite | null;
   idCardUrl?: string;
+  photoUpdatedAt: string | null;
 };
 
 const ROLE_VALUES = [
   'admin','manager','reception','housekeeping','barista','security','finance','store',
 ] as const;
+
+/* -------------------- Photos -------------------- */
+const photoKey = (s: Staff) => `${s.id}:${s.photoUpdatedAt}`;
+
+// The photo route needs the bearer token, so photos come through axios as blobs, one per staff row
+// with a photo, refetched only when photoUpdatedAt changes.
+function usePhotoUrls(staff: Staff[]) {
+  const [urls, setUrls] = useState<Record<string, string>>({});
+  const requested = useRef(new Set<string>());
+  const mounted = useRef(true);
+  const latest = useRef(urls);
+  latest.current = urls;
+
+  const wanted = useMemo(
+    () => new Map(staff.filter((s) => s.photoUpdatedAt).map((s) => [photoKey(s), s.id])),
+    [staff],
+  );
+
+  useEffect(() => {
+    const stale = Object.keys(urls).filter((k) => !wanted.has(k));
+    if (stale.length) {
+      stale.forEach((k) => URL.revokeObjectURL(urls[k]));
+      setUrls((u) => Object.fromEntries(Object.entries(u).filter(([k]) => wanted.has(k))));
+    }
+    for (const [key, id] of wanted) {
+      if (requested.current.has(key)) continue;
+      requested.current.add(key);
+      axios
+        .get(`/staff/${id}/photo`, { responseType: 'blob' })
+        .then((res) => {
+          const url = URL.createObjectURL(res.data as Blob);
+          if (mounted.current) setUrls((u) => ({ ...u, [key]: url }));
+          else URL.revokeObjectURL(url);
+        })
+        .catch(() => {});
+    }
+  }, [wanted, urls]);
+
+  useEffect(() => {
+    mounted.current = true;
+    return () => {
+      mounted.current = false;
+      Object.values(latest.current).forEach((u) => URL.revokeObjectURL(u));
+    };
+  }, []);
+
+  return (s: Staff) => (s.photoUpdatedAt ? urls[photoKey(s)] : undefined);
+}
+
+function initials(name: string) {
+  return name.trim().split(/\s+/).slice(0, 2).map((w) => w[0]?.toUpperCase()).join('');
+}
+
+function PhotoThumb({ name, url, className }: { name: string; url?: string; className: string }) {
+  return url ? (
+    // eslint-disable-next-line @next/next/no-img-element
+    <img src={url} alt={`Photo of ${name}`} className={`${className} rounded object-cover`} />
+  ) : (
+    <div aria-hidden className={`${className} grid place-items-center rounded bg-gray-100 font-semibold text-gray-400`}>
+      {initials(name)}
+    </div>
+  );
+}
 
 /* -------------------- Add Staff Modal -------------------- */
 function genPassword(length = 10) {
@@ -559,11 +623,13 @@ function DeleteConfirmationModal({
 /* -------------------- Staff Table -------------------- */
 function StaffTable({
   staff,
+  photoUrl,
   onPreview,
   onEdit,
   onDelete,
 }: {
   staff: Staff[];
+  photoUrl: (s: Staff) => string | undefined;
   onPreview?: (s: Staff) => void;
   onEdit?: (s: Staff) => void;
   onDelete?: (s: Staff) => void;
@@ -584,7 +650,12 @@ function StaffTable({
       <tbody>
         {staff.map((s) => (
           <tr key={s.id} className="border-t">
-            <td className="px-4 py-3">{s.name}</td>
+            <td className="px-4 py-2">
+              <div className="flex items-center gap-3">
+                <PhotoThumb name={s.name} url={photoUrl(s)} className="h-[45px] w-[35px] shrink-0 text-xs" />
+                <span>{s.name}</span>
+              </div>
+            </td>
             <td className="px-4 py-3">{s.role}</td>
             <td className="px-4 py-3">{s.phone}</td>
             <td className="px-4 py-3">{s.emergencyContact || <span className="text-gray-400">—</span>}</td>
@@ -701,6 +772,7 @@ function StaffPageInner() {
   });
   const { rows: staff, setRows: setStaff } = staffList;
   const { push } = useToast();
+  const photoUrl = usePhotoUrls(staff);
   const [q, setQ] = useState('');
   const [modalOpen, setModalOpen] = useState(false);
 
@@ -838,7 +910,7 @@ function StaffPageInner() {
           {filtered.length === 0 ? (
             <div className="p-6 text-gray-600">No staff found.</div>
           ) : (
-            <StaffTable staff={filtered} onPreview={handlePreview} onEdit={handleEdit} onDelete={handleDelete} />
+            <StaffTable staff={filtered} photoUrl={photoUrl} onPreview={handlePreview} onEdit={handleEdit} onDelete={handleDelete} />
           )}
         </ListState>
       </div>
