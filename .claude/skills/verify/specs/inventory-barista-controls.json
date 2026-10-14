@@ -1,0 +1,17 @@
+{
+  "name": "inventory-barista-controls",
+  "role": "barista",
+  "setup": [
+    { "as": "store", "method": "POST", "path": "/inventory", "body": { "name": "Coffee ${RUN}", "category": "Kitchen", "unit": "kg", "quantity": 8 }, "expect": 201 }
+  ],
+  "steps": [
+    { "goto": "/inventory" },
+    { "expectText": "Coffee ${RUN}" },
+    { "expectHidden": { "role": "button", "name": "New Item" } },
+    { "click": "tr:has-text('Coffee ${RUN}')" },
+    { "expectVisible": { "role": "dialog", "name": "Coffee ${RUN}" } },
+    { "expectVisible": { "role": "button", "name": "Subtract" } },
+    { "expectHidden": { "role": "button", "name": "Remove Item" } },
+    { "expectNoPageErrors": true }
+  ]
+}

@@ -5,6 +5,8 @@ import axios from '@/utils/axiosInstance';
 import ListState from '@/components/ListState';
 import Modal from '@/components/Modal';
 import Field from '@/components/Field';
+import { useAuth } from '@/context/AuthContext';
+import { canManageInventoryItems } from '@/lib/permissions';
 import { useList } from '@/lib/useList';
 import { dateTime } from '@/lib/format';
 import Link from 'next/link';
@@ -329,7 +331,7 @@ type ItemActionsProps = {
   onSubtract: () => void;
   onAdjust: () => void;
   onHistory: () => void;
-  onRemove: () => Promise<void>;
+  onRemove?: () => Promise<void>;
   removing: boolean;
 };
 
@@ -338,14 +340,15 @@ function ItemActionsModal({
 }: Omit<ItemActionsProps, 'item' | 'removing'> & { open: boolean; onClose: () => void; item: Item | null; }) {
   const [removing, setRemoving] = useState(false);
   if (!open || !item) return null;
-  const onRemove = async () => {
+  const remove = actions.onRemove;
+  const onRemove = remove && (async () => {
     setRemoving(true);
     try {
-      await actions.onRemove();
+      await remove();
     } finally {
       setRemoving(false);
     }
-  };
+  });
   return (
     <Modal open={open} onClose={onClose} title={item.name} size="md" locked={removing}>
       <ItemActions item={item} {...actions} onRemove={onRemove} removing={removing} />
@@ -362,6 +365,7 @@ function ItemActions({ item, onAdd, onSubtract, onAdjust, onHistory, onRemove, r
   const [err, setErr] = useState('');
 
   const doRemove = async () => {
+    if (!onRemove) return;
     setErr('');
     try {
       await onRemove();
@@ -389,7 +393,7 @@ function ItemActions({ item, onAdd, onSubtract, onAdjust, onHistory, onRemove, r
           <button className="rounded bg-orange-600 px-3 py-2 text-white hover:bg-orange-700" onClick={onSubtract}>Subtract</button>
           <button className="rounded bg-indigo-600 px-3 py-2 text-white hover:bg-indigo-700" onClick={onAdjust}>Adjust</button>
           <button className="rounded border px-3 py-2 hover:bg-gray-50" onClick={onHistory}>History</button>
-          <button className="col-span-2 rounded border border-red-300 px-3 py-2 text-red-700 hover:bg-red-50" onClick={() => setConfirming(true)}>Remove Item</button>
+          {onRemove && <button className="col-span-2 rounded border border-red-300 px-3 py-2 text-red-700 hover:bg-red-50" onClick={() => setConfirming(true)}>Remove Item</button>}
         </div>
       ) : (
         <div className="mt-5 rounded-lg border border-red-200 bg-red-50 p-3">
@@ -410,6 +414,8 @@ function ItemActions({ item, onAdd, onSubtract, onAdjust, onHistory, onRemove, r
 /* ---------- Page ---------- */
 
 function InventoryInner() {
+  const { user } = useAuth();
+  const canManage = !!user && canManageInventoryItems(user.role);
   const [q, setQ] = useState(''); const [category, setCategory] = useState('');
   const [query, setQuery] = useState('');
   const [onlyLow, setOnlyLow] = useState(false);
@@ -480,9 +486,11 @@ function InventoryInner() {
             <input type="checkbox" checked={onlyLow} onChange={(e) => setOnlyLow(e.target.checked)} />
             Low stock only
           </label>
-          <button className="rounded bg-indigo-600 px-4 py-2 font-semibold text-white" onClick={() => setNewOpen(true)}>
-            New Item
-          </button>
+          {canManage && (
+            <button className="rounded bg-indigo-600 px-4 py-2 font-semibold text-white" onClick={() => setNewOpen(true)}>
+              New Item
+            </button>
+          )}
         </div>
       </div>
 
@@ -560,7 +568,7 @@ function InventoryInner() {
         onSubtract={() => { if (actionsItem) { setStockItem(actionsItem); setStockKind('out'); setActionsItem(null); } }}
         onAdjust={() => { if (actionsItem) { setStockItem(actionsItem); setStockKind('adjust'); setActionsItem(null); } }}
         onHistory={() => { if (actionsItem) { setHistoryItem(actionsItem); setActionsItem(null); } }}
-        onRemove={async () => { if (actionsItem) await removeItem(actionsItem.id); }}
+        onRemove={canManage ? async () => { if (actionsItem) await removeItem(actionsItem.id); } : undefined}
       />
     </Layout>
   );
