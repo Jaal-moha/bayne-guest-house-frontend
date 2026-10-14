@@ -11,6 +11,7 @@ Admins and managers list staff, add and edit them, upload a passport photo for t
 - A rejected photo upload shows the API message and keeps the old state: `staff-photo-reject`.
 - ID card preview with print guidance, Download and Print: `staff-id-card`.
 - Load error: `staff-load-error`.
+- Temporary ID card options demo at `/staff/id-card-demo`, linked from the header. Each option refetches the PDF and updates the summary line: `staff-id-card-demo`. Reception is sent away: `staff-id-card-demo-guard`.
 
 ## How to get to it (user POV)
 

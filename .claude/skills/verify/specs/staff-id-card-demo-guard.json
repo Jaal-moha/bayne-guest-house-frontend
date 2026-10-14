@@ -1,0 +1,9 @@
+{
+  "name": "staff-id-card-demo-guard",
+  "role": "reception",
+  "steps": [
+    { "goto": "/staff/id-card-demo" },
+    { "expectUrl": "/dashboard" },
+    { "expectNoApi": "GET /staff/id-card-demo" }
+  ]
+}

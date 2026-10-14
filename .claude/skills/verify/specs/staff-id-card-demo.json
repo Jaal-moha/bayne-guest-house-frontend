@@ -1,0 +1,42 @@
+{
+  "name": "staff-id-card-demo",
+  "role": "manager",
+  "setup": [
+    { "as": "admin", "method": "POST", "path": "/staff", "body": { "name": "Demo ${RUN} A", "role": "reception", "phone": "0911000881" }, "expect": 201, "save": "SA" },
+    { "as": "admin", "method": "POST", "path": "/staff", "body": { "name": "Demo ${RUN} B", "role": "housekeeping", "phone": "0911000882" }, "expect": 201, "save": "SB" },
+    { "as": "admin", "method": "POST", "path": "/staff", "body": { "name": "Demo ${RUN} C", "role": "barista", "phone": "0911000883" }, "expect": 201, "save": "SC" },
+    { "as": "admin", "method": "POST", "path": "/staff", "body": { "name": "Demo ${RUN} D", "role": "security", "phone": "0911000884" }, "expect": 201, "save": "SD" }
+  ],
+  "steps": [
+    { "goto": "/staff" },
+    { "click": { "role": "link", "name": "Card options (demo)" } },
+    { "expectUrl": "/staff/id-card-demo" },
+    { "expectText": "Demo: ID card options. Pick with the client, then this page goes away." },
+    { "expectApi": "GET /staff/id-card-demo?ids=${SD},${SC},${SB}&photo=passport&back=white&wordmark=ALMIS+HOTEL&perPage=1 200" },
+    { "expectText": "Photo: passport · Back: white · Per page: 1 · Wordmark: ALMIS HOTEL" },
+    { "wait": 1500 },
+    { "screenshot": "fe-demo-defaults" },
+    { "click": { "role": "radio", "name": "Compact 25 x 32 mm" } },
+    { "expectApi": "GET /staff/id-card-demo?ids=${SD},${SC},${SB}&photo=compact&back=white&perPage=1 200" },
+    { "expectText": "Photo: compact · Back: white · Per page: 1 · Wordmark: ALMIS HOTEL" },
+    { "click": { "role": "radio", "name": "Tinted" } },
+    { "expectApi": "GET /staff/id-card-demo?ids=${SD},${SC},${SB}&photo=compact&back=tint&perPage=1 200" },
+    { "expectText": "Photo: compact · Back: tinted · Per page: 1 · Wordmark: ALMIS HOTEL" },
+    { "wait": 1500 },
+    { "screenshot": "fe-demo-compact-tint" },
+    { "click": { "role": "radio", "name": "3" } },
+    { "expectApi": "GET /staff/id-card-demo?ids=${SD},${SC},${SB}&photo=compact&back=tint&perPage=3 200" },
+    { "click": "li:has-text('Demo ${RUN} A') >> input[type=checkbox]" },
+    { "expectApi": "GET /staff/id-card-demo?ids=${SD},${SC},${SB},${SA}&photo=compact&back=tint&perPage=3 200" },
+    { "expectText": "Photo: compact · Back: tinted · Per page: 3 · Wordmark: ALMIS HOTEL" },
+    { "wait": 1500 },
+    { "screenshot": "fe-demo-3-per-page" },
+    { "fill": { "label": "Wordmark" }, "value": "Bayne Guest House" },
+    { "expectApi": "GET /staff/id-card-demo?ids=${SD},${SC},${SB},${SA}&photo=compact&back=tint&wordmark=BAYNE+GUEST+HOUSE&perPage=3 200" },
+    { "expectText": "Photo: compact · Back: tinted · Per page: 3 · Wordmark: BAYNE GUEST HOUSE" },
+    { "wait": 1500 },
+    { "screenshot": "fe-demo-wordmark" },
+    { "expectVisible": "a[download='id-card-demo.pdf']" },
+    { "expectNoPageErrors": true }
+  ]
+}
