@@ -205,7 +205,7 @@ function IdCardDemoInner() {
           </fieldset>
         </div>
 
-        <div className="flex min-w-0 flex-col">
+        <div className="flex min-w-0 flex-col lg:sticky lg:top-0 lg:self-start">
           <div className="flex items-center justify-end gap-2">
             {preview.loading && <span className="mr-auto text-sm text-gray-500">Updating…</span>}
             {preview.url && (
