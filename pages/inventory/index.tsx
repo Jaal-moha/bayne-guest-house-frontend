@@ -101,7 +101,7 @@ function NewItemModal({
         </Field>
 
         <Field label="Category">
-          {(id) => <input id={id} className="w-full rounded border px-3 py-2" value={category} onChange={(e) => setCategory(e.target.value)} placeholder="e.g., Grocery, Bar, Housekeeping" />}
+          {(id) => <input id={id} className="w-full rounded border px-3 py-2" value={category} onChange={(e) => setCategory(e.target.value)} placeholder="e.g., Grocery, Kitchen, Housekeeping" />}
         </Field>
 
         <Field label="Unit">
