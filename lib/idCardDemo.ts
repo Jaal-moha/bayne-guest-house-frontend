@@ -17,7 +17,7 @@ export const DEFAULT_ID_CARD_OPTIONS: IdCardOptions = {
 export const WORDMARK_MAX = 24;
 
 type Choice<V> = { value: V; label: string; summary: string; tradeoff: string };
-type ChoiceGroup<K extends 'photo' | 'back' | 'perPage'> = {
+export type ChoiceGroup<K extends 'photo' | 'back' | 'perPage'> = {
   key: K;
   label: string;
   summaryLabel: string;
