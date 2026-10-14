@@ -31,7 +31,9 @@ export function pagesFor(role: Role): Page[] {
 }
 
 export function canSee(role: Role, path: string): boolean {
-  return PAGES.some((page) => page.path === path && page.roles.includes(role));
+  return PAGES.some(
+    (page) => (path === page.path || path.startsWith(page.path + '/')) && page.roles.includes(role),
+  );
 }
 
 export function landingFor(role: Role): string | null {
