@@ -739,23 +739,45 @@ function DeleteConfirmationModal({
 }
 
 /* -------------------- Staff Table -------------------- */
+function SelectAllBox({ checked, partial, onChange }: { checked: boolean; partial: boolean; onChange: () => void }) {
+  const ref = useRef<HTMLInputElement>(null);
+  useEffect(() => {
+    if (ref.current) ref.current.indeterminate = partial;
+  }, [partial]);
+  return <input ref={ref} type="checkbox" aria-label="Select all staff" checked={checked} onChange={onChange} />;
+}
+
 function StaffTable({
   staff,
   photoUrl,
+  selected,
+  onToggle,
+  onToggleAll,
   onPreview,
   onEdit,
   onDelete,
 }: {
   staff: Staff[];
   photoUrl: (s: Staff) => string | undefined;
+  selected: ReadonlySet<number>;
+  onToggle: (id: number) => void;
+  onToggleAll: () => void;
   onPreview?: (s: Staff) => void;
   onEdit?: (s: Staff) => void;
   onDelete?: (s: Staff) => void;
 }) {
+  const selectedCount = staff.filter((s) => selected.has(s.id)).length;
   return (
     <table className="min-w-full border-collapse table-auto">
       <thead className="bg-gray-100">
         <tr>
+          <th className="w-10 px-4 py-3 text-left">
+            <SelectAllBox
+              checked={selectedCount > 0 && selectedCount === staff.length}
+              partial={selectedCount > 0 && selectedCount < staff.length}
+              onChange={onToggleAll}
+            />
+          </th>
           <th className="px-4 py-3 text-left text-sm font-semibold text-gray-700">Name</th>
           <th className="px-4 py-3 text-left text-sm font-semibold text-gray-700">Role</th>
           <th className="px-4 py-3 text-left text-sm font-semibold text-gray-700">Phone</th>
@@ -768,6 +790,14 @@ function StaffTable({
       <tbody>
         {staff.map((s) => (
           <tr key={s.id} className="border-t">
+            <td className="px-4 py-2">
+              <input
+                type="checkbox"
+                aria-label={`Select ${s.name}`}
+                checked={selected.has(s.id)}
+                onChange={() => onToggle(s.id)}
+              />
+            </td>
             <td className="px-4 py-2">
               <div className="flex items-center gap-3">
                 <PhotoThumb name={s.name} url={photoUrl(s)} className="h-[45px] w-[35px] shrink-0 text-xs" />
@@ -825,6 +855,7 @@ function StaffTable({
 /* -------------------- PDF Preview Modal -------------------- */
 function PdfPreviewModal({
   open,
+  title,
   loading,
   url,
   filename,
@@ -833,6 +864,7 @@ function PdfPreviewModal({
   onPrint,
 }: {
   open: boolean;
+  title: string;
   loading: boolean;
   url?: string;
   filename?: string;
@@ -842,7 +874,7 @@ function PdfPreviewModal({
 }) {
   if (!open) return null;
   return (
-    <Modal open={open} onClose={onClose} title="ID card" size="3xl">
+    <Modal open={open} onClose={onClose} title={title} size="3xl">
       <div className="flex items-center justify-end gap-2">
         {url && (
           <a
@@ -864,7 +896,8 @@ function PdfPreviewModal({
         <button onClick={onClose} className="rounded border px-3 py-1 text-sm">Close</button>
       </div>
       <p className="mt-3 text-sm text-gray-600">
-        Print on A4 at 100% (actual size), cut along the crop marks, fold on the dashed line, laminate.
+        Print on A4 at 100% (actual size). Each page holds three cards: cut on the corner marks, fold on the dashed
+        line, laminate.
       </p>
 
       <div className="mt-3 h-[70vh]">
@@ -883,6 +916,8 @@ function PdfPreviewModal({
 }
 
 /* -------------------- Page -------------------- */
+const MAX_PRINT_BATCH = 30;
+
 function StaffPageInner() {
   const staffList = useList<Staff>('staff', async () => {
     const res = await axios.get('/staff');
@@ -900,6 +935,9 @@ function StaffPageInner() {
   const [previewLoading, setPreviewLoading] = useState(false);
   const [previewError, setPreviewError] = useState<string | undefined>(undefined);
   const [previewFilename, setPreviewFilename] = useState<string | undefined>(undefined);
+  const [previewTitle, setPreviewTitle] = useState('ID card');
+
+  const [selected, setSelected] = useState<ReadonlySet<number>>(new Set());
 
   // Edit state
   const [editOpen, setEditOpen] = useState(false);
@@ -919,20 +957,40 @@ function StaffPageInner() {
     );
   }, [q, staff]);
 
+  const printIds = filtered.filter((s) => selected.has(s.id)).map((s) => s.id);
+
+  const toggleSelected = (id: number) =>
+    setSelected((prev) => {
+      const next = new Set(prev);
+      if (!next.delete(id)) next.add(id);
+      return next;
+    });
+
+  const toggleAllVisible = () =>
+    setSelected((prev) => {
+      const next = new Set(prev);
+      const allOn = filtered.every((s) => prev.has(s.id));
+      for (const s of filtered) {
+        if (allOn) next.delete(s.id);
+        else next.add(s.id);
+      }
+      return next;
+    });
+
   const onCreated = (newStaff: Staff) => {
     setStaff((prev) => [newStaff, ...prev.filter((p) => p.id !== newStaff.id)]);
   };
 
-  // Fetch PDF as blob and show preview modal (no navigation)
-  const handlePreview = async (s: Staff) => {
+  const openPdf = async (title: string, path: string, fallbackFilename: string) => {
+    setPreviewTitle(title);
     setPreviewError(undefined);
     setPreviewLoading(true);
     setPreviewOpen(true);
     setPreviewUrl(undefined);
     try {
-      const res = await axios.get(`/staff/${s.id}/id-card`, { responseType: 'blob' });
+      const res = await axios.get(path, { responseType: 'blob' });
       setPreviewUrl(URL.createObjectURL(res.data as Blob));
-      setPreviewFilename(pdfFilename(res.headers['content-disposition'], s.id));
+      setPreviewFilename(pdfFilename(res.headers['content-disposition'], fallbackFilename));
     } catch (e: any) {
       const msg = e?.response?.data?.message || e?.message || 'Failed to load ID card';
       setPreviewError(Array.isArray(msg) ? msg.join(', ') : msg);
@@ -940,6 +998,15 @@ function StaffPageInner() {
       setPreviewLoading(false);
     }
   };
+
+  const handlePreview = (s: Staff) => openPdf('ID card', `/staff/${s.id}/id-card`, `staff-${s.id}.pdf`);
+
+  const printSelected = () =>
+    openPdf(
+      `ID cards (${printIds.length})`,
+      `/staff/id-cards?ids=${printIds.join(',')}`,
+      `staff-cards-${printIds.length}.pdf`,
+    );
 
   const handlePrint = () => {
     if (!previewUrl) return;
@@ -984,6 +1051,11 @@ function StaffPageInner() {
     try {
       await axios.delete(`/staff/${staffToDelete.id}`);
       setStaff((prev) => prev.filter((staff) => staff.id !== staffToDelete.id));
+      setSelected((prev) => {
+        const next = new Set(prev);
+        next.delete(staffToDelete.id);
+        return next;
+      });
     } catch (error) {
       console.error('Error deleting staff:', error);
       push('Failed to delete staff', 'error');
@@ -1021,6 +1093,19 @@ function StaffPageInner() {
             className="w-64 rounded-md border px-3 py-2"
           />
           <button
+            onClick={printSelected}
+            disabled={printIds.length === 0 || printIds.length > MAX_PRINT_BATCH}
+            title={printIds.length > MAX_PRINT_BATCH ? `Select at most ${MAX_PRINT_BATCH} staff` : undefined}
+            className="rounded-md bg-green-600 px-4 py-2 font-semibold text-white hover:bg-green-700 disabled:cursor-not-allowed disabled:bg-gray-300"
+          >
+            Print selected ({printIds.length})
+          </button>
+          {selected.size > 0 && (
+            <button onClick={() => setSelected(new Set())} className="rounded-md border px-3 py-2 text-sm text-gray-700">
+              Clear selection
+            </button>
+          )}
+          <button
             onClick={() => setModalOpen(true)}
             className="rounded-md bg-indigo-600 px-4 py-2 font-semibold text-white hover:bg-indigo-700"
           >
@@ -1034,7 +1119,16 @@ function StaffPageInner() {
           {filtered.length === 0 ? (
             <div className="p-6 text-gray-600">No staff found.</div>
           ) : (
-            <StaffTable staff={filtered} photoUrl={photoUrl} onPreview={handlePreview} onEdit={handleEdit} onDelete={handleDelete} />
+            <StaffTable
+              staff={filtered}
+              photoUrl={photoUrl}
+              selected={selected}
+              onToggle={toggleSelected}
+              onToggleAll={toggleAllVisible}
+              onPreview={handlePreview}
+              onEdit={handleEdit}
+              onDelete={handleDelete}
+            />
           )}
         </ListState>
       </div>
@@ -1056,6 +1150,7 @@ function StaffPageInner() {
 
       <PdfPreviewModal
         open={previewOpen}
+        title={previewTitle}
         loading={previewLoading}
         url={previewUrl}
         filename={previewFilename}

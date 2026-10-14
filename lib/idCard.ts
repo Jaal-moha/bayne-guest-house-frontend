@@ -13,7 +13,7 @@ export function centerCrop(width: number, height: number): CropRect {
   return { sx: 0, sy: Math.floor((height - sh) / 2), sw: width, sh };
 }
 
-export function pdfFilename(contentDisposition: string | undefined, staffId: number): string {
+export function pdfFilename(contentDisposition: string | undefined, fallback: string): string {
   const name = contentDisposition?.match(/filename="?([^";]+)"?/i)?.[1]?.trim();
-  return name || `staff-${staffId}.pdf`;
+  return name || fallback;
 }
