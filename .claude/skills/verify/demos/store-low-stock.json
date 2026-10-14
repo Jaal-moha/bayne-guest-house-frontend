@@ -8,7 +8,7 @@
   },
   "setup": [
     { "as": "store", "method": "POST", "path": "/inventory", "body": { "name": "Shampoo sachets", "category": "Housekeeping", "unit": "pcs", "quantity": 300, "minThreshold": 100 }, "expect": 201 },
-    { "as": "store", "method": "POST", "path": "/inventory", "body": { "name": "Habesha beer", "category": "Bar", "unit": "pcs", "quantity": 96, "minThreshold": 48 }, "expect": 201 },
+    { "as": "store", "method": "POST", "path": "/inventory", "body": { "name": "Mango juice", "category": "Beverages", "unit": "pcs", "quantity": 96, "minThreshold": 48 }, "expect": 201 },
     { "as": "store", "method": "POST", "path": "/inventory", "body": { "name": "Fresh milk", "category": "Kitchen", "unit": "L", "quantity": 6, "minThreshold": 12 }, "expect": 201 },
     { "as": "store", "method": "POST", "path": "/inventory", "body": { "name": "Laundry detergent", "category": "Housekeeping", "unit": "kg", "quantity": 4, "minThreshold": 10 }, "expect": 201 }
   ],

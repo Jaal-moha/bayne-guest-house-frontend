@@ -78,7 +78,7 @@ await ctx.addInitScript((t) => {
 const page = await ctx.newPage();
 page.setDefaultTimeout(STEP_TIMEOUT);
 
-// Headless Chromium draws no cursor and the video has no sound, so demo mode paints both the pointer and a caption bar.
+// Headless Chromium draws no cursor and the video has no sound, so demo mode paints both the pointer and a caption strip.
 function demoOverlay() {
   if (window !== window.top) return;
   let store;
@@ -93,11 +93,11 @@ function demoOverlay() {
     const [x, y] = JSON.parse(store.getItem('demo-pos') || '[-40,-40]');
     cursor.style.cssText = `position:fixed;left:${x}px;top:${y}px;width:22px;height:22px;margin:-11px 0 0 -11px;border-radius:50%;background:rgba(239,68,68,.35);border:2px solid #ef4444;z-index:2147483647;pointer-events:none;transition:transform .12s`;
     document.body.appendChild(cursor);
-    const bar = document.createElement('div');
-    bar.id = 'demo-caption';
-    bar.style.cssText = 'position:fixed;left:50%;bottom:28px;transform:translateX(-50%);max-width:80%;padding:12px 22px;border-radius:12px;background:rgba(15,23,42,.88);color:#fff;font:600 18px/1.35 system-ui,sans-serif;text-align:center;z-index:2147483646;pointer-events:none;box-shadow:0 8px 30px rgba(0,0,0,.3)';
-    document.body.appendChild(bar);
-    window.__demoCaption = (text) => { store.setItem('demo-caption', text); bar.textContent = text; bar.style.display = text ? 'block' : 'none'; };
+    const strip = document.createElement('div');
+    strip.id = 'demo-caption';
+    strip.style.cssText = 'position:fixed;left:50%;bottom:28px;transform:translateX(-50%);max-width:80%;padding:12px 22px;border-radius:12px;background:rgba(15,23,42,.88);color:#fff;font:600 18px/1.35 system-ui,sans-serif;text-align:center;z-index:2147483646;pointer-events:none;box-shadow:0 8px 30px rgba(0,0,0,.3)';
+    document.body.appendChild(strip);
+    window.__demoCaption = (text) => { store.setItem('demo-caption', text); strip.textContent = text; strip.style.display = text ? 'block' : 'none'; };
     window.__demoCaption(store.getItem('demo-caption') || '');
     document.addEventListener('mousemove', (e) => { cursor.style.left = e.clientX + 'px'; cursor.style.top = e.clientY + 'px'; store.setItem('demo-pos', JSON.stringify([e.clientX, e.clientY])); }, true);
     document.addEventListener('mousedown', () => { cursor.style.transform = 'scale(.6)'; }, true);

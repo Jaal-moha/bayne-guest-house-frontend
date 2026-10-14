@@ -9,7 +9,7 @@
   "setup": [
     { "as": "store", "method": "POST", "path": "/inventory", "body": { "name": "Bath towels", "category": "Housekeeping", "unit": "pcs", "quantity": 120, "minThreshold": 40 }, "expect": 201 },
     { "as": "store", "method": "POST", "path": "/inventory", "body": { "name": "Teff flour", "category": "Kitchen", "unit": "kg", "quantity": 35, "minThreshold": 10 }, "expect": 201 },
-    { "as": "store", "method": "POST", "path": "/inventory", "body": { "name": "Ambo mineral water", "category": "Bar", "unit": "pcs", "quantity": 48, "minThreshold": 24 }, "expect": 201 }
+    { "as": "store", "method": "POST", "path": "/inventory", "body": { "name": "Ambo mineral water", "category": "Beverages", "unit": "pcs", "quantity": 48, "minThreshold": 24 }, "expect": 201 }
   ],
   "steps": [
     { "goto": "/inventory" },
@@ -17,7 +17,7 @@
     { "click": { "role": "button", "name": "New Item" } },
     { "caption": "Name it, pick a category and unit, and set the opening stock." },
     { "fill": { "label": "Name" }, "value": "Yirgacheffe coffee beans" },
-    { "fill": { "label": "Category" }, "value": "Bar" },
+    { "fill": { "label": "Category" }, "value": "Beverages" },
     { "select": { "label": "Unit" }, "value": "kg" },
     { "fill": { "label": "Initial Quantity (optional)" }, "value": "25" },
     { "fill": { "label": "Min Threshold (optional)" }, "value": "5" },

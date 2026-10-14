@@ -7,9 +7,9 @@
     "summary": "The storekeeper removes plastic straws, which the hotel no longer stocks."
   },
   "setup": [
-    { "as": "store", "method": "POST", "path": "/inventory", "body": { "name": "Paper napkins", "category": "Bar", "unit": "pcs", "quantity": 500, "minThreshold": 100 }, "expect": 201 },
+    { "as": "store", "method": "POST", "path": "/inventory", "body": { "name": "Paper napkins", "category": "Beverages", "unit": "pcs", "quantity": 500, "minThreshold": 100 }, "expect": 201 },
     { "as": "store", "method": "POST", "path": "/inventory", "body": { "name": "Dish soap", "category": "Kitchen", "unit": "L", "quantity": 8, "minThreshold": 4 }, "expect": 201 },
-    { "as": "store", "method": "POST", "path": "/inventory", "body": { "name": "Plastic straws", "category": "Bar", "unit": "pcs", "quantity": 0, "minThreshold": 0 }, "expect": 201, "save": "ITEM" }
+    { "as": "store", "method": "POST", "path": "/inventory", "body": { "name": "Plastic straws", "category": "Beverages", "unit": "pcs", "quantity": 0, "minThreshold": 0 }, "expect": 201, "save": "ITEM" }
   ],
   "steps": [
     { "goto": "/inventory" },
