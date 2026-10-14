@@ -176,6 +176,7 @@ const actions = {
     if (hit) throw new Error(`api ${w} was called (${hit.method} ${hit.path} ${hit.status})`);
   },
   expectNoVisit: async (p) => { await settle(); if (report.visits.includes(p)) throw new Error(`visited ${p} (visits: ${report.visits.join(' ')})`); },
+  expectRequest: (s) => poll(async () => report.requests.some((r) => r.url.includes(s)) || report.requests.map((r) => r.url).filter((u) => u.startsWith(API_URL)).slice(-3).join(' '), `request containing ${s}`),
   expectNoRequest: async (s) => { await settle(); const hit = report.requests.find((r) => r.url.includes(s)); if (hit) throw new Error(`request to ${hit.url}`); },
   expectNoPageErrors: async () => { if (report.pageErrors.length) throw new Error(report.pageErrors[0]); },
   expectFits: async () => {
