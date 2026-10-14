@@ -1,6 +1,7 @@
 /* eslint-disable @typescript-eslint/no-explicit-any */
 // pages/staff/index.tsx
 import { useEffect, useMemo, useRef, useState } from 'react';
+import Link from 'next/link';
 import Layout from '@/components/Layout';
 import RequireAuth from '@/components/RequireAuth';
 import axios from '@/utils/axiosInstance';
@@ -1014,6 +1015,9 @@ function StaffPageInner() {
       <div className="mb-4 flex flex-wrap items-center gap-3">
         <h1 className="text-2xl font-bold text-gray-800">Staff</h1>
         <div className="ml-auto flex flex-wrap items-center gap-2">
+          <Link href="/staff/id-card-demo" className="rounded-md border px-3 py-2 text-sm text-gray-700 hover:bg-gray-50">
+            Card options (demo)
+          </Link>
           <input
             value={q}
             onChange={(e) => setQ(e.target.value)}
