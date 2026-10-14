@@ -141,9 +141,13 @@ async function poll(check, what) {
   throw new Error(`${what}${typeof last === 'string' ? ` (got: ${last})` : ''}`);
 }
 const bodyText = () => page.innerText('body').catch(() => '');
+const queryHas = (actual, wanted) => {
+  const got = new URLSearchParams(actual.split('?')[1] ?? '');
+  return [...new URLSearchParams(wanted.split('?')[1] ?? '')].every(([k, v]) => got.get(k) === v);
+};
 const apiMatch = (want) => {
   const [method, path, status] = want.split(' ');
-  return report.api.some((a) => a.method === method && a.path.split('?')[0] === path.split('?')[0] && (!status || String(a.status) === status));
+  return report.api.some((a) => a.method === method && a.path.split('?')[0] === path.split('?')[0] && queryHas(a.path, path) && (!status || String(a.status) === status));
 };
 
 const actions = {
