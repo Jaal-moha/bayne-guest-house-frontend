@@ -13,6 +13,7 @@ import {
   DEFAULT_ID_CARD_OPTIONS,
   PER_PAGE_GROUP,
   PHOTO_GROUP,
+  STAFF_MAX,
   WORDMARK_MAX,
   demoQuery,
   summaryLine,
@@ -182,7 +183,7 @@ function IdCardDemoInner() {
           </Field>
           <fieldset>
             <legend className="mb-1 text-sm font-semibold text-gray-800">Staff</legend>
-            <p className="mb-2 text-xs text-gray-600">At least one. With 3 per page, cards fill pages in this order.</p>
+            <p className="mb-2 text-xs text-gray-600">One to twelve. With 3 per page, cards fill pages in this order.</p>
             <ListState list={staffList} empty="No staff yet.">
               <ul className="max-h-64 space-y-1 overflow-y-auto rounded-md border bg-white p-2">
                 {staff.map((s) => (
@@ -191,7 +192,7 @@ function IdCardDemoInner() {
                       <input
                         type="checkbox"
                         checked={ids.includes(s.id)}
-                        disabled={ids.length === 1 && ids.includes(s.id)}
+                        disabled={ids.includes(s.id) ? ids.length === 1 : ids.length >= STAFF_MAX}
                         onChange={() => toggle(s.id)}
                       />
                       <span className="text-gray-800">{s.name}</span>
