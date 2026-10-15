@@ -2,6 +2,12 @@ import React, { createContext, useCallback, useContext, useEffect, useMemo, useS
 
 type Toast = { id: number; type?: 'success' | 'error' | 'info'; message: string; };
 
+const TONE = {
+    success: 'border-accent/25 bg-accent-tint text-accent',
+    error: 'border-danger-line bg-danger-tint text-danger',
+    info: 'border-line bg-surface text-ink',
+} as const;
+
 type ToastContextValue = { push: (msg: string, type?: Toast['type']) => void; };
 
 const ToastCtx = createContext<ToastContextValue | undefined>(undefined);
@@ -28,7 +34,7 @@ export function ToastProvider({ children }: { children: React.ReactNode; }) {
             {children}
             <div className="fixed bottom-4 left-4 right-4 z-50 flex flex-col items-end space-y-2 sm:bottom-6 sm:left-auto sm:right-6">
                 {toasts.map((t) => (
-                    <div key={t.id} className={`max-w-full rounded-md sm:max-w-sm px-4 py-2 shadow-lg border ${t.type === 'success' ? 'bg-emerald-50 border-emerald-200 text-emerald-800' : t.type === 'error' ? 'bg-red-50 border-red-200 text-red-800' : 'bg-white border-gray-200 text-gray-900'}`}>
+                    <div key={t.id} className={`max-w-full rounded-input border px-4 py-3 text-sm font-medium shadow-panel sm:max-w-sm ${TONE[t.type ?? 'info']}`}>
                         {t.message}
                     </div>
                 ))}

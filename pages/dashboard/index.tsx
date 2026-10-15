@@ -6,6 +6,10 @@ import { useAuth } from '@/context/AuthContext';
 import axios from '@/utils/axiosInstance';
 import BookingFlow from '@/components/BookingFlow';
 import ListState from '@/components/ListState';
+import Button from '@/components/Button';
+import { Input } from '@/components/Input';
+import Panel from '@/components/Panel';
+import { Plus } from '@phosphor-icons/react';
 import { useList } from '@/lib/useList';
 import { money } from '@/lib/format';
 
@@ -22,10 +26,10 @@ type Stats = {
 
 function StatCard({ label, value }: { label: string; value: number | string; }) {
   return (
-    <div className="rounded-xl bg-white p-5 shadow">
-      <div className="text-sm text-gray-500">{label}</div>
-      <div className="mt-1 text-2xl font-bold">{value}</div>
-    </div>
+    <Panel className="p-5">
+      <div className="text-sm text-muted">{label}</div>
+      <div className="mt-1 font-mono text-2xl font-bold tabular-nums">{value}</div>
+    </Panel>
   );
 }
 
@@ -84,11 +88,11 @@ function DashboardInner() {
   return (
     <Layout>
       <div className="mb-4 flex flex-wrap items-center gap-3">
-        <h1 className="text-2xl font-bold text-gray-800">Dashboard</h1>
+        <h1 className="text-2xl font-bold tracking-tight">Dashboard</h1>
         <div className="ml-auto">
           {/* Only allow receptionists and managers to create bookings from dashboard */}
           {(!authLoading && (user?.role === 'reception' || user?.role === 'manager')) && (
-            <button onClick={() => setShowStepper(true)} className="rounded bg-indigo-600 px-3 py-1 text-white">New Booking</button>
+            <Button variant="primary" icon={Plus} onClick={() => setShowStepper(true)}>New Booking</Button>
           )}
         </div>
       </div>
@@ -98,32 +102,32 @@ function DashboardInner() {
 
       {/* Range controls */}
       <div className="mb-4 flex flex-wrap items-center gap-2">
-        <label className="flex items-center gap-2 text-sm text-gray-600">
+        <label className="flex items-center gap-2 text-sm text-muted">
           <span>Start</span>
-          <input
+          <Input
             type="date"
             value={startDate ?? ''}
             onChange={(e) => setStartDate(e.target.value || undefined)}
-            className="rounded border px-2 py-1"
+            className="font-mono tabular-nums sm:w-auto"
           />
         </label>
 
-        <label className="flex items-center gap-2 text-sm text-gray-600">
+        <label className="flex items-center gap-2 text-sm text-muted">
           <span>End</span>
-          <input
+          <Input
             type="date"
             value={endDate ?? ''}
             onChange={(e) => setEndDate(e.target.value || undefined)}
-            className="rounded border px-2 py-1"
+            className="font-mono tabular-nums sm:w-auto"
           />
         </label>
 
-        <button onClick={applyRange} className="ml-2 rounded bg-blue-600 px-3 py-1 text-white">
+        <Button variant="primary" onClick={applyRange} className="ml-2">
           Apply
-        </button>
-        <button onClick={clearRange} className="ml-2 rounded border px-3 py-1">
+        </Button>
+        <Button onClick={clearRange} className="ml-2">
           Clear (lifetime)
-        </button>
+        </Button>
       </div>
 
       <ListState list={overview} empty="No stats available.">

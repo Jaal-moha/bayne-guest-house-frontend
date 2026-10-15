@@ -1,5 +1,46 @@
-/* frontend/styles/globals.css */
-
-/* Tailwind v4 entry */
 @import "tailwindcss";
 
+/*
+  Stone theme. Radius rule: panels 14px, inputs 10px, buttons and chips full pill.
+  One accent (teal). The slate shadow is for main content panels only.
+*/
+/* inline: the font variables come from next/font classes on the app root, not :root */
+@theme inline {
+  --font-sans: var(--font-schibsted), ui-sans-serif, system-ui, sans-serif;
+  --font-mono: var(--font-jetbrains), ui-monospace, monospace;
+}
+
+@theme {
+  --color-page: #eceeef;
+  --color-surface: #f8f9f9;
+  --color-ink: #1c2226;
+  --color-muted: #59646b;
+  --color-line: #d5dadd;
+  --color-line-soft: #e3e7e9;
+  --color-slate-tint: #e1e5e7;
+  --color-rail: #2b3135;
+  --color-rail-text: #b9c1c6;
+  --color-rail-text-on: #f3f5f6;
+
+  --color-accent: #1f6470;
+  --color-accent-hover: #18505a;
+  --color-accent-tint: #dcebec;
+
+  --color-danger: #a23a2e;
+  --color-danger-tint: #f1e4e2;
+  --color-danger-line: #d9b9b4;
+
+  --radius-panel: 14px;
+  --radius-input: 10px;
+
+  --shadow-panel: 0 1px 2px rgb(28 34 38 / 0.06), 0 8px 24px rgb(28 34 38 / 0.07);
+}
+
+@layer base {
+  body {
+    @apply bg-page text-ink antialiased;
+  }
+  :focus-visible {
+    @apply outline-2 outline-offset-2 outline-accent;
+  }
+}

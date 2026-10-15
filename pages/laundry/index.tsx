@@ -8,6 +8,12 @@ import ListState from '@/components/ListState';
 import Modal from '@/components/Modal';
 import Field from '@/components/Field';
 import { useToast } from '@/components/Toast';
+import Alert from '@/components/Alert';
+import Button, { buttonClass } from '@/components/Button';
+import { Input, Select, Textarea } from '@/components/Input';
+import Panel from '@/components/Panel';
+import StatusChip, { Chip } from '@/components/StatusChip';
+import Table from '@/components/Table';
 import { useList, type List } from '@/lib/useList';
 import { dateTime, money } from '@/lib/format';
 import { useAuth } from '@/context/AuthContext';
@@ -90,35 +96,33 @@ function AddLaundryModal({
   if (!open) return null;
   return (
     <Modal open={open} onClose={onClose} title="Add Laundry" size="xl" locked={submitting}>
-      {error && <div className="mt-3 rounded border border-red-300 bg-red-50 px-3 py-2 text-sm text-red-700">{error}</div>}
+      {error && <Alert className="mt-3">{error}</Alert>}
 
       <div className="mt-4 space-y-4">
         <div className="grid gap-3 md:grid-cols-3">
           <Field label="Guest" className="md:col-span-2">
             {(id) => (
               <ListState list={guests} empty="No guests yet.">
-                <select
+                <Select
                   id={id}
-                  className="w-full rounded border px-3 py-2"
                   value={guestId}
                   onChange={e => setGuestId(e.target.value)}
                 >
                   <option value="">Select guest…</option>
                   {guests.rows.map(g => <option key={g.id} value={g.id}>{g.name}</option>)}
-                </select>
+                </Select>
               </ListState>
             )}
           </Field>
           <Field label="Status">
             {(id) => (
-              <select
+              <Select
                 id={id}
-                className="w-full rounded border px-3 py-2"
                 value={status}
                 onChange={e => setStatus(e.target.value)}
               >
                 {ALLOWED_STATUSES.map(s => <option key={s} value={s}>{STATUS_LABELS[s]}</option>)}
-              </select>
+              </Select>
             )}
           </Field>
         </div>
@@ -126,63 +130,64 @@ function AddLaundryModal({
         <Field label="Price">
           {(id) => (
             <>
-              <input
+              <Input
                 id={id}
                 type="number"
                 min={0}
                 step="0.01"
-                className="w-40 rounded border px-3 py-2 text-sm"
+                className="max-w-40"
                 value={price}
                 onChange={e => setPrice(e.target.value)}
                 placeholder="e.g. 150"
               />
-              <p className="mt-1 text-xs text-gray-500">Payment will be recorded automatically for this amount.</p>
+              <p className="mt-1.5 text-xs text-muted">Payment will be recorded automatically for this amount.</p>
             </>
           )}
         </Field>
 
         <div>
-          <p className="mb-2 block text-xs font-medium text-gray-600">Items</p>
+          <p className="mb-1.5 block text-[13px] font-semibold text-ink">Items</p>
           <div className="space-y-2">
             {items.map((row, i) => (
               <div key={i} className="flex items-center gap-2">
-                <input
+                <Input
                   type="number"
                   min={1}
-                  className="w-20 rounded border px-2 py-2 text-sm"
+                  className="max-w-20 shrink-0"
                   value={row.qty}
                   onChange={e => updateItem(i, { qty: Math.max(1, Number(e.target.value) || 1) })}
                 />
-                <input
-                  className="flex-1 rounded border px-3 py-2 text-sm"
+                <Input
+                  className="flex-1"
                   placeholder="Item name"
                   value={row.name}
                   onChange={e => updateItem(i, { name: e.target.value })}
                 />
-                <button
+                <Button
+                  variant="danger-quiet"
+                  size="sm"
                   onClick={() => removeRow(i)}
                   disabled={items.length === 1}
-                  className="rounded border px-2 py-2 text-xs text-red-600 hover:bg-red-50 disabled:opacity-40"
                   title="Remove row"
                 >
                   –
-                </button>
+                </Button>
                 {i === items.length - 1 && (
-                  <button
+                  <Button
+                    size="sm"
                     onClick={addRow}
-                    className="rounded border px-2 py-2 text-xs text-green-600 hover:bg-green-50"
                     title="Add row"
                   >
                     +
-                  </button>
+                  </Button>
                 )}
               </div>
             ))}
           </div>
-          <p className="mt-1 text-xs text-gray-500">Each row: quantity + item name (e.g. 3 Shirts). They will be combined automatically.</p>
+          <p className="mt-1.5 text-xs text-muted">Each row: quantity + item name (e.g. 3 Shirts). They will be combined automatically.</p>
         </div>
 
-        <div className="rounded bg-gray-50 px-3 py-2 text-xs text-gray-600">
+        <div className="rounded-input bg-page px-3.5 py-2.5 text-xs text-muted">
           Preview: {items.filter(r => r.name.trim()).length
             ? items.filter(r => r.name.trim() && r.qty > 0).map(r => `${r.qty} ${r.name.trim()}`).join(', ')
             : '—'}
@@ -190,16 +195,16 @@ function AddLaundryModal({
       </div>
 
       <div className="mt-6 flex justify-end gap-2">
-        <button
+        <Button
+          variant="text"
           onClick={onClose}
-          className="rounded border px-4 py-2 text-sm hover:bg-gray-50"
           disabled={submitting}
-        >Cancel</button>
-        <button
+        >Cancel</Button>
+        <Button
+          variant="primary"
           onClick={submit}
           disabled={submitting}
-          className="rounded bg-indigo-600 px-5 py-2 text-sm font-semibold text-white hover:bg-indigo-700 disabled:opacity-60"
-        >{submitting ? 'Saving…' : 'Save Laundry'}</button>
+        >{submitting ? 'Saving…' : 'Save Laundry'}</Button>
       </div>
     </Modal>
   );
@@ -307,69 +312,66 @@ function LaundryInner() {
   return (
     <Layout>
       <div className="mb-4 flex flex-wrap items-center gap-3">
-        <h1 className="text-2xl font-bold text-teal-700">Laundry</h1>
+        <h1 className="text-2xl font-bold tracking-tight">Laundry</h1>
         {typeof window !== 'undefined' && !location.pathname.startsWith('/dashboard') && (
           <Link
             href="/dashboard"
-            className="rounded border px-3 py-1 text-sm text-gray-600 hover:bg-gray-50"
+            className={buttonClass('quiet', 'sm')}
           >
             Dashboard
           </Link>
         )}
         <div className="ml-auto">
-          <button
-            onClick={() => setAddModalOpen(true)}
-            className="rounded-md bg-teal-600 px-4 py-2 font-semibold text-white hover:bg-teal-700"
-          >
+          <Button variant="primary" onClick={() => setAddModalOpen(true)}>
             + Add Laundry
-          </button>
+          </Button>
         </div>
       </div>
 
       <div className="mb-4 flex flex-wrap items-center gap-3">
-        <input value={q} onChange={e => { setQ(e.target.value); setPage(1); }} placeholder="Search by guest, items, status…" className="w-full rounded-md border px-3 py-2 sm:w-96" />
+        <Input value={q} onChange={e => { setQ(e.target.value); setPage(1); }} placeholder="Search by guest, items, status…" className="sm:w-96" />
         <div className="flex items-center gap-2">
-          <label className="text-sm text-gray-600">Status</label>
-          <select className="rounded-md border px-2 py-2" value={status} onChange={e => { setStatus(e.target.value); setPage(1); }}>
+          <label className="text-sm text-muted">Status</label>
+          <Select className="sm:w-auto" value={status} onChange={e => { setStatus(e.target.value); setPage(1); }}>
             <option value="All">All</option>
             {ALLOWED_STATUSES.map(s => <option key={s} value={s}>{STATUS_LABELS[s] || s}</option>)}
-          </select>
+          </Select>
         </div>
         <div className="flex items-center gap-2">
-          <label className="text-sm text-gray-600">Rows</label>
-          <select
-            className="rounded-md border px-2 py-2"
+          <label className="text-sm text-muted">Rows</label>
+          <Select
+            className="sm:w-auto"
             value={pageSize}
             onChange={e => { setPageSize(Number(e.target.value)); setPage(1); }}
           >
             {[5, 10, 20, 50].map(n => <option key={n} value={n}>{n}</option>)}
-          </select>
+          </Select>
         </div>
         <div className="ml-auto flex flex-wrap items-center gap-2">
-          <button className="rounded-md border px-3 py-2 disabled:opacity-50"
+          <Button size="sm"
                   onClick={() => setPage(p => Math.max(1, p - 1))}
-                  disabled={cur <= 1}>Prev</button>
-          <span className="text-sm text-gray-600">Page {cur} / {totalPages}</span>
-          <button className="rounded-md border px-3 py-2 disabled:opacity-50"
+                  disabled={cur <= 1}>Prev</Button>
+          <span className="text-sm text-muted">Page {cur} / {totalPages}</span>
+          <Button size="sm"
                   onClick={() => setPage(p => Math.min(totalPages, p + 1))}
-                  disabled={cur >= totalPages}>Next</button>
+                  disabled={cur >= totalPages}>Next</Button>
         </div>
       </div>
 
       {/* Table (moved out of the select; previously malformed) */}
-      <div className="overflow-x-auto rounded bg-white shadow">
+      <Panel className="overflow-x-auto">
         <ListState list={laundry} empty="No laundry records.">
           {slice.length === 0 ? (
-            <div className="p-6 text-gray-600">No laundry records.</div>
+            <div className="p-6 text-muted">No laundry records.</div>
           ) : (
-          <table className="min-w-full table-auto border-collapse">
-            <thead className="bg-gray-100">
+          <Table>
+            <thead>
               <tr>
-                <th className="px-4 py-3 text-left text-sm font-semibold text-gray-700">Guest</th>
-                <th className="px-4 py-3 text-left text-sm font-semibold text-gray-700">Items</th>
-                <th className="px-4 py-3 text-left text-sm font-semibold text-gray-700">Status</th>
-                <th className="px-4 py-3 text-left text-sm font-semibold text-gray-700">Created</th>
-                <th className="px-4 py-3 text-right text-sm font-semibold text-gray-700">Actions</th>
+                <th>Guest</th>
+                <th>Items</th>
+                <th>Status</th>
+                <th>Created</th>
+                <th className="text-right">Actions</th>
               </tr>
             </thead>
             <tbody>
@@ -377,82 +379,83 @@ function LaundryInner() {
                 const isEditing = editing === r.id;
                 const payment = payments.rows.find(p => p.laundryId === r.id);
                 return (
-                  <tr key={r.id} className="border-t">
-                    <td className="px-4 py-3">{r.guest?.name ?? `Guest #${r.guestId}`}</td>
-                    <td className="px-4 py-3">
+                  <tr key={r.id}>
+                    <td>{r.guest?.name ?? `Guest #${r.guestId}`}</td>
+                    <td>
                       {isEditing ? (
                         <div className="space-y-1">
-                          <textarea
-                            className="w-full rounded-md border px-3 py-2"
+                          <Textarea
                             value={editForm.items}
                             onChange={e => setEditForm(f => ({ ...f, items: e.target.value }))}
                             rows={3}
                           />
-                          {editError && <div className="text-xs text-red-600">{editError}</div>}
+                          {editError && <div className="text-xs text-danger">{editError}</div>}
                         </div>
                       ) : r.items}
                     </td>
-                    <td className="px-4 py-3">
+                    <td>
                       {isEditing ? (
-                        <select
-                          className="rounded-md border px-2 py-2"
+                        <Select
+                          className="sm:w-auto"
                           value={editForm.status}
                           onChange={e => setEditForm(f => ({ ...f, status: e.target.value }))}
                         >
                           {ALLOWED_STATUSES.map(s => <option key={s} value={s}>{s}</option>)}
-                        </select>
+                        </Select>
                       ) : (
-                        <span className="rounded-full bg-gray-100 px-2 py-1 text-xs">{r.status}</span>
+                        <StatusChip status={r.status} />
                       )}
                     </td>
-                    <td className="px-4 py-3">{dateTime(r.createdAt)}</td>
-                    <td className="px-4 py-3">
+                    <td className="font-mono text-sm whitespace-nowrap tabular-nums">{dateTime(r.createdAt)}</td>
+                    <td>
                       <div className="flex items-center justify-end gap-2">
                         {isEditing ? (
                           <>
-                            <button
+                            <Button
+                              variant="primary"
+                              size="sm"
                               onClick={() => saveEdit(r.id)}
                               disabled={submitting}
-                              className="rounded-md border px-3 py-1 text-indigo-700 hover:bg-indigo-50 disabled:opacity-60"
                             >
                               Save
-                            </button>
-                            <button
+                            </Button>
+                            <Button
+                              size="sm"
                               onClick={cancelEdit}
-                              className="rounded-md border px-3 py-1 hover:bg-gray-50"
                             >
                               Cancel
-                            </button>
+                            </Button>
                           </>
                         ) : (
                           <>
-                            <button
+                            <Button
+                              size="sm"
                               onClick={() => beginEdit(r)}
-                              className="rounded-md border px-3 py-1 hover:bg-gray-50"
                             >
                               Edit
-                            </button>
+                            </Button>
                             {payment?.status === 'paid' && (
-                              <button
+                              <Button
+                                size="sm"
                                 onClick={() => setConfirmingRefund(payment)}
                                 disabled={refunding === payment.id}
-                                className="rounded-md border px-3 py-1 text-amber-700 hover:bg-amber-50 disabled:opacity-60"
                               >
                                 {refunding === payment.id ? 'Refunding…' : 'Refund'}
-                              </button>
+                              </Button>
                             )}
-                            <button
+                            <Button
+                              variant="danger-quiet"
+                              size="sm"
                               onClick={() => setDeleting(r)}
-                              className="rounded-md border px-3 py-1 text-red-600 hover:bg-red-50"
                             >
                               Delete
-                            </button>
+                            </Button>
                           </>
                         )}
                         {justSaved === r.id && !isEditing && (
-                          <span className="rounded bg-green-100 px-2 py-0.5 text-xs font-semibold text-green-700">
+                          <Chip tone="accent">
                             Saved
-                          </span>
+                          </Chip>
                         )}
                       </div>
                     </td>
@@ -460,10 +463,10 @@ function LaundryInner() {
                 );
               })}
             </tbody>
-          </table>
+          </Table>
           )}
         </ListState>
-      </div>
+      </Panel>
 
       <AddLaundryModal
         open={addModalOpen}
@@ -474,33 +477,33 @@ function LaundryInner() {
         setSubmitting={setSubmitting}
       />
       <Modal open={!!deleting} onClose={() => setDeleting(null)} title="Delete laundry record" size="md" locked={removing}>
-        <p className="text-sm text-gray-600">
+        <p className="text-sm text-muted">
           This removes the record for {deleting?.guest?.name ?? `Guest #${deleting?.guestId}`}.
         </p>
         <div className="mt-6 flex justify-end gap-2">
-          <button onClick={() => setDeleting(null)} disabled={removing} className="rounded border px-4 py-2 text-sm hover:bg-gray-50">Cancel</button>
-          <button
+          <Button variant="text" onClick={() => setDeleting(null)} disabled={removing}>Cancel</Button>
+          <Button
+            variant="danger"
             onClick={() => { if (deleting) remove(deleting.id); }}
             disabled={removing}
-            className="rounded bg-red-600 px-4 py-2 text-sm font-semibold text-white hover:bg-red-700 disabled:opacity-60"
           >
             Delete
-          </button>
+          </Button>
         </div>
       </Modal>
       <Modal open={!!confirmingRefund} onClose={() => setConfirmingRefund(null)} title="Refund payment" size="md" locked={refunding !== null}>
-        <p className="text-sm text-gray-600">
+        <p className="text-sm text-muted">
           Refund this order&apos;s payment of {money(confirmingRefund?.amount ?? 0)}?
         </p>
         <div className="mt-6 flex justify-end gap-2">
-          <button onClick={() => setConfirmingRefund(null)} disabled={refunding !== null} className="rounded border px-4 py-2 text-sm hover:bg-gray-50">Cancel</button>
-          <button
+          <Button variant="text" onClick={() => setConfirmingRefund(null)} disabled={refunding !== null}>Cancel</Button>
+          <Button
+            variant="danger"
             onClick={() => { if (confirmingRefund) refund(confirmingRefund.id); }}
             disabled={refunding !== null}
-            className="rounded bg-amber-600 px-4 py-2 text-sm font-semibold text-white hover:bg-amber-700 disabled:opacity-60"
           >
             Refund
-          </button>
+          </Button>
         </div>
       </Modal>
     </Layout>

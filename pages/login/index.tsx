@@ -3,6 +3,10 @@ import Head from 'next/head';
 import { useRouter } from 'next/router';
 import { useAuth } from '@/context/AuthContext';
 import { homeFor } from '@/lib/permissions';
+import Alert from '@/components/Alert';
+import Button from '@/components/Button';
+import { Input } from '@/components/Input';
+import Panel from '@/components/Panel';
 
 export default function LoginPage() {
   const router = useRouter();
@@ -47,26 +51,25 @@ export default function LoginPage() {
           aria-hidden="true"
         />
 
-        <div className="col-span-10 md:col-span-3 flex items-center justify-center px-4 bg-gray-50/80">
+        <div className="col-span-10 md:col-span-3 flex items-center justify-center px-4 bg-page/80">
           <div className="w-full max-w-md">
-            <div className="rounded-2xl bg-white shadow p-6 sm:p-8">
+            <Panel className="p-6 sm:p-8">
               <div className="mb-6 text-center">
-                <h1 className="text-xl font-bold text-gray-900">Almis Hotel</h1>
-                <p className="mt-1 text-sm text-gray-500">Sign in to continue</p>
+                <h1 className="text-xl font-bold tracking-tight">Almis Hotel</h1>
+                <p className="mt-1 text-sm text-muted">Sign in to continue</p>
               </div>
 
               {err && (
-                <div className="mb-4 rounded-md border border-red-200 bg-red-50 px-3 py-2 text-sm text-red-700">
+                <Alert className="mb-4">
                   {err}
-                </div>
+                </Alert>
               )}
 
               <form onSubmit={onSubmit} className="space-y-4">
                 <div>
-                  <label className="mb-1 block text-sm font-medium text-gray-700">Email</label>
-                  <input
+                  <label className="mb-1 block text-sm font-medium text-ink">Email</label>
+                  <Input
                     type="email"
-                    className="w-full rounded-md border px-3 py-2 outline-none focus:ring-2 focus:ring-indigo-500"
                     placeholder="you@example.com"
                     value={email}
                     onChange={(e) => setEmail(e.target.value)}
@@ -76,11 +79,11 @@ export default function LoginPage() {
                 </div>
 
                 <div>
-                  <label className="mb-1 block text-sm font-medium text-gray-700">Password</label>
-                  <div className="flex rounded-md border focus-within:ring-2 focus-within:ring-indigo-500">
+                  <label className="mb-1 block text-sm font-medium text-ink">Password</label>
+                  <div className="flex min-h-11 rounded-input border border-line bg-surface transition-colors focus-within:border-accent focus-within:ring-3 focus-within:ring-accent-tint">
                     <input
                       type={showPassword ? 'text' : 'password'}
-                      className="w-full rounded-l-md px-3 py-2 outline-none"
+                      className="w-full rounded-l-input bg-transparent px-3.5 text-[15px] text-ink outline-none placeholder:text-muted"
                       placeholder="••••••••"
                       value={password}
                       onChange={(e) => setPassword(e.target.value)}
@@ -90,7 +93,7 @@ export default function LoginPage() {
                     <button
                       type="button"
                       onClick={() => setShowPassword((v) => !v)}
-                      className="rounded-r-md border-l bg-gray-50 px-3 text-sm text-gray-600 hover:bg-gray-100"
+                      className="rounded-r-input border-l border-line bg-page px-3 text-sm font-semibold text-muted transition-colors hover:bg-slate-tint hover:text-ink"
                       aria-label="Toggle password visibility"
                     >
                       {showPassword ? 'Hide' : 'Show'}
@@ -98,17 +101,18 @@ export default function LoginPage() {
                   </div>
                 </div>
 
-                <button
+                <Button
                   type="submit"
+                  variant="primary"
                   disabled={loading}
-                  className="w-full rounded-md bg-indigo-600 px-4 py-2 font-semibold text-white hover:bg-indigo-700 disabled:opacity-60"
+                  className="w-full"
                 >
                   {loading ? 'Signing in…' : 'Sign in'}
-                </button>
+                </Button>
               </form>
-            </div>
+            </Panel>
 
-            <p className="mt-4 text-center text-xs text-gray-500">
+            <p className="mt-4 text-center text-xs text-muted">
               Trouble signing in? Contact your administrator.
             </p>
           </div>

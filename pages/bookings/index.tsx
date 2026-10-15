@@ -5,6 +5,13 @@ import axios from '@/utils/axiosInstance';
 import { useToast } from '@/components/Toast';
 import Modal from '@/components/Modal';
 import Field from '@/components/Field';
+import Alert from '@/components/Alert';
+import Button from '@/components/Button';
+import { Input, Select } from '@/components/Input';
+import Panel from '@/components/Panel';
+import StatusChip from '@/components/StatusChip';
+import Table from '@/components/Table';
+import { Plus } from '@phosphor-icons/react';
 import ListState from '@/components/ListState';
 import BookingFlow from '@/components/BookingFlow';
 import { useList } from '@/lib/useList';
@@ -122,14 +129,13 @@ function EditBookingModal({
 
   return (
     <Modal open={open} onClose={onClose} title="Edit Booking" size="2xl" locked={loading}>
-      {err && <div className="mt-3 rounded border border-red-200 bg-red-50 px-3 py-2 text-sm text-red-700">{err}</div>}
+      {err && <Alert className="mt-3">{err}</Alert>}
 
       <div className="mt-4 grid gap-4 sm:grid-cols-2">
         <Field label="Guest" className="sm:col-span-2">
           {(id) => (
-            <input
+            <Input
               id={id}
-              className="w-full rounded border bg-gray-50 px-3 py-2 text-gray-700"
               value={`${booking.guest?.name ?? ''}${booking.guest?.phone ? ` — ${booking.guest.phone}` : ''}`}
               readOnly
               disabled
@@ -139,10 +145,10 @@ function EditBookingModal({
 
         <Field label={<>Check-in {canEditCheckIn ? '' : '(read-only)'}</>}>
           {(id) => (
-            <input
+            <Input
               id={id}
               type="date"
-              className={`w-full rounded border px-3 py-2 ${canEditCheckIn ? '' : 'bg-gray-50 text-gray-700'}`}
+              className="font-mono tabular-nums"
               value={checkIn}
               onChange={(e) => setCheckIn(e.target.value)}
               readOnly={!canEditCheckIn}
@@ -153,10 +159,10 @@ function EditBookingModal({
         </Field>
         <Field label="Check-out">
           {(id) => (
-            <input
+            <Input
               id={id}
               type="date"
-              className="w-full rounded border px-3 py-2"
+              className="font-mono tabular-nums"
               value={checkOut}
               onChange={(e) => setCheckOut(e.target.value)}
               min={checkIn || undefined}
@@ -164,11 +170,10 @@ function EditBookingModal({
           )}
         </Field>
 
-        <Field label={<>Available Rooms {checkIn && checkOut ? '' : <span className="text-gray-400">(select dates first)</span>}</>} className="sm:col-span-2">
+        <Field label={<>Available Rooms {checkIn && checkOut ? '' : <span className="font-normal text-muted">(select dates first)</span>}</>} className="sm:col-span-2">
           {(id) => (
-            <select
+            <Select
               id={id}
-              className="w-full rounded border px-3 py-2"
               value={roomId}
               onChange={(e) => setRoomId(Number(e.target.value))}
               disabled={!checkIn || !checkOut || rooms.length === 0}
@@ -187,20 +192,16 @@ function EditBookingModal({
                   ))}
                 </>
               )}
-            </select>
+            </Select>
           )}
         </Field>
       </div>
 
       <div className="mt-6 flex justify-end gap-2">
-        <button onClick={onClose} className="rounded border px-4 py-2">Cancel</button>
-        <button
-          onClick={submit}
-          disabled={loading}
-          className="rounded bg-indigo-600 px-4 py-2 font-semibold text-white disabled:opacity-60"
-        >
+        <Button variant="text" onClick={onClose}>Cancel</Button>
+        <Button variant="primary" onClick={submit} disabled={loading}>
           {loading ? 'Saving…' : 'Save Changes'}
-        </button>
+        </Button>
       </div>
     </Modal>
   );
@@ -231,67 +232,57 @@ function BookingsInner() {
   return (
     <Layout>
       <div className="mb-4 flex flex-wrap items-center gap-3">
-        <h1 className="text-2xl font-bold">Bookings</h1>
+        <h1 className="text-2xl font-bold tracking-tight">Bookings</h1>
         <div className="ml-auto flex flex-wrap gap-2">
-          <input
+          <Input
             value={q}
             onChange={(e) => setQ(e.target.value)}
             placeholder="Search by guest, room, date…"
-            className="w-64 rounded border px-3 py-2"
+            className="sm:w-64"
           />
-          <button
-            onClick={() => setModal(true)}
-            className="rounded bg-indigo-600 px-4 py-2 font-semibold text-white"
-          >
+          <Button variant="primary" icon={Plus} onClick={() => setModal(true)}>
             Create Booking
-          </button>
+          </Button>
         </div>
       </div>
 
-      <div className="overflow-x-auto rounded bg-white shadow">
+      <Panel className="overflow-x-auto">
         <ListState list={bookings}>
-          <table className="min-w-full table-auto">
-            <thead className="bg-gray-100">
+          <Table>
+            <thead>
               <tr>
-                <th className="px-4 py-3 text-left">Guest</th>
-                <th className="px-4 py-3 text-left">Room</th>
-                <th className="px-4 py-3 text-left">Dates</th>
-                <th className="px-4 py-3 text-left">Status</th>
-                <th className="px-4 py-3 text-left">Actions</th>
+                <th>Guest</th>
+                <th>Room</th>
+                <th>Dates</th>
+                <th>Status</th>
+                <th>Actions</th>
               </tr>
             </thead>
             <tbody>
               {filtered.map(b => (
-                <tr key={b.id} className="border-t">
-                  <td className="px-4 py-3">{b.guest?.name}</td>
-                  <td className="px-4 py-3">{b.room?.number} — {b.room?.type}</td>
-                  <td className="px-4 py-3">
+                <tr key={b.id}>
+                  <td className="font-semibold">{b.guest?.name}</td>
+                  <td><span className="font-mono text-sm font-semibold tabular-nums">{b.room?.number}</span> — {b.room?.type}</td>
+                  <td className="font-mono text-sm whitespace-nowrap tabular-nums">
                     {date(b.checkIn)} → {date(b.checkOut)}
                   </td>
-                  <td className="px-4 py-3">
-                    {b.payment ? (
-                      <span className="rounded bg-emerald-100 px-2 py-1 text-emerald-700">Paid</span>
-                    ) : (
-                      <span className="rounded bg-yellow-100 px-2 py-1 text-yellow-800">Unpaid</span>
-                    )}
+                  <td>
+                    <StatusChip status={b.payment ? 'paid' : 'unpaid'} />
                   </td>
-                  <td className="px-4 py-3">
-                    <button
-                      onClick={() => setEdit(b)}
-                      className="rounded border px-3 py-1 text-sm hover:bg-gray-50"
-                    >
+                  <td>
+                    <Button size="sm" onClick={() => setEdit(b)}>
                       Edit
-                    </button>
+                    </Button>
                   </td>
                 </tr>
               ))}
               {filtered.length === 0 && (
-                <tr><td className="px-4 py-6 text-gray-500" colSpan={5}>No bookings.</td></tr>
+                <tr><td className="text-muted" colSpan={5}>No bookings.</td></tr>
               )}
             </tbody>
-          </table>
+          </Table>
         </ListState>
-      </div>
+      </Panel>
 
       <BookingFlow<Booking>
         open={modal}

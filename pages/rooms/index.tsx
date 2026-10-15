@@ -6,6 +6,12 @@ import axios from '@/utils/axiosInstance';
 import ListState from '@/components/ListState';
 import Modal from '@/components/Modal';
 import Field from '@/components/Field';
+import Alert from '@/components/Alert';
+import Button from '@/components/Button';
+import { Input } from '@/components/Input';
+import Panel from '@/components/Panel';
+import Table from '@/components/Table';
+import { Plus } from '@phosphor-icons/react';
 import { useList } from '@/lib/useList';
 import { money } from '@/lib/format';
 
@@ -37,23 +43,23 @@ function AddRoomModal({ open, onClose, onCreated }: {
 
   return (
     <Modal open={open} onClose={onClose} title="Add Room" size="md" locked={loading}>
-      {err && <div className="mt-3 rounded border border-red-200 bg-red-50 px-3 py-2 text-sm text-red-700">{err}</div>}
+      {err && <Alert className="mt-3">{err}</Alert>}
       <div className="mt-4 space-y-3">
         <Field label="Number">
-          {(id) => <input id={id} className="w-full rounded border px-3 py-2" placeholder="Number" value={number} onChange={e => setNumber(e.target.value)} />}
+          {(id) => <Input id={id} placeholder="Number" value={number} onChange={e => setNumber(e.target.value)} />}
         </Field>
         <Field label="Type">
-          {(id) => <input id={id} className="w-full rounded border px-3 py-2" placeholder="Type (Single/Double/Suite…)" value={type} onChange={e => setType(e.target.value)} />}
+          {(id) => <Input id={id} placeholder="Type (Single/Double/Suite…)" value={type} onChange={e => setType(e.target.value)} />}
         </Field>
         <Field label="Price">
-          {(id) => <input id={id} className="w-full rounded border px-3 py-2" placeholder="Price (e.g. 75)" value={price} onChange={e => setPrice(e.target.value)} />}
+          {(id) => <Input id={id} className="font-mono tabular-nums" placeholder="Price (e.g. 75)" value={price} onChange={e => setPrice(e.target.value)} />}
         </Field>
       </div>
       <div className="mt-6 flex justify-end gap-2">
-        <button onClick={onClose} className="rounded border px-4 py-2">Cancel</button>
-        <button onClick={submit} disabled={loading} className="rounded bg-indigo-600 px-4 py-2 font-semibold text-white disabled:opacity-60">
+        <Button variant="text" onClick={onClose}>Cancel</Button>
+        <Button variant="primary" onClick={submit} disabled={loading}>
           {loading ? 'Saving…' : 'Add Room'}
-        </button>
+        </Button>
       </div>
     </Modal>
   );
@@ -102,23 +108,23 @@ function EditRoomModal({ open, onClose, room, onUpdated }: {
 
   return (
     <Modal open={open} onClose={onClose} title="Edit Room" size="md" locked={loading}>
-      {err && <div className="mt-3 rounded border border-red-200 bg-red-50 px-3 py-2 text-sm text-red-700">{err}</div>}
+      {err && <Alert className="mt-3">{err}</Alert>}
       <div className="mt-4 space-y-3">
         <Field label="Number">
-          {(id) => <input id={id} className="w-full rounded border px-3 py-2" placeholder="Number" value={number} onChange={e => setNumber(e.target.value)} />}
+          {(id) => <Input id={id} placeholder="Number" value={number} onChange={e => setNumber(e.target.value)} />}
         </Field>
         <Field label="Type">
-          {(id) => <input id={id} className="w-full rounded border px-3 py-2" placeholder="Type (Single/Double/Suite…)" value={type} onChange={e => setType(e.target.value)} />}
+          {(id) => <Input id={id} placeholder="Type (Single/Double/Suite…)" value={type} onChange={e => setType(e.target.value)} />}
         </Field>
         <Field label="Price">
-          {(id) => <input id={id} className="w-full rounded border px-3 py-2" placeholder="Price (e.g. 75)" value={price} onChange={e => setPrice(e.target.value)} />}
+          {(id) => <Input id={id} className="font-mono tabular-nums" placeholder="Price (e.g. 75)" value={price} onChange={e => setPrice(e.target.value)} />}
         </Field>
       </div>
       <div className="mt-6 flex justify-end gap-2">
-        <button onClick={onClose} className="rounded border px-4 py-2">Cancel</button>
-        <button onClick={submit} disabled={loading} className="rounded bg-indigo-600 px-4 py-2 font-semibold text-white disabled:opacity-60">
+        <Button variant="text" onClick={onClose}>Cancel</Button>
+        <Button variant="primary" onClick={submit} disabled={loading}>
           {loading ? 'Saving…' : 'Save Changes'}
-        </button>
+        </Button>
       </div>
     </Modal>
   );
@@ -143,43 +149,40 @@ function RoomsInner() {
   return (
     <Layout>
       <div className="mb-4 flex flex-wrap items-center gap-3">
-        <h1 className="text-2xl font-bold">Rooms</h1>
+        <h1 className="text-2xl font-bold tracking-tight">Rooms</h1>
         <div className="ml-auto flex flex-wrap gap-2">
-          <input value={q} onChange={e => setQ(e.target.value)} placeholder="Search…" className="w-64 rounded border px-3 py-2" />
-          <button onClick={() => setModal(true)} className="rounded bg-indigo-600 px-4 py-2 font-semibold text-white">Add Room</button>
+          <Input value={q} onChange={e => setQ(e.target.value)} placeholder="Search…" className="sm:w-64" />
+          <Button variant="primary" icon={Plus} onClick={() => setModal(true)}>Add Room</Button>
         </div>
       </div>
 
-      <div className="overflow-x-auto rounded bg-white shadow">
+      <Panel className="overflow-x-auto">
         <ListState list={roomList}>
-          <table className="min-w-full table-auto">
-            <thead className="bg-gray-100">
+          <Table>
+            <thead>
               <tr>
-                <th className="px-4 py-3 text-left">Number</th>
-                <th className="px-4 py-3 text-left">Type</th>
-                <th className="px-4 py-3 text-left">Price</th>
-                <th className="px-4 py-3 text-left">Actions</th>
+                <th>Number</th>
+                <th>Type</th>
+                <th>Price</th>
+                <th>Actions</th>
               </tr>
             </thead>
             <tbody>
               {filtered.map(r => (
-                <tr key={r.id} className="border-t">
-                  <td className="px-4 py-3">{r.number}</td>
-                  <td className="px-4 py-3">{r.type}</td>
-                  <td className="px-4 py-3">{money(r.price)}</td>
-                  <td className="px-4 py-3">
-                    <button
-                      onClick={() => { setEditing(r); setEditOpen(true); }}
-                      className="rounded border px-3 py-1 text-sm hover:bg-gray-50"
-                    >Edit</button>
+                <tr key={r.id}>
+                  <td className="font-mono text-sm font-semibold tabular-nums">{r.number}</td>
+                  <td>{r.type}</td>
+                  <td className="font-mono text-sm tabular-nums">{money(r.price)}</td>
+                  <td>
+                    <Button size="sm" onClick={() => { setEditing(r); setEditOpen(true); }}>Edit</Button>
                   </td>
                 </tr>
               ))}
-              {filtered.length === 0 && <tr><td className="px-4 py-6 text-gray-500" colSpan={4}>No rooms.</td></tr>}
+              {filtered.length === 0 && <tr><td className="text-muted" colSpan={4}>No rooms.</td></tr>}
             </tbody>
-          </table>
+          </Table>
         </ListState>
-      </div>
+      </Panel>
 
       <AddRoomModal open={modal} onClose={() => setModal(false)} onCreated={(r) => setRooms(prev => [r, ...prev])} />
       <EditRoomModal
