@@ -1,0 +1,41 @@
+{
+  "name": "store-adjust-stock",
+  "role": "store",
+  "demo": {
+    "group": "store",
+    "title": "Receive and issue stock",
+    "summary": "The storekeeper records a delivery of toilet paper, issues some to housekeeping, and checks the history."
+  },
+  "setup": [
+    { "as": "store", "method": "POST", "path": "/inventory", "body": { "name": "Sugar", "category": "Kitchen", "unit": "kg", "quantity": 18, "minThreshold": 5 }, "expect": 201 },
+    { "as": "store", "method": "POST", "path": "/inventory", "body": { "name": "Cooking oil", "category": "Kitchen", "unit": "L", "quantity": 20, "minThreshold": 6 }, "expect": 201 },
+    { "as": "store", "method": "POST", "path": "/inventory", "body": { "name": "Toilet paper rolls", "category": "Housekeeping", "unit": "pcs", "quantity": 60, "minThreshold": 20 }, "expect": 201, "save": "ITEM" }
+  ],
+  "steps": [
+    { "goto": "/inventory" },
+    { "caption": "A delivery of toilet paper arrived. Open the item." },
+    { "click": "tr:has-text('Toilet paper rolls')" },
+    { "click": { "role": "button", "name": "Add" } },
+    { "caption": "Stock in. Enter what arrived and why." },
+    { "fill": { "label": "Quantity (pcs)" }, "value": "100" },
+    { "fill": { "label": "Reason (optional)" }, "value": "Weekly delivery" },
+    { "click": { "role": "button", "name": "Confirm" } },
+    { "expectApi": "POST /inventory/${ITEM}/movements 201" },
+    { "expectText": "160 pcs" },
+    { "caption": "Now 160 rolls. Issue some to housekeeping." },
+    { "click": "tr:has-text('Toilet paper rolls')" },
+    { "click": { "role": "button", "name": "Subtract" } },
+    { "fill": { "label": "Quantity (pcs)" }, "value": "24" },
+    { "fill": { "label": "Reason (optional)" }, "value": "Issued to housekeeping, floor 2" },
+    { "click": { "role": "button", "name": "Confirm" } },
+    { "expectText": "136 pcs" },
+    { "caption": "History shows every movement with its reason." },
+    { "click": "tr:has-text('Toilet paper rolls')" },
+    { "click": { "role": "button", "name": "History" } },
+    { "expectApi": "GET /inventory/${ITEM}/movements 200" },
+    { "expectText": "Issued to housekeeping, floor 2" },
+    { "expectText": "Weekly delivery" },
+    { "apiCheck": { "as": "store", "path": "/inventory/${ITEM}", "jq": ".quantity == 136" } },
+    { "apiCheck": { "as": "store", "path": "/inventory/${ITEM}/movements", "jq": "any(.[]; .type == \"OUT\" and .quantity == 24) and any(.[]; .type == \"IN\" and .quantity == 100)" } }
+  ]
+}

@@ -1,0 +1,25 @@
+{
+  "name": "housekeeping-tour",
+  "role": "anon",
+  "demo": {
+    "group": "housekeeping",
+    "as": "housekeeping",
+    "title": "Housekeeping sign-in tour",
+    "summary": "Housekeeping signs in and sees one page: Laundry."
+  },
+  "setup": [
+    { "as": "housekeeping", "method": "GET", "path": "/auth/me", "expect": 200 }
+  ],
+  "steps": [
+    { "goto": "/login" },
+    { "caption": "Housekeeping staff sign in with their work email and password." },
+    { "fill": { "placeholder": "you@example.com" }, "value": "verify-housekeeping@example.com" },
+    { "fill": { "placeholder": "••••••••" }, "value": "verify-pass-housekeeping" },
+    { "click": { "role": "button", "name": "Sign in" } },
+    { "expectApi": "POST /auth/login 201" },
+    { "expectUrl": "/laundry" },
+    { "caption": "Housekeeping lands on Laundry. Guest laundry orders." },
+    { "click": { "role": "button", "name": "Logout" } },
+    { "expectUrl": "/login" }
+  ]
+}

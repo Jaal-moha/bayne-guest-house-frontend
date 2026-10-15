@@ -1,0 +1,25 @@
+{
+  "name": "barista-tour",
+  "role": "anon",
+  "demo": {
+    "group": "barista",
+    "as": "barista",
+    "title": "Barista sign-in tour",
+    "summary": "Barista signs in and sees one page: Inventory."
+  },
+  "setup": [
+    { "as": "barista", "method": "GET", "path": "/auth/me", "expect": 200 }
+  ],
+  "steps": [
+    { "goto": "/login" },
+    { "caption": "Barista staff sign in with their work email and password." },
+    { "fill": { "placeholder": "you@example.com" }, "value": "verify-barista@example.com" },
+    { "fill": { "placeholder": "••••••••" }, "value": "verify-pass-barista" },
+    { "click": { "role": "button", "name": "Sign in" } },
+    { "expectApi": "POST /auth/login 201" },
+    { "expectUrl": "/inventory" },
+    { "caption": "Barista lands on Inventory. Stock levels and changes." },
+    { "click": { "role": "button", "name": "Logout" } },
+    { "expectUrl": "/login" }
+  ]
+}

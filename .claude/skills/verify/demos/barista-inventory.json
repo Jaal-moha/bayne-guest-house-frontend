@@ -1,0 +1,32 @@
+{
+  "name": "barista-inventory",
+  "role": "barista",
+  "demo": {
+    "group": "barista",
+    "title": "Take stock for coffee service",
+    "summary": "A barista records the coffee beans taken for the morning shift. Only the store adds or removes items."
+  },
+  "setup": [
+    { "as": "store", "method": "POST", "path": "/inventory", "body": { "name": "Sugar sachets", "category": "Coffee", "unit": "pcs", "quantity": 400, "minThreshold": 100 }, "expect": 201 },
+    { "as": "store", "method": "POST", "path": "/inventory", "body": { "name": "Whole milk", "category": "Coffee", "unit": "L", "quantity": 20, "minThreshold": 5 }, "expect": 201 },
+    { "as": "store", "method": "POST", "path": "/inventory", "body": { "name": "Espresso beans", "category": "Coffee", "unit": "kg", "quantity": 12, "minThreshold": 3 }, "expect": 201, "save": "ITEM" }
+  ],
+  "steps": [
+    { "goto": "/" },
+    { "expectUrl": "/inventory" },
+    { "caption": "A barista lands on Inventory, the only page in their menu." },
+    { "click": "tr:has-text('Espresso beans')" },
+    { "caption": "Baristas take stock out. Only the store adds or removes items." },
+    { "expectHidden": { "role": "button", "name": "New Item" } },
+    { "caption": "Take out what the morning shift used and say why." },
+    { "expectHidden": { "role": "button", "name": "Remove Item" } },
+    { "click": { "role": "button", "name": "Subtract" } },
+    { "fill": { "label": "Quantity (kg)" }, "value": "2" },
+    { "fill": { "label": "Reason (optional)" }, "value": "Morning shift, coffee service" },
+    { "click": { "role": "button", "name": "Confirm" } },
+    { "expectApi": "POST /inventory/${ITEM}/movements 201" },
+    { "expectText": "10 kg" },
+    { "caption": "The store sees 10 kg left." },
+    { "apiCheck": { "as": "store", "path": "/inventory/${ITEM}", "jq": ".quantity == 10" } }
+  ]
+}

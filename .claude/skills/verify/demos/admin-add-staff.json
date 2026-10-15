@@ -1,0 +1,36 @@
+{
+  "name": "admin-add-staff",
+  "role": "admin",
+  "demo": {
+    "group": "admin",
+    "title": "Add a staff member",
+    "summary": "The admin adds a new receptionist with a login account and hands over a one-time password."
+  },
+  "setup": [
+    { "as": "admin", "method": "POST", "path": "/staff", "body": { "name": "Tigist Alemu", "role": "housekeeping", "phone": "0911234567" }, "expect": 201 },
+    { "as": "admin", "method": "POST", "path": "/staff", "body": { "name": "Dawit Haile", "role": "security", "phone": "0922345678", "emergencyContact": "Haile Mekonnen 0911987654" }, "expect": 201 }
+  ],
+  "steps": [
+    { "goto": "/staff" },
+    { "caption": "Add a new hire from the Staff page." },
+    { "click": { "role": "button", "name": "Add Staff" } },
+    { "caption": "Step 1. Details and a login email." },
+    { "fill": { "label": "Full name" }, "value": "Meron Girma" },
+    { "select": { "label": "Role" }, "value": "reception" },
+    { "fill": { "label": "Phone" }, "value": "0913456789" },
+    { "fill": { "label": "Emergency contact (optional)" }, "value": "Girma Bekele 0911556677" },
+    { "fill": { "label": "Email" }, "value": "meron.${RUN}@almis.et" },
+    { "click": { "role": "button", "name": "Continue" } },
+    { "caption": "Step 2. Review the one-time password." },
+    { "click": { "role": "button", "name": "Create Staff & Account" } },
+    { "expectApi": "POST /staff 201" },
+    { "expectText": "Staff created" },
+    { "caption": "It shows only once. Save it first." },
+    { "click": { "label": "I saved the password" } },
+    { "click": { "role": "button", "name": "Done" } },
+    { "expectHidden": { "role": "dialog", "name": "Review & Create" } },
+    { "expectText": "meron.${RUN}@almis.et" },
+    { "caption": "Meron is listed with her login." },
+    { "apiCheck": { "as": "admin", "path": "/staff", "jq": "any(.[]; .name == \"Meron Girma\" and .user.email == \"meron.${RUN}@almis.et\" and .user.role == \"reception\")" } }
+  ]
+}

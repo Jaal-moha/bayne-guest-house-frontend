@@ -1,0 +1,26 @@
+{
+  "name": "security-tour",
+  "role": "anon",
+  "demo": {
+    "group": "security",
+    "as": "security",
+    "title": "Security sign-in tour",
+    "summary": "Security signs in and sees that the app has no pages for this role."
+  },
+  "setup": [
+    { "as": "security", "method": "GET", "path": "/auth/me", "expect": 200 }
+  ],
+  "steps": [
+    { "goto": "/login" },
+    { "caption": "Security staff sign in with their work email and password." },
+    { "fill": { "placeholder": "you@example.com" }, "value": "verify-security@example.com" },
+    { "fill": { "placeholder": "••••••••" }, "value": "verify-pass-security" },
+    { "click": { "role": "button", "name": "Sign in" } },
+    { "expectApi": "POST /auth/login 201" },
+    { "expectUrl": "/" },
+    { "expectText": "No pages for your role" },
+    { "caption": "Security has no pages in this app yet, so the screen says so." },
+    { "click": { "role": "button", "name": "Logout" } },
+    { "expectUrl": "/login" }
+  ]
+}
