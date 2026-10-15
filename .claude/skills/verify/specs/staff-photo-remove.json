@@ -1,0 +1,21 @@
+{
+  "name": "staff-photo-remove",
+  "role": "manager",
+  "setup": [
+    { "as": "admin", "method": "POST", "path": "/staff", "body": { "name": "Remove ${RUN}", "role": "barista", "phone": "0911000885" }, "expect": 201, "save": "SID" }
+  ],
+  "steps": [
+    { "goto": "/staff" },
+    { "click": "tr:has-text('Remove ${RUN}') >> role=button[name='Edit']" },
+    { "upload": "input[type=file]", "value": ".claude/skills/verify/fixtures/headshot.jpg" },
+    { "expectApi": "PUT /staff/${SID}/photo 200" },
+    { "click": { "role": "button", "name": "Remove" } },
+    { "expectApi": "DELETE /staff/${SID}/photo 204" },
+    { "expectVisible": { "role": "button", "name": "Choose photo" } },
+    { "expectHidden": "[role=dialog] img" },
+    { "press": "Escape" },
+    { "expectHidden": "tr:has-text('Remove ${RUN}') img" },
+    { "apiCheck": { "as": "admin", "path": "/staff/${SID}", "jq": ".photoUpdatedAt == null" } },
+    { "expectNoPageErrors": true }
+  ]
+}

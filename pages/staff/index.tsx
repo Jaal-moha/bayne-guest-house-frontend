@@ -1,14 +1,22 @@
 /* eslint-disable @typescript-eslint/no-explicit-any */
 // pages/staff/index.tsx
-import { useEffect, useMemo, useState } from 'react';
+import { useEffect, useMemo, useRef, useState } from 'react';
 import Layout from '@/components/Layout';
 import RequireAuth from '@/components/RequireAuth';
 import axios from '@/utils/axiosInstance';
 import ListState from '@/components/ListState';
 import Modal from '@/components/Modal';
 import Field from '@/components/Field';
+import Alert from '@/components/Alert';
+import Button, { buttonClass } from '@/components/Button';
+import { Input, Select } from '@/components/Input';
+import Panel from '@/components/Panel';
+import { Chip } from '@/components/StatusChip';
+import Table from '@/components/Table';
+import { Plus, Printer } from '@phosphor-icons/react';
 import { useToast } from '@/components/Toast';
 import { useList } from '@/lib/useList';
+import { PHOTO_HEIGHT, PHOTO_WIDTH, centerCrop, pdfFilename } from '@/lib/idCard';
 
 type UserLite = {
   id: number;
@@ -27,11 +35,93 @@ type Staff = {
   barcode: string;
   user?: UserLite | null;
   idCardUrl?: string;
+  photoUpdatedAt: string | null;
 };
 
 const ROLE_VALUES = [
   'admin','manager','reception','housekeeping','barista','security','finance','store',
 ] as const;
+
+/* -------------------- Photos -------------------- */
+const photoKey = (s: Staff) => `${s.id}:${s.photoUpdatedAt}`;
+
+// The photo route needs the bearer token, so photos come through axios as blobs, one per staff row
+// with a photo, refetched only when photoUpdatedAt changes.
+function usePhotoUrls(staff: Staff[]) {
+  const [urls, setUrls] = useState<Record<string, string>>({});
+  const requested = useRef(new Set<string>());
+  const mounted = useRef(true);
+  const latest = useRef(urls);
+  latest.current = urls;
+
+  const wanted = useMemo(
+    () => new Map(staff.filter((s) => s.photoUpdatedAt).map((s) => [photoKey(s), s.id])),
+    [staff],
+  );
+
+  useEffect(() => {
+    const stale = Object.keys(urls).filter((k) => !wanted.has(k));
+    if (stale.length) {
+      stale.forEach((k) => URL.revokeObjectURL(urls[k]));
+      setUrls((u) => Object.fromEntries(Object.entries(u).filter(([k]) => wanted.has(k))));
+    }
+    for (const [key, id] of wanted) {
+      if (requested.current.has(key)) continue;
+      requested.current.add(key);
+      axios
+        .get(`/staff/${id}/photo`, { responseType: 'blob' })
+        .then((res) => {
+          const url = URL.createObjectURL(res.data as Blob);
+          if (mounted.current) setUrls((u) => ({ ...u, [key]: url }));
+          else URL.revokeObjectURL(url);
+        })
+        .catch(() => {});
+    }
+  }, [wanted, urls]);
+
+  useEffect(() => {
+    mounted.current = true;
+    return () => {
+      mounted.current = false;
+      Object.values(latest.current).forEach((u) => URL.revokeObjectURL(u));
+    };
+  }, []);
+
+  return (s: Staff) => (s.photoUpdatedAt ? urls[photoKey(s)] : undefined);
+}
+
+async function toPassportJpeg(file: File): Promise<Blob> {
+  const bitmap = await createImageBitmap(file);
+  const { sx, sy, sw, sh } = centerCrop(bitmap.width, bitmap.height);
+  const canvas = document.createElement('canvas');
+  canvas.width = PHOTO_WIDTH;
+  canvas.height = PHOTO_HEIGHT;
+  const ctx = canvas.getContext('2d');
+  if (!ctx) throw new Error('Canvas is not available');
+  // JPEG has no alpha, so a transparent PNG would otherwise turn black.
+  ctx.fillStyle = '#fff';
+  ctx.fillRect(0, 0, PHOTO_WIDTH, PHOTO_HEIGHT);
+  ctx.drawImage(bitmap, sx, sy, sw, sh, 0, 0, PHOTO_WIDTH, PHOTO_HEIGHT);
+  bitmap.close();
+  return new Promise((resolve, reject) =>
+    canvas.toBlob((b) => (b ? resolve(b) : reject(new Error('Could not encode the photo'))), 'image/jpeg', 0.9),
+  );
+}
+
+function initials(name: string) {
+  return name.trim().split(/\s+/).slice(0, 2).map((w) => w[0]?.toUpperCase()).join('');
+}
+
+function PhotoThumb({ name, url, className }: { name: string; url?: string; className: string }) {
+  return url ? (
+    // eslint-disable-next-line @next/next/no-img-element
+    <img src={url} alt={`Photo of ${name}`} className={`${className} rounded-input object-cover`} />
+  ) : (
+    <div aria-hidden className={`${className} grid place-items-center rounded-input bg-slate-tint font-semibold text-muted`}>
+      {initials(name)}
+    </div>
+  );
+}
 
 /* -------------------- Add Staff Modal -------------------- */
 function genPassword(length = 10) {
@@ -150,18 +240,18 @@ function AddStaffModal({
 
   return (
     <Modal open={open} onClose={close} title={step === 1 ? 'Add Staff' : 'Review & Create'} size="md" locked={loading || !!createdCreds}>
-      <p className="mt-1 text-sm text-gray-500">{step === 1 ? 'Enter staff details' : 'Confirm details and create staff'}</p>
+      <p className="mt-1 text-sm text-muted">{step === 1 ? 'Enter staff details' : 'Confirm details and create staff'}</p>
 
       {err && (
-        <div className="mt-3 rounded-md border border-red-200 bg-red-50 px-3 py-2 text-sm text-red-700">
+        <Alert className="mt-3">
           {err}
-        </div>
+        </Alert>
       )}
 
       {created && !createdCreds && !loading && (
-        <div className="mt-3 rounded-md border border-amber-200 bg-amber-50 px-3 py-2 text-sm text-amber-800">
+        <Alert tone="neutral" className="mt-3">
           {name} is saved as staff. Fix the email and try again to create the account.
-        </div>
+        </Alert>
       )}
 
       {!createdCreds ? (
@@ -170,9 +260,8 @@ function AddStaffModal({
             <div className="mt-4 space-y-3">
               <Field label="Full name">
                 {(id) => (
-                  <input
+                  <Input
                     id={id}
-                    className="w-full rounded-md border px-3 py-2 outline-none focus:ring-2 focus:ring-indigo-500"
                     value={name}
                     onChange={(e) => setName(e.target.value)}
                     disabled={!!created}
@@ -183,9 +272,8 @@ function AddStaffModal({
 
               <Field label="Role">
                 {(id) => (
-                  <select
+                  <Select
                     id={id}
-                    className="w-full rounded-md border px-3 py-2 outline-none focus:ring-2 focus:ring-indigo-500"
                     value={role}
                     onChange={(e) => setRole(e.target.value)}
                     disabled={!!created}
@@ -196,15 +284,14 @@ function AddStaffModal({
                         {r}
                       </option>
                     ))}
-                  </select>
+                  </Select>
                 )}
               </Field>
 
               <Field label="Phone">
                 {(id) => (
-                  <input
+                  <Input
                     id={id}
-                    className="w-full rounded-md border px-3 py-2 outline-none focus:ring-2 focus:ring-indigo-500"
                     value={phone}
                     onChange={(e) => setPhone(e.target.value)}
                     disabled={!!created}
@@ -215,9 +302,8 @@ function AddStaffModal({
 
               <Field label="Emergency contact (optional)">
                 {(id) => (
-                  <input
+                  <Input
                     id={id}
-                    className="w-full rounded-md border px-3 py-2 outline-none focus:ring-2 focus:ring-indigo-500"
                     value={emergencyContact}
                     onChange={(e) => setEmergencyContact(e.target.value)}
                     disabled={!!created}
@@ -233,9 +319,9 @@ function AddStaffModal({
                   checked={createAccount}
                   onChange={(e) => setCreateAccount(e.target.checked)}
                   disabled={!!created}
-                  className="h-4 w-4 rounded border-gray-300 text-indigo-600"
+                  className="accent-accent size-4"
                 />
-                <label htmlFor="create-account" className="text-sm text-gray-700">
+                <label htmlFor="create-account" className="text-sm text-ink">
                   Create user account for this staff (recommended)
                 </label>
               </div>
@@ -243,9 +329,8 @@ function AddStaffModal({
               {createAccount && (
                 <Field label="Email">
                   {(id) => (
-                    <input
+                    <Input
                       id={id}
-                      className="w-full rounded-md border px-3 py-2 outline-none focus:ring-2 focus:ring-indigo-500"
                       value={email}
                       onChange={(e) => setEmail(e.target.value)}
                       placeholder="e.g. sara@example.com"
@@ -259,42 +344,40 @@ function AddStaffModal({
             // Step 2: review details
             <div className="mt-4 space-y-3">
               <div>
-                <div className="text-sm text-gray-700"><strong>Name:</strong> {name}</div>
-                <div className="text-sm text-gray-700"><strong>Role:</strong> {role}</div>
-                <div className="text-sm text-gray-700"><strong>Phone:</strong> {phone}</div>
+                <div className="text-sm text-ink"><strong>Name:</strong> {name}</div>
+                <div className="text-sm text-ink"><strong>Role:</strong> {role}</div>
+                <div className="text-sm text-ink"><strong>Phone:</strong> {phone}</div>
               </div>
 
               {createAccount ? (
-                <div className="rounded-md border border-gray-100 bg-gray-50 p-3">
-                  <div className="text-sm text-gray-700"><strong>Email:</strong> {email}</div>
+                <div className="rounded-input border border-line-soft bg-page p-3">
+                  <div className="text-sm text-ink"><strong>Email:</strong> {email}</div>
                   <div className="mt-3 flex items-center justify-between">
                     <div>
-                      <div className="text-xs text-gray-500">Generated password</div>
+                      <div className="text-xs text-muted">Generated password</div>
                       <div className="font-mono">{password}</div>
                     </div>
                     <div>
-                      <button
-                        onClick={() => setPassword(genPassword())}
-                        className="ml-2 rounded border px-2 py-1 text-xs"
-                      >
+                      <Button size="sm" onClick={() => setPassword(genPassword())} className="ml-2">
                         Regenerate
-                      </button>
+                      </Button>
                     </div>
                   </div>
-                  <div className="mt-2 text-xs text-gray-600">
+                  <div className="mt-2 text-xs text-muted">
                     The staff will use this email and password to sign in. They will be required to change the password on first login.
                   </div>
                 </div>
               ) : (
-                <div className="rounded-md border border-yellow-100 bg-yellow-50 p-3 text-sm text-yellow-800">
+                <Alert tone="neutral">
                   No user account will be created. You can create one later from the staff details.
-                </div>
+                </Alert>
               )}
             </div>
           )}
 
           <div className="mt-6 flex justify-end gap-2">
-            <button
+            <Button
+              variant="text"
               onClick={() => {
                 if (step === 2) {
                   setStep(1);
@@ -303,32 +386,24 @@ function AddStaffModal({
                 }
                 close();
               }}
-              className="rounded-md border px-4 py-2 hover:bg-gray-50"
               disabled={loading}
             >
               {step === 2 ? 'Back' : 'Cancel'}
-            </button>
+            </Button>
 
             {step === 1 ? (
-              <button
-                onClick={proceedToReview}
-                className="rounded-md bg-indigo-600 px-4 py-2 font-semibold text-white hover:bg-indigo-700 disabled:opacity-60"
-              >
+              <Button variant="primary" onClick={proceedToReview}>
                 Continue
-              </button>
+              </Button>
             ) : (
-              <button
-                onClick={submit}
-                disabled={loading}
-                className="rounded-md bg-indigo-600 px-4 py-2 font-semibold text-white hover:bg-indigo-700 disabled:opacity-60"
-              >
+              <Button variant="primary" onClick={submit} disabled={loading}>
                 {loading ? 'Saving…' : created ? 'Retry Account' : createAccount ? 'Create Staff & Account' : 'Create Staff'}
-              </button>
+              </Button>
             )}
           </div>
         </>
       ) : (
-        <div className="mt-4 rounded-md border border-green-100 bg-green-50 p-4 text-sm text-green-800">
+        <Alert tone="accent" className="mt-4">
           <div>Staff created{createdCreds.id ? ` (ID: ${createdCreds.id})` : ''}.</div>
           <div className="mt-2">
             <strong>Email:</strong> <code className="ml-1">{createdCreds.email}</code>
@@ -336,35 +411,28 @@ function AddStaffModal({
           <div className="mt-1">
             <strong>Password:</strong> <code className="ml-1">{createdCreds.password}</code>
           </div>
-          <div className="mt-2 text-xs text-gray-700">Credentials must be delivered to the staff member. They will be required to change the password on first login.</div>
+          <div className="mt-2 text-xs text-ink">Credentials must be delivered to the staff member. They will be required to change the password on first login.</div>
 
           <div className="mt-3 text-sm" role="status">
-            {copy === 'copied' && <span className="font-semibold text-green-700">Copied</span>}
-            {copy === 'failed' && <span className="font-semibold text-red-700">Copy failed, select the password</span>}
+            {copy === 'copied' && <span className="font-semibold text-accent">Copied</span>}
+            {copy === 'failed' && <span className="font-semibold text-danger">Copy failed, select the password</span>}
           </div>
           {copy !== 'copied' && (
-            <label className="mt-2 flex items-center gap-2 text-sm text-gray-700">
-              <input type="checkbox" checked={savedConfirmed} onChange={(e) => setSavedConfirmed(e.target.checked)} className="h-4 w-4" />
+            <label className="mt-2 flex items-center gap-2 text-sm text-ink">
+              <input type="checkbox" checked={savedConfirmed} onChange={(e) => setSavedConfirmed(e.target.checked)} className="accent-accent size-4" />
               I saved the password
             </label>
           )}
 
           <div className="mt-4 flex justify-end gap-2">
-            <button
-              onClick={close}
-              disabled={copy !== 'copied' && !savedConfirmed}
-              className="rounded-md border px-4 py-2 hover:bg-gray-50 disabled:opacity-50"
-            >
+            <Button variant="quiet" onClick={close} disabled={copy !== 'copied' && !savedConfirmed}>
               Done
-            </button>
-            <button
-              onClick={copyCreds}
-              className="rounded-md bg-indigo-600 px-4 py-2 font-semibold text-white hover:bg-indigo-700"
-            >
+            </Button>
+            <Button variant="primary" onClick={copyCreds}>
               Copy Credentials
-            </button>
+            </Button>
           </div>
-        </div>
+        </Alert>
       )}
     </Modal>
   );
@@ -374,13 +442,19 @@ function AddStaffModal({
 function EditStaffModal({
   open,
   staff,
+  photoUpdatedAt,
+  photoUrl,
   onClose,
   onUpdated,
+  onPhotoChanged,
 }: {
   open: boolean;
   staff?: Staff | null;
+  photoUpdatedAt: string | null;
+  photoUrl?: string;
   onClose: () => void;
   onUpdated: (s: Staff) => void;
+  onPhotoChanged: (staffId: number, photoUpdatedAt: string | null) => void;
 }) {
   const [name, setName] = useState('');
   const [role, setRole] = useState<string>('');
@@ -388,8 +462,19 @@ function EditStaffModal({
   const [emergencyContact, setEmergencyContact] = useState('');
   const [err, setErr] = useState('');
   const [loading, setLoading] = useState(false);
+  const [photoBusy, setPhotoBusy] = useState<'uploading' | 'removing' | null>(null);
+  const [photoErr, setPhotoErr] = useState('');
+  // The cropped JPEG being uploaded, shown until the saved photo has been fetched back.
+  const [localPhoto, setLocalPhoto] = useState<string | undefined>(undefined);
+  const fileInput = useRef<HTMLInputElement>(null);
+
+  useEffect(() => () => {
+    if (localPhoto) URL.revokeObjectURL(localPhoto);
+  }, [localPhoto]);
 
   useEffect(() => {
+    setLocalPhoto(undefined);
+    setPhotoErr('');
     if (open && staff) {
       setName(staff.name ?? '');
       setRole(staff.role ?? '');
@@ -406,6 +491,49 @@ function EditStaffModal({
   }, [open, staff]);
 
   if (!open) return null;
+
+  const shownPhoto = photoBusy === 'uploading' ? localPhoto : photoUpdatedAt ? (photoUrl ?? localPhoto) : undefined;
+
+  const pickPhoto = async (file: File | undefined) => {
+    if (!file || !staff) return;
+    setPhotoErr('');
+    let blob: Blob;
+    try {
+      blob = await toPassportJpeg(file);
+    } catch {
+      return setPhotoErr('Could not read that image. Choose a JPEG or PNG photo.');
+    }
+    setLocalPhoto(URL.createObjectURL(blob));
+    setPhotoBusy('uploading');
+    try {
+      const form = new FormData();
+      form.append('photo', blob, 'photo.jpg');
+      const res = await axios.put(`/staff/${staff.id}/photo`, form);
+      onPhotoChanged(staff.id, res.data.photoUpdatedAt);
+    } catch (e: any) {
+      setLocalPhoto(undefined);
+      const msg = e?.response?.data?.message || e?.message || 'Failed to upload photo';
+      setPhotoErr(Array.isArray(msg) ? msg.join(', ') : msg);
+    } finally {
+      setPhotoBusy(null);
+    }
+  };
+
+  const removePhoto = async () => {
+    if (!staff) return;
+    setPhotoErr('');
+    setPhotoBusy('removing');
+    try {
+      await axios.delete(`/staff/${staff.id}/photo`);
+      setLocalPhoto(undefined);
+      onPhotoChanged(staff.id, null);
+    } catch (e: any) {
+      const msg = e?.response?.data?.message || e?.message || 'Failed to remove photo';
+      setPhotoErr(Array.isArray(msg) ? msg.join(', ') : msg);
+    } finally {
+      setPhotoBusy(null);
+    }
+  };
 
   const submit = async () => {
     setErr('');
@@ -433,21 +561,50 @@ function EditStaffModal({
   };
 
   return (
-    <Modal open={open} onClose={onClose} title="Edit Staff" size="md" locked={loading}>
-      <p className="mt-1 text-sm text-gray-500">Update staff member details</p>
+    <Modal open={open} onClose={onClose} title="Edit Staff" size="md" locked={loading || !!photoBusy}>
+      <p className="mt-1 text-sm text-muted">Update staff member details</p>
 
       {err && (
-        <div className="mt-3 rounded-md border border-red-200 bg-red-50 px-3 py-2 text-sm text-red-700">
+        <Alert className="mt-3">
           {err}
-        </div>
+        </Alert>
       )}
+
+      <div className="mt-4 flex items-start gap-4">
+        <PhotoThumb name={name || staff?.name || ''} url={shownPhoto} className="h-[135px] w-[105px] shrink-0 text-2xl" />
+        <div className="min-w-0 space-y-2">
+          <div className="text-[13px] font-semibold text-ink">ID card photo</div>
+          <div className="flex flex-wrap gap-2">
+            <Button size="sm" type="button" onClick={() => fileInput.current?.click()} disabled={!!photoBusy}>
+              {photoBusy === 'uploading' ? 'Uploading…' : photoUpdatedAt ? 'Change photo' : 'Choose photo'}
+            </Button>
+            {photoUpdatedAt && (
+              <Button size="sm" type="button" variant="danger-quiet" onClick={removePhoto} disabled={!!photoBusy}>
+                {photoBusy === 'removing' ? 'Removing…' : 'Remove'}
+              </Button>
+            )}
+          </div>
+          <input
+            ref={fileInput}
+            type="file"
+            accept="image/*"
+            aria-label="ID card photo file"
+            className="hidden"
+            onChange={(e) => {
+              void pickPhoto(e.target.files?.[0]);
+              e.target.value = '';
+            }}
+          />
+          <p className="text-[13px] text-muted">Cropped from the center to passport size, 35 x 45 mm.</p>
+          {photoErr && <p className="text-sm text-danger">{photoErr}</p>}
+        </div>
+      </div>
 
       <div className="mt-4 space-y-3">
         <Field label="Full name">
           {(id) => (
-            <input
+            <Input
               id={id}
-              className="w-full rounded-md border px-3 py-2 outline-none focus:ring-2 focus:ring-indigo-500"
               value={name}
               onChange={(e) => setName(e.target.value)}
               placeholder="e.g. Sara Reception"
@@ -457,9 +614,8 @@ function EditStaffModal({
 
         <Field label="Role">
           {(id) => (
-            <select
+            <Select
               id={id}
-              className="w-full rounded-md border px-3 py-2 outline-none focus:ring-2 focus:ring-indigo-500"
               value={role}
               onChange={(e) => setRole(e.target.value)}
             >
@@ -469,15 +625,14 @@ function EditStaffModal({
                   {r}
                 </option>
               ))}
-            </select>
+            </Select>
           )}
         </Field>
 
         <Field label="Phone">
           {(id) => (
-            <input
+            <Input
               id={id}
-              className="w-full rounded-md border px-3 py-2 outline-none focus:ring-2 focus:ring-indigo-500"
               value={phone}
               onChange={(e) => setPhone(e.target.value)}
               placeholder="+251 9xx xxx xxx"
@@ -487,9 +642,8 @@ function EditStaffModal({
 
         <Field label="Emergency contact (optional)">
           {(id) => (
-            <input
+            <Input
               id={id}
-              className="w-full rounded-md border px-3 py-2 outline-none focus:ring-2 focus:ring-indigo-500"
               value={emergencyContact}
               onChange={(e) => setEmergencyContact(e.target.value)}
               placeholder="Name / Phone"
@@ -499,16 +653,12 @@ function EditStaffModal({
       </div>
 
       <div className="mt-6 flex justify-end gap-2">
-        <button onClick={onClose} className="rounded-md border px-4 py-2 hover:bg-gray-50">
+        <Button variant="text" onClick={onClose} disabled={!!photoBusy}>
           Cancel
-        </button>
-        <button
-          onClick={submit}
-          disabled={loading}
-          className="rounded-md bg-indigo-600 px-4 py-2 font-semibold text-white hover:bg-indigo-700 disabled:opacity-60"
-        >
+        </Button>
+        <Button variant="primary" onClick={submit} disabled={loading || !!photoBusy}>
           {loading ? 'Saving…' : 'Save Changes'}
-        </button>
+        </Button>
       </div>
     </Modal>
   );
@@ -532,109 +682,133 @@ function DeleteConfirmationModal({
 
   return (
     <Modal open={open} onClose={onClose} title="Confirm Deletion" size="md" locked={deleting}>
-      <p className="mt-1 text-sm text-gray-500">
+      <p className="mt-1 text-sm text-muted">
         Are you sure you want to delete <strong>{staffName}</strong> and their account? This action cannot be undone.
       </p>
       <div className="mt-6 flex justify-end gap-2">
-        <button
-          onClick={onClose}
-          disabled={deleting}
-          className="rounded-md border px-4 py-2 hover:bg-gray-50"
-        >
+        <Button variant="text" onClick={onClose} disabled={deleting}>
           Cancel
-        </button>
-        <button
-          onClick={onConfirm}
-          disabled={deleting}
-          className="rounded-md bg-red-600 px-4 py-2 font-semibold text-white hover:bg-red-700 disabled:opacity-60"
-        >
+        </Button>
+        <Button variant="danger" onClick={onConfirm} disabled={deleting}>
           Delete
-        </button>
+        </Button>
       </div>
     </Modal>
   );
 }
 
 /* -------------------- Staff Table -------------------- */
+const CHECKBOX = 'accent-accent size-4';
+
+function SelectAllBox({ checked, partial, onChange }: { checked: boolean; partial: boolean; onChange: () => void }) {
+  const ref = useRef<HTMLInputElement>(null);
+  useEffect(() => {
+    if (ref.current) ref.current.indeterminate = partial;
+  }, [partial]);
+  return <input ref={ref} type="checkbox" className={CHECKBOX} aria-label="Select all staff" checked={checked} onChange={onChange} />;
+}
+
 function StaffTable({
   staff,
+  photoUrl,
+  selected,
+  onToggle,
+  onToggleAll,
   onPreview,
   onEdit,
   onDelete,
 }: {
   staff: Staff[];
+  photoUrl: (s: Staff) => string | undefined;
+  selected: ReadonlySet<number>;
+  onToggle: (id: number) => void;
+  onToggleAll: () => void;
   onPreview?: (s: Staff) => void;
   onEdit?: (s: Staff) => void;
   onDelete?: (s: Staff) => void;
 }) {
+  const selectedCount = staff.filter((s) => selected.has(s.id)).length;
   return (
-    <table className="min-w-full border-collapse table-auto">
-      <thead className="bg-gray-100">
+    <Table className="border-collapse">
+      <thead>
         <tr>
-          <th className="px-4 py-3 text-left text-sm font-semibold text-gray-700">Name</th>
-          <th className="px-4 py-3 text-left text-sm font-semibold text-gray-700">Role</th>
-          <th className="px-4 py-3 text-left text-sm font-semibold text-gray-700">Phone</th>
-          <th className="px-4 py-3 text-left text-sm font-semibold text-gray-700">Emergency</th>
-          <th className="px-4 py-3 text-left text-sm font-semibold text-gray-700">Barcode</th>
-          <th className="px-4 py-3 text-left text-sm font-semibold text-gray-700">Account</th>
-          <th className="px-4 py-3 text-left text-sm font-semibold text-gray-700">Actions</th>
+          <th className="w-10">
+            <SelectAllBox
+              checked={selectedCount > 0 && selectedCount === staff.length}
+              partial={selectedCount > 0 && selectedCount < staff.length}
+              onChange={onToggleAll}
+            />
+          </th>
+          <th>Name</th>
+          <th>Role</th>
+          <th>Phone</th>
+          <th>Emergency</th>
+          <th>Barcode</th>
+          <th>Account</th>
+          <th>Actions</th>
         </tr>
       </thead>
       <tbody>
         {staff.map((s) => (
-          <tr key={s.id} className="border-t">
-            <td className="px-4 py-3">{s.name}</td>
-            <td className="px-4 py-3">{s.role}</td>
-            <td className="px-4 py-3">{s.phone}</td>
-            <td className="px-4 py-3">{s.emergencyContact || <span className="text-gray-400">—</span>}</td>
-            <td className="px-4 py-3 font-mono text-sm">{s.barcode}</td>
-            <td className="px-4 py-3">
+          <tr key={s.id}>
+            <td>
+              <input
+                type="checkbox"
+                className={CHECKBOX}
+                aria-label={`Select ${s.name}`}
+                checked={selected.has(s.id)}
+                onChange={() => onToggle(s.id)}
+              />
+            </td>
+            <td>
+              <div className="flex items-center gap-3">
+                <PhotoThumb name={s.name} url={photoUrl(s)} className="h-[45px] w-[35px] shrink-0 text-xs" />
+                <span className="font-semibold">{s.name}</span>
+              </div>
+            </td>
+            <td>{s.role}</td>
+            <td>{s.phone}</td>
+            <td>{s.emergencyContact || <span className="text-muted">—</span>}</td>
+            <td className="font-mono text-sm tabular-nums">{s.barcode}</td>
+            <td>
               {s.user ? (
-                <span className="rounded bg-green-50 px-2 py-1 text-xs font-semibold text-green-700">
+                <Chip tone="accent">
                   {s.user.email}
-                </span>
+                </Chip>
               ) : (
-                <span className="text-gray-400">No account</span>
+                <span className="text-muted">No account</span>
               )}
             </td>
-            <td className="px-4 py-3">
+            <td>
               <div className="flex gap-2">
                 {s.id ? (
                   <>
-                    <button
-                      onClick={() => onPreview?.(s)}
-                      className="inline-block rounded bg-indigo-50 px-3 py-1 text-xs font-semibold text-indigo-700 hover:bg-indigo-100"
-                    >
-                      Preview / Download
-                    </button>
-                    <button
-                      onClick={() => onEdit?.(s)}
-                      className="inline-block rounded border px-3 py-1 text-xs font-semibold text-gray-700 hover:bg-gray-50"
-                    >
+                    <Button size="sm" onClick={() => onPreview?.(s)}>
+                      ID card
+                    </Button>
+                    <Button size="sm" onClick={() => onEdit?.(s)}>
                       Edit
-                    </button>
-                    <button
-                      onClick={() => onDelete?.(s)}
-                      className="inline-block rounded bg-red-50 px-3 py-1 text-xs font-semibold text-red-700 hover:bg-red-100"
-                    >
+                    </Button>
+                    <Button size="sm" variant="danger-quiet" onClick={() => onDelete?.(s)}>
                       Delete
-                    </button>
+                    </Button>
                   </>
                 ) : (
-                  <span className="text-gray-400">—</span>
+                  <span className="text-muted">—</span>
                 )}
               </div>
             </td>
           </tr>
         ))}
       </tbody>
-    </table>
+    </Table>
   );
 }
 
 /* -------------------- PDF Preview Modal -------------------- */
 function PdfPreviewModal({
   open,
+  title,
   loading,
   url,
   filename,
@@ -643,6 +817,7 @@ function PdfPreviewModal({
   onPrint,
 }: {
   open: boolean;
+  title: string;
   loading: boolean;
   url?: string;
   filename?: string;
@@ -652,37 +827,38 @@ function PdfPreviewModal({
 }) {
   if (!open) return null;
   return (
-    <Modal open={open} onClose={onClose} title="ID Card Preview" size="3xl">
+    <Modal open={open} onClose={onClose} title={title} size="3xl">
       <div className="flex items-center justify-end gap-2">
         {url && (
           <a
             href={url}
             download={filename}
-            className="rounded bg-indigo-600 px-3 py-1 text-xs font-semibold text-white hover:bg-indigo-700"
+            className={buttonClass('primary', 'sm')}
           >
             Download
           </a>
         )}
-        {onPrint && !loading && (
-          <button
-            onClick={onPrint}
-            className="rounded bg-green-600 px-3 py-1 text-xs font-semibold text-white hover:bg-green-700"
-          >
+        {url && onPrint && (
+          <Button size="sm" onClick={onPrint}>
             Print
-          </button>
+          </Button>
         )}
-        <button onClick={onClose} className="rounded border px-3 py-1 text-sm">Close</button>
+        <Button size="sm" variant="text" onClick={onClose}>Close</Button>
       </div>
+      <p className="mt-3 text-sm text-muted">
+        Print on A4 at 100% (actual size). Each page holds three cards: cut on the corner marks, fold on the dashed
+        line, laminate.
+      </p>
 
       <div className="mt-3 h-[70vh]">
         {loading ? (
-          <div className="grid h-full place-items-center text-gray-600">Preparing preview…</div>
+          <div className="grid h-full place-items-center text-muted">Preparing preview…</div>
         ) : error ? (
-          <div className="rounded-md border border-red-200 bg-red-50 p-4 text-sm text-red-700">{error}</div>
+          <Alert>{error}</Alert>
         ) : url ? (
-          <iframe src={url} title="ID Preview" className="h-full w-full rounded" />
+          <iframe src={url} title="ID card PDF" className="h-full w-full rounded" />
         ) : (
-          <div className="grid h-full place-items-center text-gray-500">No preview available</div>
+          <div className="grid h-full place-items-center text-muted">No preview available</div>
         )}
       </div>
     </Modal>
@@ -690,6 +866,8 @@ function PdfPreviewModal({
 }
 
 /* -------------------- Page -------------------- */
+const MAX_PRINT_BATCH = 30;
+
 function StaffPageInner() {
   const staffList = useList<Staff>('staff', async () => {
     const res = await axios.get('/staff');
@@ -697,16 +875,19 @@ function StaffPageInner() {
   });
   const { rows: staff, setRows: setStaff } = staffList;
   const { push } = useToast();
+  const photoUrl = usePhotoUrls(staff);
   const [q, setQ] = useState('');
   const [modalOpen, setModalOpen] = useState(false);
 
   // Preview state
   const [previewOpen, setPreviewOpen] = useState(false);
   const [previewUrl, setPreviewUrl] = useState<string | undefined>(undefined);
-  const [previewBlob, setPreviewBlob] = useState<Blob | undefined>(undefined);
   const [previewLoading, setPreviewLoading] = useState(false);
   const [previewError, setPreviewError] = useState<string | undefined>(undefined);
   const [previewFilename, setPreviewFilename] = useState<string | undefined>(undefined);
+  const [previewTitle, setPreviewTitle] = useState('ID card');
+
+  const [selected, setSelected] = useState<ReadonlySet<number>>(new Set());
 
   // Edit state
   const [editOpen, setEditOpen] = useState(false);
@@ -726,25 +907,40 @@ function StaffPageInner() {
     );
   }, [q, staff]);
 
+  const printIds = filtered.filter((s) => selected.has(s.id)).map((s) => s.id);
+
+  const toggleSelected = (id: number) =>
+    setSelected((prev) => {
+      const next = new Set(prev);
+      if (!next.delete(id)) next.add(id);
+      return next;
+    });
+
+  const toggleAllVisible = () =>
+    setSelected((prev) => {
+      const next = new Set(prev);
+      const allOn = filtered.every((s) => prev.has(s.id));
+      for (const s of filtered) {
+        if (allOn) next.delete(s.id);
+        else next.add(s.id);
+      }
+      return next;
+    });
+
   const onCreated = (newStaff: Staff) => {
     setStaff((prev) => [newStaff, ...prev.filter((p) => p.id !== newStaff.id)]);
   };
 
-  // Fetch PDF as blob and show preview modal (no navigation)
-  const handlePreview = async (s: Staff) => {
+  const openPdf = async (title: string, path: string, fallbackFilename: string) => {
+    setPreviewTitle(title);
     setPreviewError(undefined);
     setPreviewLoading(true);
     setPreviewOpen(true);
     setPreviewUrl(undefined);
-    setPreviewBlob(undefined);
     try {
-      const res = await axios.get(`/staff/${s.id}/id-card`, { responseType: 'blob' });
-      const blob = res.data as Blob;
-      setPreviewBlob(blob);
-      const url = URL.createObjectURL(blob);
-      setPreviewUrl(url);
-      const safeName = (s.name ?? 'staff').replace(/\s+/g, '_');
-      setPreviewFilename(`${safeName}_id.pdf`);
+      const res = await axios.get(path, { responseType: 'blob' });
+      setPreviewUrl(URL.createObjectURL(res.data as Blob));
+      setPreviewFilename(pdfFilename(res.headers['content-disposition'], fallbackFilename));
     } catch (e: any) {
       const msg = e?.response?.data?.message || e?.message || 'Failed to load ID card';
       setPreviewError(Array.isArray(msg) ? msg.join(', ') : msg);
@@ -753,56 +949,30 @@ function StaffPageInner() {
     }
   };
 
-  const blobToBase64 = (blob: Blob) =>
-    new Promise<string>((resolve, reject) => {
-      const reader = new FileReader();
-      reader.onload = () => {
-        const result = reader.result as string;
-        const parts = result.split(',');
-        resolve(parts[1] ?? '');
-      };
-      reader.onerror = reject;
-      reader.readAsDataURL(blob);
-    });
+  const handlePreview = (s: Staff) => openPdf('ID card', `/staff/${s.id}/id-card`, `staff-${s.id}.pdf`);
 
-  const handlePrint = async () => {
-    if (!previewBlob) return;
-    try {
-      const base64 = await blobToBase64(previewBlob);
-      const html = `<!doctype html>
-<html>
-<head>
-<meta charset="utf-8">
-<title>Print ID Card</title>
-<style>
-  @page { size: 85.6mm 54mm; margin: 0; }
-  html,body { height: 100%; margin: 0; padding: 0; }
-  .wrap { width: 85.6mm; height: 54mm; margin: 0; }
-  .wrap embed, .wrap object, .wrap iframe { width: 100%; height: 100%; border: 0; }
-  @media print {
-    body { -webkit-print-color-adjust: exact; }
-    .wrap { box-shadow: none; }
-  }
-</style>
-</head>
-<body>
-  <div class="wrap">
-    <embed src="data:application/pdf;base64,${base64}" type="application/pdf">
-  </div>
-<script>
-  window.onload = function(){
-    setTimeout(function(){ window.print(); }, 300);
-  };
-</script>
-</body>
-</html>`;
-      const blob = new Blob([html], { type: 'text/html' });
-      const url = URL.createObjectURL(blob);
-      window.open(url, '_blank');
-    } catch (err) {
-      console.error('Failed to prepare printable view', err);
-      push('Failed to prepare printable view', 'error');
-    }
+  const printSelected = () =>
+    openPdf(
+      `ID cards (${printIds.length})`,
+      `/staff/id-cards?ids=${printIds.join(',')}`,
+      `staff-cards-${printIds.length}.pdf`,
+    );
+
+  const handlePrint = () => {
+    if (!previewUrl) return;
+    const frame = document.createElement('iframe');
+    frame.style.cssText = 'position:fixed;width:0;height:0;border:0;visibility:hidden';
+    frame.onload = () => {
+      try {
+        frame.contentWindow?.print();
+      } catch {
+        window.open(previewUrl, '_blank');
+      }
+      // print() can return before the dialog closes, and removing the frame then would cancel it.
+      setTimeout(() => frame.remove(), 60_000);
+    };
+    frame.src = previewUrl;
+    document.body.appendChild(frame);
   };
 
   const handleEdit = (s: Staff) => {
@@ -813,6 +983,12 @@ function StaffPageInner() {
   const handleUpdated = (updated: Staff) => {
     setStaff((prev) => prev.map((p) => (p.id === updated.id ? updated : p)));
   };
+
+  const handlePhotoChanged = (staffId: number, photoUpdatedAt: string | null) => {
+    setStaff((prev) => prev.map((p) => (p.id === staffId ? { ...p, photoUpdatedAt } : p)));
+  };
+
+  const editingRow = staff.find((s) => s.id === editingStaff?.id);
 
   const handleDelete = (s: Staff) => {
     setStaffToDelete(s);
@@ -825,6 +1001,11 @@ function StaffPageInner() {
     try {
       await axios.delete(`/staff/${staffToDelete.id}`);
       setStaff((prev) => prev.filter((staff) => staff.id !== staffToDelete.id));
+      setSelected((prev) => {
+        const next = new Set(prev);
+        next.delete(staffToDelete.id);
+        return next;
+      });
     } catch (error) {
       console.error('Error deleting staff:', error);
       push('Failed to delete staff', 'error');
@@ -846,7 +1027,6 @@ function StaffPageInner() {
       URL.revokeObjectURL(previewUrl);
       setPreviewUrl(undefined);
     }
-    setPreviewBlob(undefined);
     setPreviewError(undefined);
     setPreviewLoading(false);
   };
@@ -854,38 +1034,60 @@ function StaffPageInner() {
   return (
     <Layout>
       <div className="mb-4 flex flex-wrap items-center gap-3">
-        <h1 className="text-2xl font-bold text-gray-800">Staff</h1>
+        <h1 className="text-2xl font-bold tracking-tight">Staff</h1>
         <div className="ml-auto flex flex-wrap items-center gap-2">
-          <input
+          <Input
             value={q}
             onChange={(e) => setQ(e.target.value)}
             placeholder="Search name, role, phone, barcode, email…"
-            className="w-64 rounded-md border px-3 py-2"
+            className="sm:w-64"
           />
-          <button
-            onClick={() => setModalOpen(true)}
-            className="rounded-md bg-indigo-600 px-4 py-2 font-semibold text-white hover:bg-indigo-700"
+          <Button
+            icon={Printer}
+            onClick={printSelected}
+            disabled={printIds.length === 0 || printIds.length > MAX_PRINT_BATCH}
+            title={printIds.length > MAX_PRINT_BATCH ? `Select at most ${MAX_PRINT_BATCH} staff` : undefined}
           >
+            Print selected ({printIds.length})
+          </Button>
+          {selected.size > 0 && (
+            <Button variant="text" onClick={() => setSelected(new Set())}>
+              Clear selection
+            </Button>
+          )}
+          <Button variant="primary" icon={Plus} onClick={() => setModalOpen(true)}>
             Add Staff
-          </button>
+          </Button>
         </div>
       </div>
 
-      <div className="overflow-x-auto rounded-lg bg-white shadow">
+      <Panel className="overflow-x-auto">
         <ListState list={staffList} empty="No staff found.">
           {filtered.length === 0 ? (
-            <div className="p-6 text-gray-600">No staff found.</div>
+            <div className="p-6 text-muted">No staff found.</div>
           ) : (
-            <StaffTable staff={filtered} onPreview={handlePreview} onEdit={handleEdit} onDelete={handleDelete} />
+            <StaffTable
+              staff={filtered}
+              photoUrl={photoUrl}
+              selected={selected}
+              onToggle={toggleSelected}
+              onToggleAll={toggleAllVisible}
+              onPreview={handlePreview}
+              onEdit={handleEdit}
+              onDelete={handleDelete}
+            />
           )}
         </ListState>
-      </div>
+      </Panel>
 
       <AddStaffModal open={modalOpen} onClose={() => setModalOpen(false)} onCreated={onCreated} />
 
       <EditStaffModal
         open={editOpen}
         staff={editingStaff}
+        photoUpdatedAt={editingRow?.photoUpdatedAt ?? null}
+        photoUrl={editingRow && photoUrl(editingRow)}
+        onPhotoChanged={handlePhotoChanged}
         onClose={() => {
           setEditOpen(false);
           setEditingStaff(undefined);
@@ -895,6 +1097,7 @@ function StaffPageInner() {
 
       <PdfPreviewModal
         open={previewOpen}
+        title={previewTitle}
         loading={previewLoading}
         url={previewUrl}
         filename={previewFilename}

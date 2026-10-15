@@ -7,6 +7,11 @@ import ListState from '@/components/ListState';
 import { useToast } from '@/components/Toast';
 import Modal from '@/components/Modal';
 import Field from '@/components/Field';
+import Button from '@/components/Button';
+import { Input } from '@/components/Input';
+import Panel from '@/components/Panel';
+import Table from '@/components/Table';
+import { Plus } from '@phosphor-icons/react';
 import { useList } from '@/lib/useList';
 
 type Guest = {
@@ -72,27 +77,27 @@ function GuestModal({
 
   return (
     <Modal open onClose={onClose} locked={saving} title={editing.mode === 'edit' ? 'Edit Guest' : 'Add Guest'} size="md">
-      <p className="text-sm text-gray-500">
+      <p className="text-sm text-muted">
         {editing.mode === 'edit' ? "Update this guest's details" : 'Create a new guest profile'}
       </p>
 
       <div className="mt-4 space-y-3">
         <Field label="Full name" error={errors.name}>
-          {(id) => <input id={id} className="w-full rounded-md border px-3 py-2" value={name} onChange={(e) => setName(e.target.value)} />}
+          {(id) => <Input id={id} value={name} onChange={(e) => setName(e.target.value)} />}
         </Field>
         <Field label="Phone" error={errors.phone}>
-          {(id) => <input id={id} required maxLength={30} className="w-full rounded-md border px-3 py-2" value={phone} onChange={(e) => setPhone(e.target.value)} />}
+          {(id) => <Input id={id} required maxLength={30} value={phone} onChange={(e) => setPhone(e.target.value)} />}
         </Field>
         <Field label="Email">
-          {(id) => <input id={id} className="w-full rounded-md border px-3 py-2" value={email} onChange={(e) => setEmail(e.target.value)} />}
+          {(id) => <Input id={id} value={email} onChange={(e) => setEmail(e.target.value)} />}
         </Field>
       </div>
 
       <div className="mt-6 flex justify-end gap-2">
-        <button onClick={onClose} className="rounded-md border px-4 py-2">Cancel</button>
-        <button onClick={submit} disabled={saving} className="rounded-md bg-indigo-600 px-4 py-2 text-white">
+        <Button variant="text" onClick={onClose}>Cancel</Button>
+        <Button variant="primary" onClick={submit} disabled={saving}>
           {saving ? 'Saving…' : editing.mode === 'edit' ? 'Save changes' : 'Add Guest'}
-        </button>
+        </Button>
       </div>
     </Modal>
   );
@@ -123,45 +128,45 @@ function GuestsInner() {
   return (
     <Layout>
       <div className="mb-4 flex flex-wrap items-center gap-3">
-        <h1 className="text-2xl font-bold text-gray-800">Guests</h1>
+        <h1 className="text-2xl font-bold tracking-tight">Guests</h1>
         <div className="ml-auto flex flex-wrap items-center gap-2">
-          <input value={q} onChange={(e) => setQ(e.target.value)} placeholder="Search guests…" className="w-64 rounded-md border px-3 py-2" />
-          <button onClick={() => setEditing({ mode: 'add' })} className="rounded-md bg-indigo-600 px-4 py-2 text-white">Add Guest</button>
+          <Input value={q} onChange={(e) => setQ(e.target.value)} placeholder="Search guests…" className="sm:w-64" />
+          <Button variant="primary" icon={Plus} onClick={() => setEditing({ mode: 'add' })}>Add Guest</Button>
         </div>
       </div>
 
-      <div className="overflow-x-auto rounded-lg bg-white shadow">
+      <Panel className="overflow-x-auto">
         <ListState list={guestList} empty="No guests found.">
           {filtered.length === 0 ? (
-            <div className="p-6 text-gray-600">No guests found.</div>
+            <div className="p-6 text-muted">No guests found.</div>
           ) : (
-          <table className="min-w-full table-auto">
-            <thead className="bg-gray-100">
+          <Table>
+            <thead>
               <tr>
-                <th className="px-4 py-3 text-left text-sm font-semibold text-gray-700">Name</th>
-                <th className="px-4 py-3 text-left text-sm font-semibold text-gray-700">Phone</th>
-                <th className="px-4 py-3 text-left text-sm font-semibold text-gray-700">Email</th>
-                <th className="px-4 py-3 text-left text-sm font-semibold text-gray-700">Actions</th>
+                <th>Name</th>
+                <th>Phone</th>
+                <th>Email</th>
+                <th>Actions</th>
               </tr>
             </thead>
             <tbody>
               {filtered.map((g) => (
-                <tr key={g.id} className="border-t">
-                  <td className="px-4 py-3">{g.name}</td>
-                  <td className="px-4 py-3">{g.phone || <span className="text-gray-400">—</span>}</td>
-                  <td className="px-4 py-3">{g.email || <span className="text-gray-400">—</span>}</td>
-                  <td className="px-4 py-3">
+                <tr key={g.id}>
+                  <td className="font-semibold">{g.name}</td>
+                  <td>{g.phone || <span className="text-muted">—</span>}</td>
+                  <td>{g.email || <span className="text-muted">—</span>}</td>
+                  <td>
                     <div className="flex gap-2">
-                      <button onClick={() => setEditing({ mode: 'edit', guest: g })} className="rounded border px-3 py-1 text-xs font-semibold text-gray-700">Edit</button>
+                      <Button size="sm" onClick={() => setEditing({ mode: 'edit', guest: g })}>Edit</Button>
                     </div>
                   </td>
                 </tr>
               ))}
             </tbody>
-          </table>
+          </Table>
           )}
         </ListState>
-      </div>
+      </Panel>
 
       {editing && <GuestModal editing={editing} onClose={() => setEditing(null)} onSaved={onSaved} />}
     </Layout>

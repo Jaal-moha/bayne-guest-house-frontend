@@ -1,4 +1,6 @@
+import { CircleNotch, WarningCircle } from '@phosphor-icons/react';
 import type { List } from '@/lib/useList';
+import Button from '@/components/Button';
 
 export default function ListState<T>({
   list, empty, children,
@@ -10,23 +12,24 @@ export default function ListState<T>({
   const { state } = list;
   switch (state.kind) {
     case 'loading':
-      return <div className="p-6 text-gray-600">Loading…</div>;
+      return <div className="flex items-center gap-2 p-6 text-muted"><CircleNotch aria-hidden size={18} className="animate-spin" />Loading…</div>;
     case 'forbidden':
-      return <div role="alert" className="p-6 text-red-700">You don&apos;t have access to this list</div>;
+      return <div role="alert" className="flex items-center gap-2 p-6 text-danger"><WarningCircle aria-hidden size={20} />You don&apos;t have access to this list</div>;
     case 'error':
       return (
-        <div role="alert" className="flex flex-wrap items-center gap-3 p-6 text-red-700">
+        <div role="alert" className="flex flex-wrap items-center gap-3 p-6 text-danger">
+          <WarningCircle aria-hidden size={20} />
           <span>{state.message}</span>
-          <button onClick={list.reload} className="rounded border border-red-300 px-3 py-1 text-sm hover:bg-red-50">
+          <Button variant="quiet" size="sm" onClick={list.reload}>
             Retry
-          </button>
+          </Button>
         </div>
       );
     case 'ready':
       return (
         <>
-          {state.updating && <div role="status" className="px-6 pt-4 text-sm text-gray-500">Updating…</div>}
-          {state.rows.length === 0 && empty ? <div className="p-6 text-gray-500">{empty}</div> : children}
+          {state.updating && <div role="status" className="px-6 pt-4 text-sm text-muted">Updating…</div>}
+          {state.rows.length === 0 && empty ? <div className="p-6 text-muted">{empty}</div> : children}
         </>
       );
   }
