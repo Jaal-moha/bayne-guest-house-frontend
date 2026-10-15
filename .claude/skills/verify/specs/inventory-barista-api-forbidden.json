@@ -1,0 +1,16 @@
+{
+  "name": "inventory-barista-api-forbidden",
+  "role": "barista",
+  "setup": [
+    { "as": "store", "method": "POST", "path": "/inventory", "body": { "name": "Cups ${RUN}", "category": "Kitchen", "unit": "pcs", "quantity": 50 }, "expect": 201, "save": "ITEM" },
+    { "as": "barista", "method": "POST", "path": "/inventory", "body": { "name": "Barista ${RUN}", "category": "Kitchen", "unit": "pcs", "quantity": 1 }, "expect": 403 },
+    { "as": "barista", "method": "DELETE", "path": "/inventory/${ITEM}", "expect": 403 },
+    { "as": "barista", "method": "POST", "path": "/inventory/${ITEM}/movements", "body": { "type": "OUT", "quantity": 2, "reason": "Morning coffee" }, "expect": 201 }
+  ],
+  "steps": [
+    { "goto": "/inventory" },
+    { "expectText": "Cups ${RUN}" },
+    { "apiCheck": { "as": "store", "path": "/inventory/${ITEM}", "jq": ".quantity == 48" } },
+    { "apiCheck": { "as": "store", "path": "/inventory", "jq": "[(if type == \"array\" then . else (.inventory // .items // .data) end)[] | select(.name == \"Barista ${RUN}\")] | length == 0" } }
+  ]
+}

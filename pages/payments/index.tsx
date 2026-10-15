@@ -5,6 +5,13 @@ import axios from '@/utils/axiosInstance';
 import ListState from '@/components/ListState';
 import Modal from '@/components/Modal';
 import Field from '@/components/Field';
+import Alert from '@/components/Alert';
+import Button, { buttonClass } from '@/components/Button';
+import { Input, Select, Textarea } from '@/components/Input';
+import Panel from '@/components/Panel';
+import { Chip } from '@/components/StatusChip';
+import Table from '@/components/Table';
+import { Plus } from '@phosphor-icons/react';
 import { useList, type List } from '@/lib/useList';
 import { money, date, dateTime } from '@/lib/format';
 import Link from 'next/link';
@@ -56,6 +63,14 @@ const METHODS = [
 ];
 
 const METHOD_LABEL_MAP = new Map(METHODS.map(m => [m.value, m.label]));
+
+// Payment statuses go beyond the paid/unpaid pair StatusChip knows, so map each to a chip tone here.
+const STATUS_TONE: Record<string, 'accent' | 'outline' | 'neutral' | 'danger'> = {
+  paid: 'accent',
+  unpaid: 'outline',
+  refunded: 'neutral',
+  failed: 'danger',
+};
 
 const STATUSES = [
   { value: 'paid', label: 'Paid' },
@@ -141,14 +156,13 @@ function RecordPaymentModal({
 
   return (
     <Modal open={open} onClose={onClose} title="Record Payment" locked={loading}>
-      {err && <div className="mt-3 rounded border border-red-200 bg-red-50 px-3 py-2 text-sm text-red-700">{err}</div>}
+      {err && <Alert className="mt-3">{err}</Alert>}
 
       <div className="mt-4 space-y-3">
         <Field label="Booking">
           {(id) => (
-            <select
+            <Select
               id={id}
-              className="w-full rounded border px-3 py-2 disabled:bg-gray-100"
               value={presetBooking ? presetBooking.id : bookingId}
               onChange={e=>setBookingId(Number(e.target.value))}
               disabled={!!presetBooking}
@@ -169,12 +183,12 @@ function RecordPaymentModal({
                   ))}
                 </>
               )}
-            </select>
+            </Select>
           )}
         </Field>
 
         {selected && (
-          <div className="rounded-md bg-gray-50 p-3 text-sm text-gray-700">
+          <div className="rounded-input bg-slate-tint p-3 text-sm text-ink tabular-nums">
             Nights: <b>{nightsBetween(selected.checkIn, selected.checkOut)}</b> × Rate:{' '}
             <b>{money(selected.room?.price ?? 0)}</b> = <b>{money(computed ?? 0)}</b>
           </div>
@@ -183,17 +197,17 @@ function RecordPaymentModal({
         <Field label="Amount (optional)" error={amountError}>
           {(id) => (
             <>
-              <input
+              <Input
                 id={id}
                 type="number"
                 min={0}
                 step="0.01"
-                className="w-full rounded border px-3 py-2"
+                className="font-mono tabular-nums"
                 placeholder={selected && computed != null ? `${computed}` : 'e.g. 120'}
                 value={amount}
                 onChange={e=>{ setAmount(e.target.value); setAmountError(''); }}
               />
-              <p className="mt-1 text-xs text-gray-500">Leave empty to use the calculated total.</p>
+              <p className="mt-1 text-xs text-muted">Leave empty to use the calculated total.</p>
             </>
           )}
         </Field>
@@ -201,16 +215,16 @@ function RecordPaymentModal({
         <div className="grid gap-3 sm:grid-cols-2">
           <Field label="Method">
             {(id) => (
-              <select id={id} className="w-full rounded border px-3 py-2" value={method} onChange={e=>setMethod(e.target.value)}>
+              <Select id={id} value={method} onChange={e=>setMethod(e.target.value)}>
                 {METHODS.map(m => <option key={m.value} value={m.value}>{m.label}</option>)}
-              </select>
+              </Select>
             )}
           </Field>
           <Field label="Status">
             {(id) => (
-              <select id={id} className="w-full rounded border px-3 py-2" value={status} onChange={e=>setStatus(e.target.value)}>
+              <Select id={id} value={status} onChange={e=>setStatus(e.target.value)}>
                 {STATUSES.map(s => <option key={s.value} value={s.value}>{s.label}</option>)}
-              </select>
+              </Select>
             )}
           </Field>
         </div>
@@ -218,26 +232,25 @@ function RecordPaymentModal({
         <Field label="Description / Reason (optional)">
           {(id) => (
             <>
-              <textarea
+              <Textarea
                 id={id}
-                className="w-full rounded border px-3 py-2"
                 placeholder="e.g. Paid cash at reception; includes minibar charge"
                 value={description}
                 onChange={(e)=>setDescription(e.target.value)}
                 rows={3}
                 maxLength={300}
               />
-              <p className="mt-1 text-xs text-gray-500">Max 300 characters.</p>
+              <p className="mt-1 text-xs text-muted">Max 300 characters.</p>
             </>
           )}
         </Field>
       </div>
 
       <div className="mt-6 flex justify-end gap-2">
-        <button onClick={onClose} className="rounded border px-4 py-2">Cancel</button>
-        <button onClick={submit} disabled={loading} className="rounded bg-indigo-600 px-4 py-2 font-semibold text-white disabled:opacity-60">
+        <Button variant="text" onClick={onClose}>Cancel</Button>
+        <Button variant="primary" onClick={submit} disabled={loading}>
           {loading ? 'Saving…' : 'Record'}
-        </button>
+        </Button>
       </div>
     </Modal>
   );
@@ -266,60 +279,62 @@ function PaymentsTab({
   return (
     <>
       <div className="mb-4 flex flex-wrap items-center gap-3">
-        <h1 className="text-2xl font-bold">Payments</h1>
+        <h1 className="text-2xl font-bold tracking-tight">Payments</h1>
         {typeof window !== 'undefined' && !location.pathname.startsWith('/dashboard') && (
           <Link
             href="/dashboard"
-            className="rounded border px-3 py-1 text-sm text-gray-600 hover:bg-gray-50"
+            className={buttonClass('quiet', 'sm')}
           >
             Dashboard
           </Link>
         )}
         <div className="ml-auto flex flex-wrap gap-2">
-          <input value={q} onChange={e=>setQ(e.target.value)} placeholder="Search…" className="w-64 rounded border px-3 py-2" />
-          <button onClick={openModal} disabled={!canRecord} className="rounded bg-indigo-600 px-4 py-2 font-semibold text-white disabled:opacity-60">Record Payment</button>
+          <Input value={q} onChange={e=>setQ(e.target.value)} placeholder="Search…" className="sm:w-64" />
+          <Button variant="primary" icon={Plus} onClick={openModal} disabled={!canRecord}>Record Payment</Button>
         </div>
       </div>
 
-      <div className="overflow-x-auto rounded bg-white shadow">
+      <Panel className="overflow-x-auto">
         <ListState list={list}>
-          <table className="min-w-full table-auto">
-            <thead className="bg-gray-100">
+          <Table>
+            <thead>
               <tr>
-                <th className="px-4 py-3 text-left">Booking</th>
-                <th className="px-4 py-3 text-left">Guest</th>
-                <th className="px-4 py-3 text-left">Room</th>
-                <th className="px-4 py-3 text-left">Amount</th>
-                <th className="px-4 py-3 text-left">Method</th>
-                <th className="px-4 py-3 text-left">Status</th>
-                <th className="px-4 py-3 text-left">Description</th>
-                <th className="px-4 py-3 text-left">Date</th>
+                <th>Booking</th>
+                <th>Guest</th>
+                <th>Room</th>
+                <th>Amount</th>
+                <th>Method</th>
+                <th>Status</th>
+                <th>Description</th>
+                <th>Date</th>
               </tr>
             </thead>
             <tbody>
               {filtered.map(p=>(
-                <tr key={p.id} className="border-t">
-                  <td className="px-4 py-3">{p.booking ? `#${p.booking.id}` : '—'}</td>
-                  <td className="px-4 py-3">{p.guest?.name ?? '—'}</td>
-                  <td className="px-4 py-3">{p.booking?.room ? `${p.booking.room.number} — ${p.booking.room.type}` : '—'}</td>
-                  <td className="px-4 py-3">{money(p.amount)}</td>
-                  <td className="px-4 py-3">{METHOD_LABEL_MAP.get(p.method) ?? p.method.replace('_', ' ')}</td>
-                  <td className="px-4 py-3 capitalize">{p.status}</td>
-                  <td className="px-4 py-3">
+                <tr key={p.id}>
+                  <td>{p.booking ? `#${p.booking.id}` : '—'}</td>
+                  <td className="font-semibold">{p.guest?.name ?? '—'}</td>
+                  <td>{p.booking?.room ? `${p.booking.room.number} — ${p.booking.room.type}` : '—'}</td>
+                  <td className="font-mono text-sm whitespace-nowrap tabular-nums">{money(p.amount)}</td>
+                  <td>{METHOD_LABEL_MAP.get(p.method) ?? p.method.replace('_', ' ')}</td>
+                  <td>
+                    <Chip tone={STATUS_TONE[p.status] ?? 'neutral'}><span className="capitalize">{p.status}</span></Chip>
+                  </td>
+                  <td>
                     {p.description
                       ? <span title={p.description}>
                           {p.description.length > 60 ? p.description.slice(0,60) + '…' : p.description}
                         </span>
-                      : <span className="text-gray-400">—</span>}
+                      : <span className="text-muted">—</span>}
                   </td>
-                  <td className="px-4 py-3">{dateTime(p.createdAt)}</td>
+                  <td className="font-mono text-sm whitespace-nowrap tabular-nums">{dateTime(p.createdAt)}</td>
                 </tr>
               ))}
-              {filtered.length===0 && <tr><td className="px-4 py-6 text-gray-500" colSpan={8}>No payments.</td></tr>}
+              {filtered.length===0 && <tr><td className="text-muted" colSpan={8}>No payments.</td></tr>}
             </tbody>
-          </table>
+          </Table>
         </ListState>
-      </div>
+      </Panel>
     </>
   );
 }
@@ -346,23 +361,23 @@ function UnpaidTab({
   return (
     <>
       <div className="mb-4 flex flex-wrap items-center gap-3">
-        <h1 className="text-2xl font-bold">Unpaid Bookings</h1>
+        <h1 className="text-2xl font-bold tracking-tight">Unpaid Bookings</h1>
         <div className="ml-auto flex flex-wrap gap-2">
-          <input value={q} onChange={e=>setQ(e.target.value)} placeholder="Search…" className="w-64 rounded border px-3 py-2" />
+          <Input value={q} onChange={e=>setQ(e.target.value)} placeholder="Search…" className="sm:w-64" />
         </div>
       </div>
 
-      <div className="overflow-x-auto rounded bg-white shadow">
+      <Panel className="overflow-x-auto">
         <ListState list={list}>
-          <table className="min-w-full table-auto">
-            <thead className="bg-gray-100">
+          <Table>
+            <thead>
               <tr>
-                <th className="px-4 py-3 text-left">Booking</th>
-                <th className="px-4 py-3 text-left">Guest</th>
-                <th className="px-4 py-3 text-left">Room</th>
-                <th className="px-4 py-3 text-left">Dates</th>
-                <th className="px-4 py-3 text-left">Nights × Rate</th>
-                <th className="px-4 py-3 text-right">Action</th>
+                <th>Booking</th>
+                <th>Guest</th>
+                <th>Room</th>
+                <th>Dates</th>
+                <th>Nights × Rate</th>
+                <th className="text-right">Action</th>
               </tr>
             </thead>
             <tbody>
@@ -370,30 +385,27 @@ function UnpaidTab({
                 const nights = nightsBetween(b.checkIn, b.checkOut);
                 const total = nights * (b.room?.price ?? 0);
                 return (
-                  <tr key={b.id} className="border-t">
-                    <td className="px-4 py-3">#{b.id}</td>
-                    <td className="px-4 py-3">{b.guest?.name}</td>
-                    <td className="px-4 py-3">{b.room?.number} — {b.room?.type}</td>
-                    <td className="px-4 py-3">
+                  <tr key={b.id}>
+                    <td>#{b.id}</td>
+                    <td className="font-semibold">{b.guest?.name}</td>
+                    <td><span className="font-mono text-sm font-semibold tabular-nums">{b.room?.number}</span> — {b.room?.type}</td>
+                    <td className="font-mono text-sm whitespace-nowrap tabular-nums">
                       {date(b.checkIn)} → {date(b.checkOut)}
                     </td>
-                    <td className="px-4 py-3">{nights} × {money(b.room?.price ?? 0)} = <b>{money(total)}</b></td>
-                    <td className="px-4 py-3 text-right">
-                      <button
-                        onClick={()=>openForBooking(b)}
-                        className="rounded bg-indigo-600 px-3 py-1.5 font-semibold text-white"
-                      >
+                    <td className="font-mono text-sm whitespace-nowrap tabular-nums">{nights} × {money(b.room?.price ?? 0)} = <b>{money(total)}</b></td>
+                    <td className="text-right">
+                      <Button size="sm" variant="quiet" onClick={()=>openForBooking(b)}>
                         Record
-                      </button>
+                      </Button>
                     </td>
                   </tr>
                 );
               })}
-              {filtered.length===0 && <tr><td className="px-4 py-6 text-gray-500" colSpan={6}>No unpaid bookings.</td></tr>}
+              {filtered.length===0 && <tr><td className="text-muted" colSpan={6}>No unpaid bookings.</td></tr>}
             </tbody>
-          </table>
+          </Table>
         </ListState>
-      </div>
+      </Panel>
     </>
   );
 }
@@ -428,19 +440,13 @@ function PaymentsInner() {
   return (
     <Layout>
       {/* Tabs */}
-      <div className="mb-4 flex gap-2 border-b">
-        <button
-          onClick={()=>setTab('payments')}
-          className={`-mb-px rounded-t px-4 py-2 ${tab==='payments' ? 'border-b-2 border-indigo-600 font-semibold' : 'text-gray-600'}`}
-        >
+      <div className="mb-4 flex gap-2 border-b border-line pb-4">
+        <Button variant={tab==='payments' ? 'primary' : 'text'} size="sm" onClick={()=>setTab('payments')}>
           Payments
-        </button>
-        <button
-          onClick={()=>setTab('unpaid')}
-          className={`-mb-px rounded-t px-4 py-2 ${tab==='unpaid' ? 'border-b-2 border-indigo-600 font-semibold' : 'text-gray-600'}`}
-        >
+        </Button>
+        <Button variant={tab==='unpaid' ? 'primary' : 'text'} size="sm" onClick={()=>setTab('unpaid')}>
           Unpaid Bookings
-        </button>
+        </Button>
       </div>
 
       {tab === 'payments' ? (

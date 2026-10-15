@@ -1,0 +1,32 @@
+{
+  "name": "staff-print-selected",
+  "role": "manager",
+  "setup": [
+    { "as": "admin", "method": "POST", "path": "/staff", "body": { "name": "Batch ${RUN} A", "role": "reception", "phone": "0911000901" }, "expect": 201, "save": "A" },
+    { "as": "admin", "method": "POST", "path": "/staff", "body": { "name": "Batch ${RUN} B", "role": "barista", "phone": "0911000902" }, "expect": 201, "save": "B" },
+    { "as": "admin", "method": "POST", "path": "/staff", "body": { "name": "Batch ${RUN} C", "role": "reception", "phone": "0911000903" }, "expect": 201, "save": "C" },
+    { "as": "admin", "method": "POST", "path": "/staff", "body": { "name": "Batch ${RUN} D", "role": "reception", "phone": "0911000904" }, "expect": 201, "save": "D" }
+  ],
+  "steps": [
+    { "goto": "/staff" },
+    { "expectVisible": { "role": "button", "name": "Print selected (0)" } },
+    { "expectVisible": "role=button[name='Print selected (0)'][disabled]" },
+    { "fill": { "placeholder": "Search name, role, phone, barcode, email…" }, "value": "Batch ${RUN}" },
+    { "click": { "role": "checkbox", "name": "Select Batch ${RUN} B" } },
+    { "click": { "role": "checkbox", "name": "Select Batch ${RUN} D" } },
+    { "click": { "role": "checkbox", "name": "Select Batch ${RUN} A" } },
+    { "click": { "role": "checkbox", "name": "Select Batch ${RUN} C" } },
+    { "expectVisible": { "role": "button", "name": "Print selected (4)" } },
+    { "screenshot": "table-4-selected" },
+    { "click": { "role": "button", "name": "Print selected (4)" } },
+    { "expectVisible": { "role": "dialog", "name": "ID cards (4)" } },
+    { "expectApi": "GET /staff/id-cards 200" },
+    { "expectRequest": "/staff/id-cards?ids=${D},${C},${B},${A}" },
+    { "expectText": "Each page holds three cards" },
+    { "expectVisible": "[role=dialog] iframe[title='ID card PDF']" },
+    { "expectVisible": "[role=dialog] a[download='staff-cards-4.pdf']" },
+    { "wait": 1500 },
+    { "screenshot": "batch-dialog" },
+    { "expectNoPageErrors": true }
+  ]
+}

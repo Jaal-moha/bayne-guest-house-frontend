@@ -33,6 +33,7 @@ Each feature file starts with an H1 title and one paragraph describing the user-
 - [Rooms](./rooms.md) covers adding a room and changing its price.
 - [App shell](./app-shell.md) covers the root URL, page titles, the phone menu and the layout at phone and tablet widths.
 - [Payments](./payments.md) covers recording a payment, its amount validation and status values, the unpaid list, and birr and date formatting on every page.
+- [Staff](./staff.md) covers adding and editing staff, the ID card photo and thumbnail, and the ID card preview.
 - [List load errors](./list-load-errors.md) covers the loading, error, access-denied and empty states of every list page.
 
 ## Driver self-tests
@@ -41,4 +42,4 @@ Each feature file starts with an H1 title and one paragraph describing the user-
 
 ## Not yet mapped
 
-These pages exist but have no spec yet. Write one before claiming them verified: inventory (items, stock movements), laundry, attendance, staff (create with account, ID card), the dashboard stats and date range, and bookings edit.
+These pages exist but have no spec yet. Write one before claiming them verified: inventory (items, stock movements), laundry, attendance, the dashboard stats and date range, and bookings edit.

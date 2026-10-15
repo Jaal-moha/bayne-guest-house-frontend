@@ -6,6 +6,11 @@ import axios from '@/utils/axiosInstance';
 import ListState from '@/components/ListState';
 import Modal from '@/components/Modal';
 import Field from '@/components/Field';
+import Alert from '@/components/Alert';
+import Button from '@/components/Button';
+import { Input, Select } from '@/components/Input';
+import Panel from '@/components/Panel';
+import Table from '@/components/Table';
 import { useToast } from '@/components/Toast';
 import { useList } from '@/lib/useList';
 import { date, dateTime } from '@/lib/format';
@@ -79,20 +84,20 @@ function EditAttendanceModal({
 
   return (
     <Modal open onClose={onClose} title={`Edit attendance, ${record.staff?.name ?? `#${record.staffId}`}`} size="md" locked={saving}>
-      {err && <div className="mb-3 rounded border border-red-200 bg-red-50 px-3 py-2 text-sm text-red-700">{err}</div>}
+      {err && <Alert className="mb-3">{err}</Alert>}
       <div className="space-y-3">
         <Field label="Check-in">
-          {(id) => <input id={id} type="datetime-local" className="w-full rounded-md border px-3 py-2" value={checkIn} onChange={(e) => setCheckIn(e.target.value)} />}
+          {(id) => <Input id={id} type="datetime-local" className="font-mono tabular-nums" value={checkIn} onChange={(e) => setCheckIn(e.target.value)} />}
         </Field>
         <Field label="Check-out" error={fieldErr}>
-          {(id) => <input id={id} type="datetime-local" className="w-full rounded-md border px-3 py-2" value={checkOut} onChange={(e) => setCheckOut(e.target.value)} />}
+          {(id) => <Input id={id} type="datetime-local" className="font-mono tabular-nums" value={checkOut} onChange={(e) => setCheckOut(e.target.value)} />}
         </Field>
       </div>
       <div className="mt-6 flex justify-end gap-2">
-        <button onClick={onClose} disabled={saving} className="rounded-md border px-4 py-2 hover:bg-gray-50">Cancel</button>
-        <button onClick={submit} disabled={saving} className="rounded-md bg-indigo-600 px-4 py-2 font-semibold text-white hover:bg-indigo-700 disabled:opacity-60">
+        <Button variant="text" onClick={onClose} disabled={saving}>Cancel</Button>
+        <Button variant="primary" onClick={submit} disabled={saving}>
           {saving ? 'Saving…' : 'Save'}
-        </button>
+        </Button>
       </div>
     </Modal>
   );
@@ -137,75 +142,74 @@ function AttendanceInner() {
 
   return (
     <Layout>
-      <h1 className="mb-4 text-2xl font-bold text-indigo-700">Attendance</h1>
+      <h1 className="mb-4 text-2xl font-bold tracking-tight">Attendance</h1>
 
       {/* Controls */}
       <div className="mb-4 flex flex-wrap items-center gap-3">
-        <input
+        <Input
           value={q}
           onChange={(e) => { setQ(e.target.value); setPage(1); }}
           placeholder="Search by staff, role, date…"
-          className="w-full rounded-md border px-3 py-2 sm:w-80"
+          className="sm:w-80"
         />
         <div className="flex items-center gap-2">
-          <label className="text-sm text-gray-600">Rows</label>
-          <select className="rounded-md border px-2 py-2" value={pageSize}
+          <label className="text-sm text-muted">Rows</label>
+          <Select className="sm:w-auto" value={pageSize}
                   onChange={(e) => { setPageSize(Number(e.target.value)); setPage(1); }}>
             {[5,10,20,50].map(n => <option key={n} value={n}>{n}</option>)}
-          </select>
+          </Select>
         </div>
         <div className="ml-auto flex flex-wrap items-center gap-2">
-          <button className="rounded-md border px-3 py-2 disabled:opacity-50"
+          <Button size="sm"
                   onClick={() => setPage(p => Math.max(1, p - 1))}
-                  disabled={curPage <= 1}>Prev</button>
-          <span className="text-sm text-gray-600">Page {curPage} / {totalPages}</span>
-          <button className="rounded-md border px-3 py-2 disabled:opacity-50"
+                  disabled={curPage <= 1}>Prev</Button>
+          <span className="text-sm text-muted tabular-nums">Page {curPage} / {totalPages}</span>
+          <Button size="sm"
                   onClick={() => setPage(p => Math.min(totalPages, p + 1))}
-                  disabled={curPage >= totalPages}>Next</button>
+                  disabled={curPage >= totalPages}>Next</Button>
         </div>
       </div>
 
       {/* Table */}
-      <div className="overflow-x-auto rounded-lg bg-white shadow">
+      <Panel className="overflow-x-auto">
         <ListState list={attendance} empty="No records.">
           {rows.length === 0 ? (
-            <div className="p-6 text-gray-600">No records.</div>
+            <div className="p-6 text-muted">No records.</div>
           ) : (
-          <table className="min-w-full table-auto border-collapse">
-            <thead className="bg-gray-100">
+          <Table>
+            <thead>
               <tr>
-                <th className="px-4 py-3 text-left text-sm font-semibold text-gray-700">Staff</th>
-                <th className="px-4 py-3 text-left text-sm font-semibold text-gray-700">Role</th>
-                <th className="px-4 py-3 text-left text-sm font-semibold text-gray-700">Date</th>
-                <th className="px-4 py-3 text-left text-sm font-semibold text-gray-700">Check-in</th>
-                <th className="px-4 py-3 text-left text-sm font-semibold text-gray-700">Check-out</th>
-                <th className="px-4 py-3 text-left text-sm font-semibold text-gray-700">Hours</th>
-                <th className="px-4 py-3 text-right text-sm font-semibold text-gray-700">Actions</th>
+                <th>Staff</th>
+                <th>Role</th>
+                <th>Date</th>
+                <th>Check-in</th>
+                <th>Check-out</th>
+                <th>Hours</th>
+                <th className="text-right">Actions</th>
               </tr>
             </thead>
             <tbody>
               {rows.map(r => (
-                <tr key={r.id} className="border-t">
-                  <td className="px-4 py-3">{r.staff?.name ?? `#${r.staffId}`}</td>
-                  <td className="px-4 py-3">{r.staff?.role ?? '—'}</td>
-                  <td className="px-4 py-3">{date(r.date)}</td>
-                  <td className="px-4 py-3">{dateTime(r.checkIn)}</td>
-                  <td className="px-4 py-3">{dateTime(r.checkOut)}</td>
-                  <td className="px-4 py-3">{hoursBetween(r.checkIn, r.checkOut)}</td>
-                  <td className="px-4 py-3">
+                <tr key={r.id}>
+                  <td className="font-semibold">{r.staff?.name ?? `#${r.staffId}`}</td>
+                  <td>{r.staff?.role ?? '—'}</td>
+                  <td className="font-mono text-sm whitespace-nowrap tabular-nums">{date(r.date)}</td>
+                  <td className="font-mono text-sm whitespace-nowrap tabular-nums">{dateTime(r.checkIn)}</td>
+                  <td className="font-mono text-sm whitespace-nowrap tabular-nums">{dateTime(r.checkOut)}</td>
+                  <td className="font-mono text-sm tabular-nums">{hoursBetween(r.checkIn, r.checkOut)}</td>
+                  <td>
                     <div className="flex justify-end gap-2">
-                      <button onClick={() => setEditing(r)} className="rounded-md border px-3 py-1 hover:bg-gray-50">Edit</button>
-                      <button onClick={() => handleDelete(r.id)}
-                              className="rounded-md border px-3 py-1 text-red-600 hover:bg-red-50">Delete</button>
+                      <Button size="sm" onClick={() => setEditing(r)}>Edit</Button>
+                      <Button size="sm" variant="danger-quiet" onClick={() => handleDelete(r.id)}>Delete</Button>
                     </div>
                   </td>
                 </tr>
               ))}
             </tbody>
-          </table>
+          </Table>
           )}
         </ListState>
-      </div>
+      </Panel>
 
       <EditAttendanceModal
         record={editing}

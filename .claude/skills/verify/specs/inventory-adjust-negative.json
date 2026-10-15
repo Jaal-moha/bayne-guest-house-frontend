@@ -2,7 +2,7 @@
   "name": "inventory-adjust-negative",
   "role": "store",
   "setup": [
-    { "as": "store", "method": "POST", "path": "/inventory", "body": { "name": "Adj ${RUN}", "category": "Bar", "unit": "pcs", "quantity": 5 }, "expect": 201, "save": "ITEM" }
+    { "as": "store", "method": "POST", "path": "/inventory", "body": { "name": "Adj ${RUN}", "category": "Kitchen", "unit": "pcs", "quantity": 5 }, "expect": 201, "save": "ITEM" }
   ],
   "steps": [
     { "goto": "/inventory" },

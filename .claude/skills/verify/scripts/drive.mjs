@@ -71,7 +71,8 @@ const viewport = VIEWPORTS[report.viewport];
 const ctx = await browser.newContext({ viewport, ...(DEMO_OUT && { recordVideo: { dir: join(dir, 'video'), size: viewport } }) });
 if (DEMO_OUT) await ctx.addInitScript(demoOverlay);
 await ctx.addInitScript((t) => {
-  if (sessionStorage.getItem('verify-seeded')) return;
+  // Init scripts also run in subframes such as the PDF viewer, where sessionStorage is null.
+  if (window !== window.top || sessionStorage.getItem('verify-seeded')) return;
   sessionStorage.setItem('verify-seeded', '1');
   if (t) localStorage.setItem('token', t); else localStorage.removeItem('token');
 }, token);
@@ -215,6 +216,7 @@ const actions = {
     await page.evaluate((t) => window.__demoCaption?.(t), text);
     await page.waitForTimeout(Math.min(4_000, 1_200 + text.length * 35));
   },
+  upload: async (t, s) => { await (await target(t)).setInputFiles(String(s.value)); await settle(); },
   select: async (t, s) => {
     const el = await target(t);
     if (DEMO_OUT) await glide(el);
@@ -241,6 +243,7 @@ const actions = {
     if (hit) throw new Error(`api ${w} was called (${hit.method} ${hit.path} ${hit.status})`);
   },
   expectNoVisit: async (p) => { await settle(); if (report.visits.includes(p)) throw new Error(`visited ${p} (visits: ${report.visits.join(' ')})`); },
+  expectRequest: (s) => poll(async () => report.requests.some((r) => r.url.includes(s)) || report.requests.map((r) => r.url).filter((u) => u.startsWith(API_URL)).slice(-3).join(' '), `request containing ${s}`),
   expectNoRequest: async (s) => { await settle(); const hit = report.requests.find((r) => r.url.includes(s)); if (hit) throw new Error(`request to ${hit.url}`); },
   expectNoPageErrors: async () => { if (report.pageErrors.length) throw new Error(report.pageErrors[0]); },
   expectFits: async () => {

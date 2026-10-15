@@ -1,4 +1,6 @@
 import { ReactNode, useEffect, useId, useRef } from 'react';
+import { X } from '@phosphor-icons/react';
+import { IconButton } from '@/components/Button';
 
 const WIDTH = {
   md: 'max-w-md',
@@ -81,7 +83,7 @@ export default function Modal({
   if (!open) return null;
   return (
     <div
-      className="fixed inset-0 z-50 grid place-items-center overflow-y-auto overscroll-contain bg-black/40 p-4"
+      className="fixed inset-0 z-50 grid place-items-center overflow-y-auto overscroll-contain bg-ink/50 p-4"
       onMouseDown={(e) => { if (e.target === e.currentTarget) dismiss(); }}
     >
       <div
@@ -90,19 +92,11 @@ export default function Modal({
         aria-modal="true"
         aria-labelledby={titleId}
         tabIndex={-1}
-        className={`max-h-[90vh] w-full overflow-y-auto overscroll-contain rounded-xl bg-white p-6 shadow-lg outline-none ${WIDTH[size]}`}
+        className={`max-h-[90vh] w-full overflow-y-auto overscroll-contain rounded-panel bg-surface p-6 shadow-[0_2px_6px_rgb(28_34_38/0.18),0_24px_60px_rgb(28_34_38/0.30)] outline-none ${WIDTH[size]}`}
       >
-        <div className="mb-4 flex items-center justify-between gap-4">
-          <h3 id={titleId} className="text-lg font-semibold">{title}</h3>
-          <button
-            type="button"
-            onClick={dismiss}
-            disabled={locked}
-            aria-label="Close dialog"
-            className="rounded px-2 py-1 text-gray-500 hover:bg-gray-100 disabled:opacity-40"
-          >
-            ✕
-          </button>
+        <div className="-mt-2 -mr-2 mb-4 flex items-center justify-between gap-4">
+          <h3 id={titleId} className="text-xl font-bold tracking-tight">{title}</h3>
+          <IconButton type="button" icon={X} onClick={dismiss} disabled={locked} aria-label="Close dialog" />
         </div>
         <div ref={bodyRef}>{children}</div>
       </div>

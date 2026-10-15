@@ -1,6 +1,9 @@
 import { FormEvent, useReducer } from 'react';
 import { isAxiosError } from 'axios';
 import Modal from '@/components/Modal';
+import Alert from '@/components/Alert';
+import Button from '@/components/Button';
+import { Input, Select } from '@/components/Input';
 import Field from '@/components/Field';
 import ListState from '@/components/ListState';
 import { useToast } from '@/components/Toast';
@@ -17,7 +20,6 @@ type Room = { id: number; number: string; type: string; price: number };
 
 const STEP_LABEL: Record<FlowStep, string> = { guest: 'Guest', stay: 'Dates and room', review: 'Review' };
 
-const INPUT = 'w-full rounded border px-3 py-2';
 
 function apiMessage(e: unknown, fallback: string): string {
   const message = isAxiosError(e) ? e.response?.data?.message : undefined;
@@ -82,9 +84,8 @@ function Flow<B>({ onClose, onCreated }: { onClose: () => void; onCreated: (book
     guest.kind === 'new' && (
       <Field label={label} error={errors[field]}>
         {(id) => (
-          <input
+          <Input
             id={id}
-            className={INPUT}
             value={guest.draft[field]}
             onChange={(e) => dispatch({ type: 'editDraft', field, value: e.target.value })}
             aria-invalid={!!errors[field]}
@@ -98,12 +99,12 @@ function Flow<B>({ onClose, onCreated }: { onClose: () => void; onCreated: (book
   return (
     <Modal open onClose={onClose} title="Create Booking" size="2xl" locked={submit.kind === 'saving'}>
       <form onSubmit={onSubmit} noValidate className="space-y-4">
-        <ol className="flex flex-wrap gap-x-4 gap-y-1 text-sm">
+        <ol className="flex flex-wrap gap-1 text-sm">
           {STEPS.map((s, i) => (
             <li
               key={s}
               aria-current={s === step ? 'step' : undefined}
-              className={s === step ? 'font-semibold text-indigo-700' : 'text-gray-500'}
+              className={`inline-flex h-8 items-center rounded-full px-3 ${s === step ? 'bg-accent-tint font-semibold text-accent' : 'text-muted'}`}
             >
               {i + 1}. {STEP_LABEL[s]}
             </li>
@@ -111,22 +112,23 @@ function Flow<B>({ onClose, onCreated }: { onClose: () => void; onCreated: (book
         </ol>
 
         {submit.kind === 'failed' && (
-          <div role="alert" className="rounded border border-red-200 bg-red-50 px-3 py-2 text-sm text-red-700">{submit.message}</div>
+          <Alert role="alert">{submit.message}</Alert>
         )}
 
         {step === 'guest' && (
           <div className="space-y-4">
             <div className="flex gap-2">
               {(['existing', 'new'] as const).map((kind) => (
-                <button
+                <Button
                   key={kind}
                   type="button"
+                  size="sm"
+                  variant={guest.kind === kind ? 'primary' : 'quiet'}
                   aria-pressed={guest.kind === kind}
                   onClick={() => dispatch({ type: 'chooseGuestKind', kind })}
-                  className={`rounded px-3 py-1.5 text-sm ${guest.kind === kind ? 'bg-indigo-600 text-white' : 'border hover:bg-gray-50'}`}
                 >
                   {kind === 'existing' ? 'Existing guest' : 'New guest'}
-                </button>
+                </Button>
               ))}
             </div>
 
@@ -134,16 +136,15 @@ function Flow<B>({ onClose, onCreated }: { onClose: () => void; onCreated: (book
               <ListState list={guests} empty="No guests yet. Choose New guest.">
                 <Field label="Guest" error={errors.guestId}>
                   {(id) => (
-                    <select
+                    <Select
                       id={id}
-                      className={INPUT}
                       value={guest.guestId ?? ''}
                       onChange={(e) => dispatch({ type: 'pickGuest', guestId: e.target.value ? Number(e.target.value) : null })}
                       aria-invalid={!!errors.guestId}
                     >
                       <option value="">Select guest…</option>
                       {guests.rows.map((g) => <option key={g.id} value={g.id}>{g.name} — {g.phone}</option>)}
-                    </select>
+                    </Select>
                   )}
                 </Field>
               </ListState>
@@ -161,10 +162,9 @@ function Flow<B>({ onClose, onCreated }: { onClose: () => void; onCreated: (book
           <div className="grid gap-4 sm:grid-cols-2">
             <Field label="Check-in" error={errors.checkIn}>
               {(id) => (
-                <input
+                <Input
                   id={id}
                   type="date"
-                  className={INPUT}
                   min={today}
                   value={stay.checkIn}
                   onChange={(e) => dispatch({ type: 'editDate', field: 'checkIn', value: e.target.value, today })}
@@ -174,10 +174,9 @@ function Flow<B>({ onClose, onCreated }: { onClose: () => void; onCreated: (book
             </Field>
             <Field label="Check-out" error={errors.checkOut}>
               {(id) => (
-                <input
+                <Input
                   id={id}
                   type="date"
-                  className={INPUT}
                   min={addDays(stay.checkIn && stay.checkIn > today ? stay.checkIn : today, 1)}
                   value={stay.checkOut}
                   onChange={(e) => dispatch({ type: 'editDate', field: 'checkOut', value: e.target.value, today })}
@@ -187,9 +186,8 @@ function Flow<B>({ onClose, onCreated }: { onClose: () => void; onCreated: (book
             </Field>
             <Field label="Room" error={errors.roomId} className="sm:col-span-2">
               {(id) => (
-                <select
+                <Select
                   id={id}
-                  className={INPUT}
                   value={stay.roomId ?? ''}
                   onChange={(e) => dispatch({ type: 'pickRoom', roomId: e.target.value ? Number(e.target.value) : null })}
                   disabled={!datesReady || rooms.state.kind !== 'ready' || rooms.state.updating || rooms.rows.length === 0}
@@ -205,7 +203,7 @@ function Flow<B>({ onClose, onCreated }: { onClose: () => void; onCreated: (book
                   {rooms.rows.map((r) => (
                     <option key={r.id} value={r.id}>{r.number} — {r.type} — {money(Number(r.price))}</option>
                   ))}
-                </select>
+                </Select>
               )}
             </Field>
           </div>
@@ -213,28 +211,28 @@ function Flow<B>({ onClose, onCreated }: { onClose: () => void; onCreated: (book
 
         {step === 'review' && (
           <dl className="grid grid-cols-[auto_1fr] gap-x-6 gap-y-2 text-sm">
-            <dt className="text-gray-500">Guest</dt>
+            <dt className="text-muted">Guest</dt>
             <dd>{pickedGuest?.name} — {pickedGuest?.phone}{guest.kind === 'new' && ' (new)'}</dd>
-            <dt className="text-gray-500">Stay</dt>
-            <dd>{date(stay.checkIn)} → {date(stay.checkOut)} ({nights(stay)} {nights(stay) === 1 ? 'night' : 'nights'})</dd>
-            <dt className="text-gray-500">Room</dt>
+            <dt className="text-muted">Stay</dt>
+            <dd><span className="font-mono tabular-nums">{date(stay.checkIn)} → {date(stay.checkOut)}</span> ({nights(stay)} {nights(stay) === 1 ? 'night' : 'nights'})</dd>
+            <dt className="text-muted">Room</dt>
             <dd>{pickedRoom?.number} — {pickedRoom?.type} — {money(Number(pickedRoom?.price ?? 0))}</dd>
           </dl>
         )}
 
         <div className="flex flex-wrap justify-end gap-2 pt-2">
-          <button type="button" onClick={onClose} disabled={submit.kind === 'saving'} className="mr-auto rounded border px-4 py-2 disabled:opacity-60">Cancel</button>
+          <Button type="button" variant="text" onClick={onClose} disabled={submit.kind === 'saving'} className="mr-auto">Cancel</Button>
           {step !== 'guest' && (
-            <button type="button" onClick={() => dispatch({ type: 'back' })} disabled={submit.kind === 'saving'} className="rounded border px-4 py-2 disabled:opacity-60">
+            <Button type="button" onClick={() => dispatch({ type: 'back' })} disabled={submit.kind === 'saving'}>
               Back
-            </button>
+            </Button>
           )}
           {step === 'review' ? (
-            <button type="submit" disabled={submit.kind === 'saving'} className="rounded bg-emerald-600 px-4 py-2 font-semibold text-white disabled:opacity-60">
+            <Button type="submit" variant="primary" disabled={submit.kind === 'saving'}>
               {submit.kind === 'saving' ? 'Creating…' : 'Create booking'}
-            </button>
+            </Button>
           ) : (
-            <button type="submit" className="rounded bg-indigo-600 px-4 py-2 font-semibold text-white">Next</button>
+            <Button type="submit" variant="primary">Next</Button>
           )}
         </div>
       </form>
