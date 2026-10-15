@@ -11,9 +11,9 @@ export default function Field({
   const id = useId();
   return (
     <div className={className}>
-      <label htmlFor={id} className="mb-1 block text-sm font-medium text-gray-700">{label}</label>
+      <label htmlFor={id} className="mb-1.5 block text-[13px] font-semibold text-ink">{label}</label>
       {children(id)}
-      {error && <p className="mt-1 text-sm text-red-600">{error}</p>}
+      {error && <p className="mt-1.5 text-sm text-danger">{error}</p>}
     </div>
   );
 }
