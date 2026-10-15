@@ -10,6 +10,13 @@ import { canManageInventoryItems } from '@/lib/permissions';
 import { useList } from '@/lib/useList';
 import { dateTime } from '@/lib/format';
 import Link from 'next/link';
+import Alert from '@/components/Alert';
+import Button, { buttonClass } from '@/components/Button';
+import { Input, Select, Textarea } from '@/components/Input';
+import Panel from '@/components/Panel';
+import { Chip } from '@/components/StatusChip';
+import Table from '@/components/Table';
+import { Plus } from '@phosphor-icons/react';
 
 type Item = {
   id: number;
@@ -29,16 +36,6 @@ type Movement = {
   reason?: string | null;
   createdAt: string;
 };
-
-function Badge({ children, color }: { children: any; color: 'amber' | 'emerald' | 'gray' | 'red'; }) {
-  const map: any = {
-    amber: 'bg-amber-100 text-amber-800',
-    emerald: 'bg-emerald-100 text-emerald-800',
-    gray: 'bg-gray-100 text-gray-800',
-    red: 'bg-red-100 text-red-800',
-  };
-  return <span className={`rounded px-2 py-0.5 text-xs ${map[color]}`}>{children}</span>;
-}
 
 /* ---------- Modals ---------- */
 
@@ -95,43 +92,41 @@ function NewItemModal({
   if (!open) return null;
   return (
     <Modal open={open} onClose={onClose} title="New Item" size="xl" locked={loading}>
-      {err && <div className="mt-3 rounded border border-red-200 bg-red-50 px-3 py-2 text-sm text-red-700">{err}</div>}
+      {err && <Alert className="mt-3">{err}</Alert>}
 
       <div className="mt-4 grid gap-3 sm:grid-cols-2">
         <Field label="Name" className="sm:col-span-2">
-          {(id) => <input id={id} className="w-full rounded border px-3 py-2" value={name} onChange={(e) => setName(e.target.value)} />}
+          {(id) => <Input id={id} value={name} onChange={(e) => setName(e.target.value)} />}
         </Field>
 
         <Field label="Category">
-          {(id) => <input id={id} className="w-full rounded border px-3 py-2" value={category} onChange={(e) => setCategory(e.target.value)} placeholder="e.g., Grocery, Bar, Housekeeping" />}
+          {(id) => <Input id={id} value={category} onChange={(e) => setCategory(e.target.value)} placeholder="e.g., Grocery, Kitchen, Housekeeping" />}
         </Field>
 
         <Field label="Unit">
           {(id) => (
-            <select
+            <Select
               id={id}
-              className="w-full rounded border px-3 py-2"
               value={unit}
               onChange={(e) => setUnit(e.target.value as 'pcs' | 'kg' | 'L')}
             >
               <option value="pcs">pcs</option>
               <option value="kg">kg</option>
               <option value="L">L</option>
-            </select>
+            </Select>
           )}
         </Field>
 
         <Field label="SKU (optional)">
-          {(id) => <input id={id} className="w-full rounded border px-3 py-2" value={sku} onChange={(e) => setSku(e.target.value)} />}
+          {(id) => <Input id={id} value={sku} onChange={(e) => setSku(e.target.value)} />}
         </Field>
 
         <Field label="Initial Quantity (optional)">
           {(id) => (
-            <input
+            <Input
               id={id}
               type="number"
               min={0}
-              className="w-full rounded border px-3 py-2"
               value={quantity}
               onChange={(e) => setQuantity(e.target.value === '' ? '' : Number(e.target.value))}
             />
@@ -140,11 +135,10 @@ function NewItemModal({
 
         <Field label="Min Threshold (optional)">
           {(id) => (
-            <input
+            <Input
               id={id}
               type="number"
               min={0}
-              className="w-full rounded border px-3 py-2"
               value={minThreshold}
               onChange={(e) => setMinThreshold(e.target.value === '' ? '' : Number(e.target.value))}
             />
@@ -153,10 +147,10 @@ function NewItemModal({
       </div>
 
       <div className="mt-6 flex justify-end gap-2">
-        <button onClick={onClose} className="rounded border px-4 py-2">Cancel</button>
-        <button onClick={submit} disabled={loading} className="rounded bg-indigo-600 px-4 py-2 font-semibold text-white disabled:opacity-60">
+        <Button variant="text" onClick={onClose}>Cancel</Button>
+        <Button variant="primary" onClick={submit} disabled={loading}>
           {loading ? 'Saving…' : 'Create'}
-        </button>
+        </Button>
       </div>
     </Modal>
   );
@@ -221,21 +215,20 @@ function StockModal({
 
   return (
     <Modal open={open} onClose={onClose} title={title} locked={loading}>
-      <div className="mt-2 text-sm text-gray-600">
+      <div className="mt-2 text-sm text-muted">
         Current: {item.quantity} {item.unit || ''}
       </div>
-      {err && <div className="mt-3 rounded border border-red-200 bg-red-50 px-3 py-2 text-sm text-red-700">{err}</div>}
+      {err && <Alert className="mt-3">{err}</Alert>}
 
       <div className="mt-4 space-y-3">
         <Field label={`Quantity ${item.unit ? `(${item.unit})` : ''}`.trim()} error={qtyErr}>
           {(id) => (
-            <input
+            <Input
               id={id}
               type="number"
               min={kind === 'adjust' ? 0 : 1}
               step={1}
               aria-invalid={!!qtyErr}
-              className="w-full rounded border px-3 py-2"
               value={qty}
               onChange={(e) => setQty(e.target.value === '' ? '' : Number(e.target.value))}
               placeholder={kind === 'adjust' ? 'Set absolute quantity' : 'Enter amount to add/remove'}
@@ -243,15 +236,15 @@ function StockModal({
           )}
         </Field>
         <Field label="Reason (optional)">
-          {(id) => <textarea id={id} className="w-full rounded border px-3 py-2" rows={3} value={reason} onChange={(e) => setReason(e.target.value)} />}
+          {(id) => <Textarea id={id} rows={3} value={reason} onChange={(e) => setReason(e.target.value)} />}
         </Field>
       </div>
 
       <div className="mt-6 flex justify-end gap-2">
-        <button onClick={onClose} className="rounded border px-4 py-2">Cancel</button>
-        <button onClick={submit} disabled={loading} className="rounded bg-indigo-600 px-4 py-2 font-semibold text-white disabled:opacity-60">
+        <Button variant="text" onClick={onClose}>Cancel</Button>
+        <Button variant="primary" onClick={submit} disabled={loading}>
           {loading ? 'Processing…' : 'Confirm'}
-        </button>
+        </Button>
       </div>
     </Modal>
   );
@@ -285,41 +278,41 @@ function HistoryModal({
 
   return (
     <Modal open={open} onClose={onClose} title={`History — ${item.name}`} size="3xl">
-      <div className="mt-4 overflow-x-auto rounded border">
+      <div className="mt-4 overflow-x-auto rounded-panel border border-line">
         {loading ? (
-          <div className="p-4 text-gray-600">Loading…</div>
+          <div className="p-4 text-muted">Loading…</div>
         ) : rows.length === 0 ? (
-          <div className="p-4 text-gray-600">No movements.</div>
+          <div className="p-4 text-muted">No movements.</div>
         ) : (
-          <table className="min-w-full table-auto">
-            <thead className="bg-gray-100">
+          <Table>
+            <thead>
               <tr>
-                <th className="px-3 py-2 text-left">Type</th>
-                <th className="px-3 py-2 text-left">Quantity</th>
-                <th className="px-3 py-2 text-left">Reason</th>
-                <th className="px-3 py-2 text-left">Date</th>
+                <th>Type</th>
+                <th>Quantity</th>
+                <th>Reason</th>
+                <th>Date</th>
               </tr>
             </thead>
             <tbody>
               {rows.map(m => (
-                <tr key={m.id} className="border-t">
-                  <td className="px-3 py-2">
-                    {m.type === 'IN' && <Badge color="emerald">In</Badge>}
-                    {m.type === 'OUT' && <Badge color="red">Out</Badge>}
-                    {m.type === 'ADJUST' && <Badge color="gray">Adjust</Badge>}
+                <tr key={m.id}>
+                  <td>
+                    {m.type === 'IN' && <Chip tone="accent">In</Chip>}
+                    {m.type === 'OUT' && <Chip tone="danger">Out</Chip>}
+                    {m.type === 'ADJUST' && <Chip tone="neutral">Adjust</Chip>}
                   </td>
-                  <td className="px-3 py-2">{m.quantity} {item.unit || ''}</td>
-                  <td className="px-3 py-2">{m.reason || <span className="text-gray-400">—</span>}</td>
-                  <td className="px-3 py-2">{dateTime(m.createdAt)}</td>
+                  <td className="font-mono text-sm tabular-nums">{m.quantity} {item.unit || ''}</td>
+                  <td>{m.reason || <span className="text-muted">—</span>}</td>
+                  <td className="font-mono text-sm whitespace-nowrap tabular-nums">{dateTime(m.createdAt)}</td>
                 </tr>
               ))}
             </tbody>
-          </table>
+          </Table>
         )}
       </div>
 
       <div className="mt-4 flex justify-end">
-        <button onClick={onClose} className="rounded border px-4 py-2">Close</button>
+        <Button variant="text" onClick={onClose}>Close</Button>
       </div>
     </Modal>
   );
@@ -353,7 +346,7 @@ function ItemActionsModal({
     <Modal open={open} onClose={onClose} title={item.name} size="md" locked={removing}>
       <ItemActions item={item} {...actions} onRemove={onRemove} removing={removing} />
       <div className="mt-5 flex justify-end">
-        <button className="rounded border px-4 py-2" onClick={onClose}>Close</button>
+        <Button variant="text" onClick={onClose}>Close</Button>
       </div>
     </Modal>
   );
@@ -378,34 +371,34 @@ function ItemActions({ item, onAdd, onSubtract, onAdjust, onHistory, onRemove, r
 
   return (
     <>
-      <div className="mt-2 text-sm text-gray-600">
+      <div className="mt-2 text-sm text-muted">
         <div>Category: {item.category}</div>
         <div>SKU: {item.sku || '—'}</div>
         <div>Quantity: {item.quantity} {item.unit || ''}</div>
         <div>Min: {item.minThreshold ?? 0}</div>
         <div>Updated: {dateTime(item.updatedAt)}</div>
       </div>
-      {err && <div className="mt-3 rounded border border-red-200 bg-red-50 px-3 py-2 text-sm text-red-700">{err}</div>}
+      {err && <Alert className="mt-3">{err}</Alert>}
 
       {!confirming ? (
         <div className="mt-5 grid grid-cols-2 gap-2">
-          <button className="rounded bg-emerald-600 px-3 py-2 text-white hover:bg-emerald-700" onClick={onAdd}>Add</button>
-          <button className="rounded bg-orange-600 px-3 py-2 text-white hover:bg-orange-700" onClick={onSubtract}>Subtract</button>
-          <button className="rounded bg-indigo-600 px-3 py-2 text-white hover:bg-indigo-700" onClick={onAdjust}>Adjust</button>
-          <button className="rounded border px-3 py-2 hover:bg-gray-50" onClick={onHistory}>History</button>
-          {onRemove && <button className="col-span-2 rounded border border-red-300 px-3 py-2 text-red-700 hover:bg-red-50" onClick={() => setConfirming(true)}>Remove Item</button>}
+          <Button variant="primary" onClick={onAdd}>Add</Button>
+          <Button variant="quiet" onClick={onSubtract}>Subtract</Button>
+          <Button variant="quiet" onClick={onAdjust}>Adjust</Button>
+          <Button variant="quiet" onClick={onHistory}>History</Button>
+          {onRemove && <Button variant="danger-quiet" className="col-span-2" onClick={() => setConfirming(true)}>Remove Item</Button>}
         </div>
       ) : (
-        <div className="mt-5 rounded-lg border border-red-200 bg-red-50 p-3">
-          <div className="text-sm font-medium text-red-800">Confirm removal</div>
-          <div className="mt-1 text-sm text-red-700">Remove “{item.name}” from inventory? Its stock history is kept.</div>
+        <Alert className="mt-5">
+          <div className="font-semibold">Confirm removal</div>
+          <div className="mt-1">Remove “{item.name}” from inventory? Its stock history is kept.</div>
           <div className="mt-3 flex gap-2">
-            <button className="rounded bg-red-600 px-3 py-2 text-white hover:bg-red-700 disabled:opacity-60" disabled={removing} onClick={doRemove}>
+            <Button variant="danger" size="sm" disabled={removing} onClick={doRemove}>
               {removing ? 'Removing…' : 'Confirm Remove'}
-            </button>
-            <button className="rounded border px-3 py-2" disabled={removing} onClick={() => setConfirming(false)}>Cancel</button>
+            </Button>
+            <Button variant="text" size="sm" disabled={removing} onClick={() => setConfirming(false)}>Cancel</Button>
           </div>
-        </div>
+        </Alert>
       )}
     </>
   );
@@ -463,48 +456,48 @@ function InventoryInner() {
   return (
     <Layout>
       <div className="mb-4 flex flex-wrap items-center gap-3">
-        <h1 className="text-2xl font-bold">Inventory</h1>
+        <h1 className="text-2xl font-bold tracking-tight">Inventory</h1>
         {/* Always show Dashboard button */}
         <Link
           href="/dashboard"
-          className="rounded border px-3 py-1 text-sm text-gray-600 hover:bg-gray-50"
+          className={buttonClass('quiet', 'sm')}
         >
           Dashboard
         </Link>
         <div className="ml-auto flex flex-wrap items-center gap-2">
-          <input
-            className="w-64 rounded border px-3 py-2"
+          <Input
+            className="sm:w-64"
             placeholder="Search name, SKU, category…"
             value={q}
             onChange={(e) => setQ(e.target.value)}
           />
-          <select className="rounded border px-3 py-2" value={category} onChange={(e) => setCategory(e.target.value)}>
+          <Select className="sm:w-auto" value={category} onChange={(e) => setCategory(e.target.value)}>
             <option value="">All categories</option>
             {categories.map(c => <option key={c} value={c}>{c}</option>)}
-          </select>
+          </Select>
           <label className="flex items-center gap-2 text-sm">
-            <input type="checkbox" checked={onlyLow} onChange={(e) => setOnlyLow(e.target.checked)} />
+            <input type="checkbox" className="accent-accent size-4" checked={onlyLow} onChange={(e) => setOnlyLow(e.target.checked)} />
             Low stock only
           </label>
           {canManage && (
-            <button className="rounded bg-indigo-600 px-4 py-2 font-semibold text-white" onClick={() => setNewOpen(true)}>
+            <Button variant="primary" icon={Plus} onClick={() => setNewOpen(true)}>
               New Item
-            </button>
+            </Button>
           )}
         </div>
       </div>
 
-      <div className="overflow-x-auto rounded bg-white shadow">
+      <Panel className="overflow-x-auto">
         <ListState list={items}>
-          <table className="min-w-full table-auto">
-            <thead className="bg-gray-100">
+          <Table>
+            <thead>
               <tr>
-                <th className="px-4 py-3 text-left">Name</th>
-                <th className="px-4 py-3 text-left">Category</th>
-                <th className="px-4 py-3 text-left">SKU</th>
-                <th className="px-4 py-3 text-left">Quantity</th>
-                <th className="px-4 py-3 text-left">Min</th>
-                <th className="px-4 py-3 text-left">Updated</th>
+                <th>Name</th>
+                <th>Category</th>
+                <th>SKU</th>
+                <th>Quantity</th>
+                <th>Min</th>
+                <th>Updated</th>
                 {/* Removed Actions column */}
               </tr>
             </thead>
@@ -512,35 +505,35 @@ function InventoryInner() {
               {rows.map(r => (
                 <tr
                   key={r.id}
-                  className="border-t cursor-pointer transition-colors hover:bg-gray-50 active:bg-gray-100"
+                  className="cursor-pointer transition-colors hover:bg-accent-tint active:bg-slate-tint"
                   onClick={() => setActionsItem(r)}
                   onKeyDown={(e) => { if (e.key === 'Enter') setActionsItem(r); }}
                   tabIndex={0}
                 >
-                  <td className="px-4 py-3">
-                    <div className="font-medium">{r.name}</div>
-                    <div className="text-xs text-gray-500">{r.unit || ''}</div>
+                  <td>
+                    <div className="font-semibold">{r.name}</div>
+                    <div className="text-xs text-muted">{r.unit || ''}</div>
                   </td>
-                  <td className="px-4 py-3">{r.category}</td>
-                  <td className="px-4 py-3">{r.sku || <span className="text-gray-400">—</span>}</td>
-                  <td className="px-4 py-3">
+                  <td>{r.category}</td>
+                  <td>{r.sku || <span className="text-muted">—</span>}</td>
+                  <td>
                     <div className="flex items-center gap-2">
-                      <span>{r.quantity} {r.unit || ''}</span>
-                      {low(r) && <Badge color="amber">Low</Badge>}
+                      <span className="font-mono text-sm tabular-nums">{r.quantity} {r.unit || ''}</span>
+                      {low(r) && <Chip tone="danger">Low</Chip>}
                     </div>
                   </td>
-                  <td className="px-4 py-3">{r.minThreshold ?? 0}</td>
-                  <td className="px-4 py-3">{dateTime(r.updatedAt)}</td>
+                  <td className="font-mono text-sm tabular-nums">{r.minThreshold ?? 0}</td>
+                  <td className="font-mono text-sm whitespace-nowrap tabular-nums">{dateTime(r.updatedAt)}</td>
                   {/* Removed inline Actions cell */}
                 </tr>
               ))}
               {rows.length === 0 && (
-                <tr><td className="px-4 py-6 text-gray-500" colSpan={6}>No items.</td></tr>
+                <tr><td className="text-muted" colSpan={6}>No items.</td></tr>
               )}
             </tbody>
-          </table>
+          </Table>
         </ListState>
-      </div>
+      </Panel>
 
       <NewItemModal
         open={newOpen}

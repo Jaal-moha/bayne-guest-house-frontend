@@ -1,0 +1,24 @@
+{
+  "name": "staff-id-card",
+  "role": "manager",
+  "setup": [
+    { "as": "admin", "method": "POST", "path": "/staff", "body": { "name": "Card ${RUN}", "role": "reception", "phone": "0911000884" }, "expect": 201, "save": "SID" },
+    { "as": "admin", "method": "GET", "path": "/staff/${SID}", "expect": 200, "save": "BC", "pick": ".barcode" }
+  ],
+  "steps": [
+    { "goto": "/staff" },
+    { "click": "tr:has-text('Card ${RUN}') >> role=button[name='Edit']" },
+    { "upload": "input[type=file]", "value": ".claude/skills/verify/fixtures/headshot.jpg" },
+    { "expectApi": "PUT /staff/${SID}/photo 200" },
+    { "press": "Escape" },
+    { "click": "tr:has-text('Card ${RUN}') >> role=button[name='ID card']" },
+    { "expectVisible": { "role": "dialog", "name": "ID card" } },
+    { "expectApi": "GET /staff/${SID}/id-card 200" },
+    { "expectText": "Print on A4 at 100% (actual size)" },
+    { "expectVisible": { "role": "button", "name": "Print" } },
+    { "wait": 1500 },
+    { "screenshot": "id-card" },
+    { "expectVisible": "[role=dialog] a[download='staff-${BC}.pdf']" },
+    { "expectNoPageErrors": true }
+  ]
+}
