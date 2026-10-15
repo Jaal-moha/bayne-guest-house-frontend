@@ -67,7 +67,8 @@ if (!VIEWPORTS[report.viewport]) throw new Error(`viewport must be one of ${Obje
 const browser = await chromium.launch({ executablePath: CHROME });
 const ctx = await browser.newContext({ viewport: VIEWPORTS[report.viewport] });
 await ctx.addInitScript((t) => {
-  if (sessionStorage.getItem('verify-seeded')) return;
+  // Init scripts also run in subframes such as the PDF viewer, where sessionStorage is null.
+  if (window !== window.top || sessionStorage.getItem('verify-seeded')) return;
   sessionStorage.setItem('verify-seeded', '1');
   if (t) localStorage.setItem('token', t); else localStorage.removeItem('token');
 }, token);
@@ -149,6 +150,7 @@ const actions = {
   goto: async (p) => { await page.goto(WEB_URL + p, { waitUntil: 'networkidle', timeout: 60_000 }); },
   click: async (t, s) => { await (await target(t)).click(s.at ? { position: { x: s.at[0], y: s.at[1] } } : {}); await settle(); },
   fill: async (t, s) => { await (await target(t)).fill(String(s.value)); },
+  upload: async (t, s) => { await (await target(t)).setInputFiles(String(s.value)); await settle(); },
   select: async (t, s) => {
     const el = await target(t);
     await poll(async () => (await el.locator('option').evaluateAll((os, v) => os.some((o) => o.value === v || o.textContent.trim() === v), String(s.value))) || 'option missing', `option ${s.value}`);
@@ -174,6 +176,7 @@ const actions = {
     if (hit) throw new Error(`api ${w} was called (${hit.method} ${hit.path} ${hit.status})`);
   },
   expectNoVisit: async (p) => { await settle(); if (report.visits.includes(p)) throw new Error(`visited ${p} (visits: ${report.visits.join(' ')})`); },
+  expectRequest: (s) => poll(async () => report.requests.some((r) => r.url.includes(s)) || report.requests.map((r) => r.url).filter((u) => u.startsWith(API_URL)).slice(-3).join(' '), `request containing ${s}`),
   expectNoRequest: async (s) => { await settle(); const hit = report.requests.find((r) => r.url.includes(s)); if (hit) throw new Error(`request to ${hit.url}`); },
   expectNoPageErrors: async () => { if (report.pageErrors.length) throw new Error(report.pageErrors[0]); },
   expectFits: async () => {

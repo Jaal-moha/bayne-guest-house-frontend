@@ -1,6 +1,6 @@
 /* eslint-disable @typescript-eslint/no-explicit-any */
 // pages/staff/index.tsx
-import { useEffect, useMemo, useState } from 'react';
+import { useEffect, useMemo, useRef, useState } from 'react';
 import Layout from '@/components/Layout';
 import RequireAuth from '@/components/RequireAuth';
 import axios from '@/utils/axiosInstance';
@@ -13,9 +13,10 @@ import { Input, Select } from '@/components/Input';
 import Panel from '@/components/Panel';
 import { Chip } from '@/components/StatusChip';
 import Table from '@/components/Table';
-import { Plus } from '@phosphor-icons/react';
+import { Plus, Printer } from '@phosphor-icons/react';
 import { useToast } from '@/components/Toast';
 import { useList } from '@/lib/useList';
+import { PHOTO_HEIGHT, PHOTO_WIDTH, centerCrop, pdfFilename } from '@/lib/idCard';
 
 type UserLite = {
   id: number;
@@ -34,11 +35,93 @@ type Staff = {
   barcode: string;
   user?: UserLite | null;
   idCardUrl?: string;
+  photoUpdatedAt: string | null;
 };
 
 const ROLE_VALUES = [
   'admin','manager','reception','housekeeping','barista','security','finance','store',
 ] as const;
+
+/* -------------------- Photos -------------------- */
+const photoKey = (s: Staff) => `${s.id}:${s.photoUpdatedAt}`;
+
+// The photo route needs the bearer token, so photos come through axios as blobs, one per staff row
+// with a photo, refetched only when photoUpdatedAt changes.
+function usePhotoUrls(staff: Staff[]) {
+  const [urls, setUrls] = useState<Record<string, string>>({});
+  const requested = useRef(new Set<string>());
+  const mounted = useRef(true);
+  const latest = useRef(urls);
+  latest.current = urls;
+
+  const wanted = useMemo(
+    () => new Map(staff.filter((s) => s.photoUpdatedAt).map((s) => [photoKey(s), s.id])),
+    [staff],
+  );
+
+  useEffect(() => {
+    const stale = Object.keys(urls).filter((k) => !wanted.has(k));
+    if (stale.length) {
+      stale.forEach((k) => URL.revokeObjectURL(urls[k]));
+      setUrls((u) => Object.fromEntries(Object.entries(u).filter(([k]) => wanted.has(k))));
+    }
+    for (const [key, id] of wanted) {
+      if (requested.current.has(key)) continue;
+      requested.current.add(key);
+      axios
+        .get(`/staff/${id}/photo`, { responseType: 'blob' })
+        .then((res) => {
+          const url = URL.createObjectURL(res.data as Blob);
+          if (mounted.current) setUrls((u) => ({ ...u, [key]: url }));
+          else URL.revokeObjectURL(url);
+        })
+        .catch(() => {});
+    }
+  }, [wanted, urls]);
+
+  useEffect(() => {
+    mounted.current = true;
+    return () => {
+      mounted.current = false;
+      Object.values(latest.current).forEach((u) => URL.revokeObjectURL(u));
+    };
+  }, []);
+
+  return (s: Staff) => (s.photoUpdatedAt ? urls[photoKey(s)] : undefined);
+}
+
+async function toPassportJpeg(file: File): Promise<Blob> {
+  const bitmap = await createImageBitmap(file);
+  const { sx, sy, sw, sh } = centerCrop(bitmap.width, bitmap.height);
+  const canvas = document.createElement('canvas');
+  canvas.width = PHOTO_WIDTH;
+  canvas.height = PHOTO_HEIGHT;
+  const ctx = canvas.getContext('2d');
+  if (!ctx) throw new Error('Canvas is not available');
+  // JPEG has no alpha, so a transparent PNG would otherwise turn black.
+  ctx.fillStyle = '#fff';
+  ctx.fillRect(0, 0, PHOTO_WIDTH, PHOTO_HEIGHT);
+  ctx.drawImage(bitmap, sx, sy, sw, sh, 0, 0, PHOTO_WIDTH, PHOTO_HEIGHT);
+  bitmap.close();
+  return new Promise((resolve, reject) =>
+    canvas.toBlob((b) => (b ? resolve(b) : reject(new Error('Could not encode the photo'))), 'image/jpeg', 0.9),
+  );
+}
+
+function initials(name: string) {
+  return name.trim().split(/\s+/).slice(0, 2).map((w) => w[0]?.toUpperCase()).join('');
+}
+
+function PhotoThumb({ name, url, className }: { name: string; url?: string; className: string }) {
+  return url ? (
+    // eslint-disable-next-line @next/next/no-img-element
+    <img src={url} alt={`Photo of ${name}`} className={`${className} rounded-input object-cover`} />
+  ) : (
+    <div aria-hidden className={`${className} grid place-items-center rounded-input bg-slate-tint font-semibold text-muted`}>
+      {initials(name)}
+    </div>
+  );
+}
 
 /* -------------------- Add Staff Modal -------------------- */
 function genPassword(length = 10) {
@@ -359,13 +442,19 @@ function AddStaffModal({
 function EditStaffModal({
   open,
   staff,
+  photoUpdatedAt,
+  photoUrl,
   onClose,
   onUpdated,
+  onPhotoChanged,
 }: {
   open: boolean;
   staff?: Staff | null;
+  photoUpdatedAt: string | null;
+  photoUrl?: string;
   onClose: () => void;
   onUpdated: (s: Staff) => void;
+  onPhotoChanged: (staffId: number, photoUpdatedAt: string | null) => void;
 }) {
   const [name, setName] = useState('');
   const [role, setRole] = useState<string>('');
@@ -373,8 +462,19 @@ function EditStaffModal({
   const [emergencyContact, setEmergencyContact] = useState('');
   const [err, setErr] = useState('');
   const [loading, setLoading] = useState(false);
+  const [photoBusy, setPhotoBusy] = useState<'uploading' | 'removing' | null>(null);
+  const [photoErr, setPhotoErr] = useState('');
+  // The cropped JPEG being uploaded, shown until the saved photo has been fetched back.
+  const [localPhoto, setLocalPhoto] = useState<string | undefined>(undefined);
+  const fileInput = useRef<HTMLInputElement>(null);
+
+  useEffect(() => () => {
+    if (localPhoto) URL.revokeObjectURL(localPhoto);
+  }, [localPhoto]);
 
   useEffect(() => {
+    setLocalPhoto(undefined);
+    setPhotoErr('');
     if (open && staff) {
       setName(staff.name ?? '');
       setRole(staff.role ?? '');
@@ -391,6 +491,49 @@ function EditStaffModal({
   }, [open, staff]);
 
   if (!open) return null;
+
+  const shownPhoto = photoBusy === 'uploading' ? localPhoto : photoUpdatedAt ? (photoUrl ?? localPhoto) : undefined;
+
+  const pickPhoto = async (file: File | undefined) => {
+    if (!file || !staff) return;
+    setPhotoErr('');
+    let blob: Blob;
+    try {
+      blob = await toPassportJpeg(file);
+    } catch {
+      return setPhotoErr('Could not read that image. Choose a JPEG or PNG photo.');
+    }
+    setLocalPhoto(URL.createObjectURL(blob));
+    setPhotoBusy('uploading');
+    try {
+      const form = new FormData();
+      form.append('photo', blob, 'photo.jpg');
+      const res = await axios.put(`/staff/${staff.id}/photo`, form);
+      onPhotoChanged(staff.id, res.data.photoUpdatedAt);
+    } catch (e: any) {
+      setLocalPhoto(undefined);
+      const msg = e?.response?.data?.message || e?.message || 'Failed to upload photo';
+      setPhotoErr(Array.isArray(msg) ? msg.join(', ') : msg);
+    } finally {
+      setPhotoBusy(null);
+    }
+  };
+
+  const removePhoto = async () => {
+    if (!staff) return;
+    setPhotoErr('');
+    setPhotoBusy('removing');
+    try {
+      await axios.delete(`/staff/${staff.id}/photo`);
+      setLocalPhoto(undefined);
+      onPhotoChanged(staff.id, null);
+    } catch (e: any) {
+      const msg = e?.response?.data?.message || e?.message || 'Failed to remove photo';
+      setPhotoErr(Array.isArray(msg) ? msg.join(', ') : msg);
+    } finally {
+      setPhotoBusy(null);
+    }
+  };
 
   const submit = async () => {
     setErr('');
@@ -418,7 +561,7 @@ function EditStaffModal({
   };
 
   return (
-    <Modal open={open} onClose={onClose} title="Edit Staff" size="md" locked={loading}>
+    <Modal open={open} onClose={onClose} title="Edit Staff" size="md" locked={loading || !!photoBusy}>
       <p className="mt-1 text-sm text-muted">Update staff member details</p>
 
       {err && (
@@ -426,6 +569,36 @@ function EditStaffModal({
           {err}
         </Alert>
       )}
+
+      <div className="mt-4 flex items-start gap-4">
+        <PhotoThumb name={name || staff?.name || ''} url={shownPhoto} className="h-[135px] w-[105px] shrink-0 text-2xl" />
+        <div className="min-w-0 space-y-2">
+          <div className="text-[13px] font-semibold text-ink">ID card photo</div>
+          <div className="flex flex-wrap gap-2">
+            <Button size="sm" type="button" onClick={() => fileInput.current?.click()} disabled={!!photoBusy}>
+              {photoBusy === 'uploading' ? 'Uploading…' : photoUpdatedAt ? 'Change photo' : 'Choose photo'}
+            </Button>
+            {photoUpdatedAt && (
+              <Button size="sm" type="button" variant="danger-quiet" onClick={removePhoto} disabled={!!photoBusy}>
+                {photoBusy === 'removing' ? 'Removing…' : 'Remove'}
+              </Button>
+            )}
+          </div>
+          <input
+            ref={fileInput}
+            type="file"
+            accept="image/*"
+            aria-label="ID card photo file"
+            className="hidden"
+            onChange={(e) => {
+              void pickPhoto(e.target.files?.[0]);
+              e.target.value = '';
+            }}
+          />
+          <p className="text-[13px] text-muted">Cropped from the center to passport size, 35 x 45 mm.</p>
+          {photoErr && <p className="text-sm text-danger">{photoErr}</p>}
+        </div>
+      </div>
 
       <div className="mt-4 space-y-3">
         <Field label="Full name">
@@ -480,10 +653,10 @@ function EditStaffModal({
       </div>
 
       <div className="mt-6 flex justify-end gap-2">
-        <Button variant="text" onClick={onClose}>
+        <Button variant="text" onClick={onClose} disabled={!!photoBusy}>
           Cancel
         </Button>
-        <Button variant="primary" onClick={submit} disabled={loading}>
+        <Button variant="primary" onClick={submit} disabled={loading || !!photoBusy}>
           {loading ? 'Saving…' : 'Save Changes'}
         </Button>
       </div>
@@ -525,21 +698,47 @@ function DeleteConfirmationModal({
 }
 
 /* -------------------- Staff Table -------------------- */
+const CHECKBOX = 'accent-accent size-4';
+
+function SelectAllBox({ checked, partial, onChange }: { checked: boolean; partial: boolean; onChange: () => void }) {
+  const ref = useRef<HTMLInputElement>(null);
+  useEffect(() => {
+    if (ref.current) ref.current.indeterminate = partial;
+  }, [partial]);
+  return <input ref={ref} type="checkbox" className={CHECKBOX} aria-label="Select all staff" checked={checked} onChange={onChange} />;
+}
+
 function StaffTable({
   staff,
+  photoUrl,
+  selected,
+  onToggle,
+  onToggleAll,
   onPreview,
   onEdit,
   onDelete,
 }: {
   staff: Staff[];
+  photoUrl: (s: Staff) => string | undefined;
+  selected: ReadonlySet<number>;
+  onToggle: (id: number) => void;
+  onToggleAll: () => void;
   onPreview?: (s: Staff) => void;
   onEdit?: (s: Staff) => void;
   onDelete?: (s: Staff) => void;
 }) {
+  const selectedCount = staff.filter((s) => selected.has(s.id)).length;
   return (
     <Table className="border-collapse">
       <thead>
         <tr>
+          <th className="w-10">
+            <SelectAllBox
+              checked={selectedCount > 0 && selectedCount === staff.length}
+              partial={selectedCount > 0 && selectedCount < staff.length}
+              onChange={onToggleAll}
+            />
+          </th>
           <th>Name</th>
           <th>Role</th>
           <th>Phone</th>
@@ -552,7 +751,21 @@ function StaffTable({
       <tbody>
         {staff.map((s) => (
           <tr key={s.id}>
-            <td className="font-semibold">{s.name}</td>
+            <td>
+              <input
+                type="checkbox"
+                className={CHECKBOX}
+                aria-label={`Select ${s.name}`}
+                checked={selected.has(s.id)}
+                onChange={() => onToggle(s.id)}
+              />
+            </td>
+            <td>
+              <div className="flex items-center gap-3">
+                <PhotoThumb name={s.name} url={photoUrl(s)} className="h-[45px] w-[35px] shrink-0 text-xs" />
+                <span className="font-semibold">{s.name}</span>
+              </div>
+            </td>
             <td>{s.role}</td>
             <td>{s.phone}</td>
             <td>{s.emergencyContact || <span className="text-muted">—</span>}</td>
@@ -571,7 +784,7 @@ function StaffTable({
                 {s.id ? (
                   <>
                     <Button size="sm" onClick={() => onPreview?.(s)}>
-                      Preview / Download
+                      ID card
                     </Button>
                     <Button size="sm" onClick={() => onEdit?.(s)}>
                       Edit
@@ -595,6 +808,7 @@ function StaffTable({
 /* -------------------- PDF Preview Modal -------------------- */
 function PdfPreviewModal({
   open,
+  title,
   loading,
   url,
   filename,
@@ -603,6 +817,7 @@ function PdfPreviewModal({
   onPrint,
 }: {
   open: boolean;
+  title: string;
   loading: boolean;
   url?: string;
   filename?: string;
@@ -612,7 +827,7 @@ function PdfPreviewModal({
 }) {
   if (!open) return null;
   return (
-    <Modal open={open} onClose={onClose} title="ID Card Preview" size="3xl">
+    <Modal open={open} onClose={onClose} title={title} size="3xl">
       <div className="flex items-center justify-end gap-2">
         {url && (
           <a
@@ -623,13 +838,17 @@ function PdfPreviewModal({
             Download
           </a>
         )}
-        {onPrint && !loading && (
+        {url && onPrint && (
           <Button size="sm" onClick={onPrint}>
             Print
           </Button>
         )}
         <Button size="sm" variant="text" onClick={onClose}>Close</Button>
       </div>
+      <p className="mt-3 text-sm text-muted">
+        Print on A4 at 100% (actual size). Each page holds three cards: cut on the corner marks, fold on the dashed
+        line, laminate.
+      </p>
 
       <div className="mt-3 h-[70vh]">
         {loading ? (
@@ -637,7 +856,7 @@ function PdfPreviewModal({
         ) : error ? (
           <Alert>{error}</Alert>
         ) : url ? (
-          <iframe src={url} title="ID Preview" className="h-full w-full rounded" />
+          <iframe src={url} title="ID card PDF" className="h-full w-full rounded" />
         ) : (
           <div className="grid h-full place-items-center text-muted">No preview available</div>
         )}
@@ -647,6 +866,8 @@ function PdfPreviewModal({
 }
 
 /* -------------------- Page -------------------- */
+const MAX_PRINT_BATCH = 30;
+
 function StaffPageInner() {
   const staffList = useList<Staff>('staff', async () => {
     const res = await axios.get('/staff');
@@ -654,16 +875,19 @@ function StaffPageInner() {
   });
   const { rows: staff, setRows: setStaff } = staffList;
   const { push } = useToast();
+  const photoUrl = usePhotoUrls(staff);
   const [q, setQ] = useState('');
   const [modalOpen, setModalOpen] = useState(false);
 
   // Preview state
   const [previewOpen, setPreviewOpen] = useState(false);
   const [previewUrl, setPreviewUrl] = useState<string | undefined>(undefined);
-  const [previewBlob, setPreviewBlob] = useState<Blob | undefined>(undefined);
   const [previewLoading, setPreviewLoading] = useState(false);
   const [previewError, setPreviewError] = useState<string | undefined>(undefined);
   const [previewFilename, setPreviewFilename] = useState<string | undefined>(undefined);
+  const [previewTitle, setPreviewTitle] = useState('ID card');
+
+  const [selected, setSelected] = useState<ReadonlySet<number>>(new Set());
 
   // Edit state
   const [editOpen, setEditOpen] = useState(false);
@@ -683,25 +907,40 @@ function StaffPageInner() {
     );
   }, [q, staff]);
 
+  const printIds = filtered.filter((s) => selected.has(s.id)).map((s) => s.id);
+
+  const toggleSelected = (id: number) =>
+    setSelected((prev) => {
+      const next = new Set(prev);
+      if (!next.delete(id)) next.add(id);
+      return next;
+    });
+
+  const toggleAllVisible = () =>
+    setSelected((prev) => {
+      const next = new Set(prev);
+      const allOn = filtered.every((s) => prev.has(s.id));
+      for (const s of filtered) {
+        if (allOn) next.delete(s.id);
+        else next.add(s.id);
+      }
+      return next;
+    });
+
   const onCreated = (newStaff: Staff) => {
     setStaff((prev) => [newStaff, ...prev.filter((p) => p.id !== newStaff.id)]);
   };
 
-  // Fetch PDF as blob and show preview modal (no navigation)
-  const handlePreview = async (s: Staff) => {
+  const openPdf = async (title: string, path: string, fallbackFilename: string) => {
+    setPreviewTitle(title);
     setPreviewError(undefined);
     setPreviewLoading(true);
     setPreviewOpen(true);
     setPreviewUrl(undefined);
-    setPreviewBlob(undefined);
     try {
-      const res = await axios.get(`/staff/${s.id}/id-card`, { responseType: 'blob' });
-      const blob = res.data as Blob;
-      setPreviewBlob(blob);
-      const url = URL.createObjectURL(blob);
-      setPreviewUrl(url);
-      const safeName = (s.name ?? 'staff').replace(/\s+/g, '_');
-      setPreviewFilename(`${safeName}_id.pdf`);
+      const res = await axios.get(path, { responseType: 'blob' });
+      setPreviewUrl(URL.createObjectURL(res.data as Blob));
+      setPreviewFilename(pdfFilename(res.headers['content-disposition'], fallbackFilename));
     } catch (e: any) {
       const msg = e?.response?.data?.message || e?.message || 'Failed to load ID card';
       setPreviewError(Array.isArray(msg) ? msg.join(', ') : msg);
@@ -710,56 +949,30 @@ function StaffPageInner() {
     }
   };
 
-  const blobToBase64 = (blob: Blob) =>
-    new Promise<string>((resolve, reject) => {
-      const reader = new FileReader();
-      reader.onload = () => {
-        const result = reader.result as string;
-        const parts = result.split(',');
-        resolve(parts[1] ?? '');
-      };
-      reader.onerror = reject;
-      reader.readAsDataURL(blob);
-    });
+  const handlePreview = (s: Staff) => openPdf('ID card', `/staff/${s.id}/id-card`, `staff-${s.id}.pdf`);
 
-  const handlePrint = async () => {
-    if (!previewBlob) return;
-    try {
-      const base64 = await blobToBase64(previewBlob);
-      const html = `<!doctype html>
-<html>
-<head>
-<meta charset="utf-8">
-<title>Print ID Card</title>
-<style>
-  @page { size: 85.6mm 54mm; margin: 0; }
-  html,body { height: 100%; margin: 0; padding: 0; }
-  .wrap { width: 85.6mm; height: 54mm; margin: 0; }
-  .wrap embed, .wrap object, .wrap iframe { width: 100%; height: 100%; border: 0; }
-  @media print {
-    body { -webkit-print-color-adjust: exact; }
-    .wrap { box-shadow: none; }
-  }
-</style>
-</head>
-<body>
-  <div class="wrap">
-    <embed src="data:application/pdf;base64,${base64}" type="application/pdf">
-  </div>
-<script>
-  window.onload = function(){
-    setTimeout(function(){ window.print(); }, 300);
-  };
-</script>
-</body>
-</html>`;
-      const blob = new Blob([html], { type: 'text/html' });
-      const url = URL.createObjectURL(blob);
-      window.open(url, '_blank');
-    } catch (err) {
-      console.error('Failed to prepare printable view', err);
-      push('Failed to prepare printable view', 'error');
-    }
+  const printSelected = () =>
+    openPdf(
+      `ID cards (${printIds.length})`,
+      `/staff/id-cards?ids=${printIds.join(',')}`,
+      `staff-cards-${printIds.length}.pdf`,
+    );
+
+  const handlePrint = () => {
+    if (!previewUrl) return;
+    const frame = document.createElement('iframe');
+    frame.style.cssText = 'position:fixed;width:0;height:0;border:0;visibility:hidden';
+    frame.onload = () => {
+      try {
+        frame.contentWindow?.print();
+      } catch {
+        window.open(previewUrl, '_blank');
+      }
+      // print() can return before the dialog closes, and removing the frame then would cancel it.
+      setTimeout(() => frame.remove(), 60_000);
+    };
+    frame.src = previewUrl;
+    document.body.appendChild(frame);
   };
 
   const handleEdit = (s: Staff) => {
@@ -770,6 +983,12 @@ function StaffPageInner() {
   const handleUpdated = (updated: Staff) => {
     setStaff((prev) => prev.map((p) => (p.id === updated.id ? updated : p)));
   };
+
+  const handlePhotoChanged = (staffId: number, photoUpdatedAt: string | null) => {
+    setStaff((prev) => prev.map((p) => (p.id === staffId ? { ...p, photoUpdatedAt } : p)));
+  };
+
+  const editingRow = staff.find((s) => s.id === editingStaff?.id);
 
   const handleDelete = (s: Staff) => {
     setStaffToDelete(s);
@@ -782,6 +1001,11 @@ function StaffPageInner() {
     try {
       await axios.delete(`/staff/${staffToDelete.id}`);
       setStaff((prev) => prev.filter((staff) => staff.id !== staffToDelete.id));
+      setSelected((prev) => {
+        const next = new Set(prev);
+        next.delete(staffToDelete.id);
+        return next;
+      });
     } catch (error) {
       console.error('Error deleting staff:', error);
       push('Failed to delete staff', 'error');
@@ -803,7 +1027,6 @@ function StaffPageInner() {
       URL.revokeObjectURL(previewUrl);
       setPreviewUrl(undefined);
     }
-    setPreviewBlob(undefined);
     setPreviewError(undefined);
     setPreviewLoading(false);
   };
@@ -819,6 +1042,19 @@ function StaffPageInner() {
             placeholder="Search name, role, phone, barcode, email…"
             className="sm:w-64"
           />
+          <Button
+            icon={Printer}
+            onClick={printSelected}
+            disabled={printIds.length === 0 || printIds.length > MAX_PRINT_BATCH}
+            title={printIds.length > MAX_PRINT_BATCH ? `Select at most ${MAX_PRINT_BATCH} staff` : undefined}
+          >
+            Print selected ({printIds.length})
+          </Button>
+          {selected.size > 0 && (
+            <Button variant="text" onClick={() => setSelected(new Set())}>
+              Clear selection
+            </Button>
+          )}
           <Button variant="primary" icon={Plus} onClick={() => setModalOpen(true)}>
             Add Staff
           </Button>
@@ -830,7 +1066,16 @@ function StaffPageInner() {
           {filtered.length === 0 ? (
             <div className="p-6 text-muted">No staff found.</div>
           ) : (
-            <StaffTable staff={filtered} onPreview={handlePreview} onEdit={handleEdit} onDelete={handleDelete} />
+            <StaffTable
+              staff={filtered}
+              photoUrl={photoUrl}
+              selected={selected}
+              onToggle={toggleSelected}
+              onToggleAll={toggleAllVisible}
+              onPreview={handlePreview}
+              onEdit={handleEdit}
+              onDelete={handleDelete}
+            />
           )}
         </ListState>
       </Panel>
@@ -840,6 +1085,9 @@ function StaffPageInner() {
       <EditStaffModal
         open={editOpen}
         staff={editingStaff}
+        photoUpdatedAt={editingRow?.photoUpdatedAt ?? null}
+        photoUrl={editingRow && photoUrl(editingRow)}
+        onPhotoChanged={handlePhotoChanged}
         onClose={() => {
           setEditOpen(false);
           setEditingStaff(undefined);
@@ -849,6 +1097,7 @@ function StaffPageInner() {
 
       <PdfPreviewModal
         open={previewOpen}
+        title={previewTitle}
         loading={previewLoading}
         url={previewUrl}
         filename={previewFilename}

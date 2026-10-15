@@ -1,0 +1,19 @@
+{
+  "name": "staff-photo-reject",
+  "role": "admin",
+  "setup": [
+    { "as": "admin", "method": "POST", "path": "/staff", "body": { "name": "Reject ${RUN}", "role": "barista", "phone": "0911000883" }, "expect": 201, "save": "SID" }
+  ],
+  "failApi": ["PUT /staff/${SID}/photo"],
+  "steps": [
+    { "goto": "/staff" },
+    { "click": "tr:has-text('Reject ${RUN}') >> role=button[name='Edit']" },
+    { "upload": "input[type=file]", "value": ".claude/skills/verify/fixtures/headshot.jpg" },
+    { "expectApi": "PUT /staff/${SID}/photo 500" },
+    { "expectText": "verify-injected failure" },
+    { "expectVisible": { "role": "button", "name": "Choose photo" } },
+    { "expectHidden": "[role=dialog] img" },
+    { "apiCheck": { "as": "admin", "path": "/staff/${SID}", "jq": ".photoUpdatedAt == null" } },
+    { "expectNoPageErrors": true }
+  ]
+}
