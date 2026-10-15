@@ -12,14 +12,15 @@
   "steps": [
     { "goto": "/staff" },
     { "caption": "Each staff member has an ID card with a barcode for attendance." },
-    { "click": "tr:has-text('Abebe Kebede') >> role=button[name='Preview / Download']" },
+    { "click": "tr:has-text('Abebe Kebede') >> role=button[name='ID card']" },
     { "expectApi": "GET /staff/${STAFF}/id-card 200" },
-    { "expectVisible": { "role": "dialog", "name": "ID Card Preview" } },
+    { "expectVisible": { "role": "dialog", "name": "ID card" } },
     { "expectVisible": { "role": "link", "name": "Download" } },
-    { "caption": "Download the card or print it from here." },
+    { "expectVisible": { "role": "button", "name": "Print" } },
+    { "caption": "Download the card or print it on A4 from here." },
     { "wait": 1500 },
     { "click": { "role": "button", "name": "Close" } },
-    { "expectHidden": { "role": "dialog", "name": "ID Card Preview" } },
+    { "expectHidden": { "role": "dialog", "name": "ID card" } },
     { "caption": "" },
     { "apiCheck": { "as": "admin", "path": "/staff/${STAFF}", "jq": ".barcode | startswith(\"EMP-\")" } }
   ]

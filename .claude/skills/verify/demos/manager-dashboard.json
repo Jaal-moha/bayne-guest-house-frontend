@@ -31,10 +31,10 @@
     { "fill": { "label": "Start" }, "value": "${DATE-30}" },
     { "fill": { "label": "End" }, "value": "${DATE-1}" },
     { "click": { "role": "button", "name": "Apply" } },
-    { "expectVisible": "div.rounded-xl:has-text('Revenue'):has-text('ETB\u00a00.00')" },
+    { "expectVisible": "div:has(> div:text-is('Revenue')):has-text('ETB\u00a00.00')" },
     { "caption": "Nothing was paid in that range. Clear goes back to lifetime totals." },
     { "click": { "role": "button", "name": "Clear (lifetime)" } },
-    { "expectHidden": "div.rounded-xl:has-text('Revenue'):has-text('ETB\u00a00.00')" },
+    { "expectHidden": "div:has(> div:text-is('Revenue')):has-text('ETB\u00a00.00')" },
     { "apiCheck": { "as": "manager", "path": "/stats/overview?start=${DATE+0}&end=${DATE+0}", "jq": ".revenue >= 13135" } }
   ]
 }
