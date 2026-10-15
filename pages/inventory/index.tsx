@@ -5,6 +5,8 @@ import axios from '@/utils/axiosInstance';
 import ListState from '@/components/ListState';
 import Modal from '@/components/Modal';
 import Field from '@/components/Field';
+import { useAuth } from '@/context/AuthContext';
+import { canManageInventoryItems } from '@/lib/permissions';
 import { useList } from '@/lib/useList';
 import { dateTime } from '@/lib/format';
 import Link from 'next/link';
@@ -322,7 +324,7 @@ type ItemActionsProps = {
   onSubtract: () => void;
   onAdjust: () => void;
   onHistory: () => void;
-  onRemove: () => Promise<void>;
+  onRemove?: () => Promise<void>;
   removing: boolean;
 };
 
@@ -331,14 +333,15 @@ function ItemActionsModal({
 }: Omit<ItemActionsProps, 'item' | 'removing'> & { open: boolean; onClose: () => void; item: Item | null; }) {
   const [removing, setRemoving] = useState(false);
   if (!open || !item) return null;
-  const onRemove = async () => {
+  const remove = actions.onRemove;
+  const onRemove = remove && (async () => {
     setRemoving(true);
     try {
-      await actions.onRemove();
+      await remove();
     } finally {
       setRemoving(false);
     }
-  };
+  });
   return (
     <Modal open={open} onClose={onClose} title={item.name} size="md" locked={removing}>
       <ItemActions item={item} {...actions} onRemove={onRemove} removing={removing} />
@@ -355,6 +358,7 @@ function ItemActions({ item, onAdd, onSubtract, onAdjust, onHistory, onRemove, r
   const [err, setErr] = useState('');
 
   const doRemove = async () => {
+    if (!onRemove) return;
     setErr('');
     try {
       await onRemove();
@@ -382,7 +386,7 @@ function ItemActions({ item, onAdd, onSubtract, onAdjust, onHistory, onRemove, r
           <Button variant="quiet" onClick={onSubtract}>Subtract</Button>
           <Button variant="quiet" onClick={onAdjust}>Adjust</Button>
           <Button variant="quiet" onClick={onHistory}>History</Button>
-          <Button variant="danger-quiet" className="col-span-2" onClick={() => setConfirming(true)}>Remove Item</Button>
+          {onRemove && <Button variant="danger-quiet" className="col-span-2" onClick={() => setConfirming(true)}>Remove Item</Button>}
         </div>
       ) : (
         <Alert className="mt-5">
@@ -403,6 +407,8 @@ function ItemActions({ item, onAdd, onSubtract, onAdjust, onHistory, onRemove, r
 /* ---------- Page ---------- */
 
 function InventoryInner() {
+  const { user } = useAuth();
+  const canManage = !!user && canManageInventoryItems(user.role);
   const [q, setQ] = useState(''); const [category, setCategory] = useState('');
   const [query, setQuery] = useState('');
   const [onlyLow, setOnlyLow] = useState(false);
@@ -473,9 +479,11 @@ function InventoryInner() {
             <input type="checkbox" className="accent-accent size-4" checked={onlyLow} onChange={(e) => setOnlyLow(e.target.checked)} />
             Low stock only
           </label>
-          <Button variant="primary" icon={Plus} onClick={() => setNewOpen(true)}>
-            New Item
-          </Button>
+          {canManage && (
+            <Button variant="primary" icon={Plus} onClick={() => setNewOpen(true)}>
+              New Item
+            </Button>
+          )}
         </div>
       </div>
 
@@ -553,7 +561,7 @@ function InventoryInner() {
         onSubtract={() => { if (actionsItem) { setStockItem(actionsItem); setStockKind('out'); setActionsItem(null); } }}
         onAdjust={() => { if (actionsItem) { setStockItem(actionsItem); setStockKind('adjust'); setActionsItem(null); } }}
         onHistory={() => { if (actionsItem) { setHistoryItem(actionsItem); setActionsItem(null); } }}
-        onRemove={async () => { if (actionsItem) await removeItem(actionsItem.id); }}
+        onRemove={canManage ? async () => { if (actionsItem) await removeItem(actionsItem.id); } : undefined}
       />
     </Layout>
   );

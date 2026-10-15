@@ -26,6 +26,13 @@ export const PAGES: readonly Page[] = [
   { path: '/guests', label: 'Guests', roles: ['admin', 'manager', 'reception'] },
 ];
 
+// Mirrors the backend's @Roles on POST and DELETE /inventory.
+const INVENTORY_ITEM_MANAGERS: readonly Role[] = ['admin', 'manager', 'reception', 'store'];
+
+export function canManageInventoryItems(role: Role): boolean {
+  return INVENTORY_ITEM_MANAGERS.includes(role);
+}
+
 export function pagesFor(role: Role): Page[] {
   return PAGES.filter((page) => page.roles.includes(role));
 }
