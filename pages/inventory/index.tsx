@@ -98,7 +98,7 @@ function NewItemModal({
         </Field>
 
         <Field label="Category">
-          {(id) => <Input id={id} value={category} onChange={(e) => setCategory(e.target.value)} placeholder="e.g., Grocery, Bar, Housekeeping" />}
+          {(id) => <Input id={id} value={category} onChange={(e) => setCategory(e.target.value)} placeholder="e.g., Grocery, Kitchen, Housekeeping" />}
         </Field>
 
         <Field label="Unit">
