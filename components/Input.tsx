@@ -1,6 +1,6 @@
 import type { InputHTMLAttributes, SelectHTMLAttributes, TextareaHTMLAttributes } from 'react';
 
-// Width utilities in className would fight w-full, so callers narrow a control with max-w-*.
+// A base width utility in className would fight w-full; narrow a control with a breakpoint width (sm:w-64) or max-w-*.
 const CONTROL = 'w-full rounded-input border border-line bg-surface px-3.5 text-[15px] text-ink transition-colors placeholder:text-muted focus:border-accent focus:outline-none focus:ring-3 focus:ring-accent-tint disabled:bg-slate-tint disabled:text-muted aria-invalid:border-danger';
 
 export function Input({ className = '', ...props }: InputHTMLAttributes<HTMLInputElement>) {
