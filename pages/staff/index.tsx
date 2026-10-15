@@ -7,6 +7,13 @@ import axios from '@/utils/axiosInstance';
 import ListState from '@/components/ListState';
 import Modal from '@/components/Modal';
 import Field from '@/components/Field';
+import Alert from '@/components/Alert';
+import Button, { buttonClass } from '@/components/Button';
+import { Input, Select } from '@/components/Input';
+import Panel from '@/components/Panel';
+import { Chip } from '@/components/StatusChip';
+import Table from '@/components/Table';
+import { Plus } from '@phosphor-icons/react';
 import { useToast } from '@/components/Toast';
 import { useList } from '@/lib/useList';
 
@@ -150,18 +157,18 @@ function AddStaffModal({
 
   return (
     <Modal open={open} onClose={close} title={step === 1 ? 'Add Staff' : 'Review & Create'} size="md" locked={loading || !!createdCreds}>
-      <p className="mt-1 text-sm text-gray-500">{step === 1 ? 'Enter staff details' : 'Confirm details and create staff'}</p>
+      <p className="mt-1 text-sm text-muted">{step === 1 ? 'Enter staff details' : 'Confirm details and create staff'}</p>
 
       {err && (
-        <div className="mt-3 rounded-md border border-red-200 bg-red-50 px-3 py-2 text-sm text-red-700">
+        <Alert className="mt-3">
           {err}
-        </div>
+        </Alert>
       )}
 
       {created && !createdCreds && !loading && (
-        <div className="mt-3 rounded-md border border-amber-200 bg-amber-50 px-3 py-2 text-sm text-amber-800">
+        <Alert tone="neutral" className="mt-3">
           {name} is saved as staff. Fix the email and try again to create the account.
-        </div>
+        </Alert>
       )}
 
       {!createdCreds ? (
@@ -170,9 +177,8 @@ function AddStaffModal({
             <div className="mt-4 space-y-3">
               <Field label="Full name">
                 {(id) => (
-                  <input
+                  <Input
                     id={id}
-                    className="w-full rounded-md border px-3 py-2 outline-none focus:ring-2 focus:ring-indigo-500"
                     value={name}
                     onChange={(e) => setName(e.target.value)}
                     disabled={!!created}
@@ -183,9 +189,8 @@ function AddStaffModal({
 
               <Field label="Role">
                 {(id) => (
-                  <select
+                  <Select
                     id={id}
-                    className="w-full rounded-md border px-3 py-2 outline-none focus:ring-2 focus:ring-indigo-500"
                     value={role}
                     onChange={(e) => setRole(e.target.value)}
                     disabled={!!created}
@@ -196,15 +201,14 @@ function AddStaffModal({
                         {r}
                       </option>
                     ))}
-                  </select>
+                  </Select>
                 )}
               </Field>
 
               <Field label="Phone">
                 {(id) => (
-                  <input
+                  <Input
                     id={id}
-                    className="w-full rounded-md border px-3 py-2 outline-none focus:ring-2 focus:ring-indigo-500"
                     value={phone}
                     onChange={(e) => setPhone(e.target.value)}
                     disabled={!!created}
@@ -215,9 +219,8 @@ function AddStaffModal({
 
               <Field label="Emergency contact (optional)">
                 {(id) => (
-                  <input
+                  <Input
                     id={id}
-                    className="w-full rounded-md border px-3 py-2 outline-none focus:ring-2 focus:ring-indigo-500"
                     value={emergencyContact}
                     onChange={(e) => setEmergencyContact(e.target.value)}
                     disabled={!!created}
@@ -233,9 +236,9 @@ function AddStaffModal({
                   checked={createAccount}
                   onChange={(e) => setCreateAccount(e.target.checked)}
                   disabled={!!created}
-                  className="h-4 w-4 rounded border-gray-300 text-indigo-600"
+                  className="accent-accent size-4"
                 />
-                <label htmlFor="create-account" className="text-sm text-gray-700">
+                <label htmlFor="create-account" className="text-sm text-ink">
                   Create user account for this staff (recommended)
                 </label>
               </div>
@@ -243,9 +246,8 @@ function AddStaffModal({
               {createAccount && (
                 <Field label="Email">
                   {(id) => (
-                    <input
+                    <Input
                       id={id}
-                      className="w-full rounded-md border px-3 py-2 outline-none focus:ring-2 focus:ring-indigo-500"
                       value={email}
                       onChange={(e) => setEmail(e.target.value)}
                       placeholder="e.g. sara@example.com"
@@ -259,42 +261,40 @@ function AddStaffModal({
             // Step 2: review details
             <div className="mt-4 space-y-3">
               <div>
-                <div className="text-sm text-gray-700"><strong>Name:</strong> {name}</div>
-                <div className="text-sm text-gray-700"><strong>Role:</strong> {role}</div>
-                <div className="text-sm text-gray-700"><strong>Phone:</strong> {phone}</div>
+                <div className="text-sm text-ink"><strong>Name:</strong> {name}</div>
+                <div className="text-sm text-ink"><strong>Role:</strong> {role}</div>
+                <div className="text-sm text-ink"><strong>Phone:</strong> {phone}</div>
               </div>
 
               {createAccount ? (
-                <div className="rounded-md border border-gray-100 bg-gray-50 p-3">
-                  <div className="text-sm text-gray-700"><strong>Email:</strong> {email}</div>
+                <div className="rounded-input border border-line-soft bg-page p-3">
+                  <div className="text-sm text-ink"><strong>Email:</strong> {email}</div>
                   <div className="mt-3 flex items-center justify-between">
                     <div>
-                      <div className="text-xs text-gray-500">Generated password</div>
+                      <div className="text-xs text-muted">Generated password</div>
                       <div className="font-mono">{password}</div>
                     </div>
                     <div>
-                      <button
-                        onClick={() => setPassword(genPassword())}
-                        className="ml-2 rounded border px-2 py-1 text-xs"
-                      >
+                      <Button size="sm" onClick={() => setPassword(genPassword())} className="ml-2">
                         Regenerate
-                      </button>
+                      </Button>
                     </div>
                   </div>
-                  <div className="mt-2 text-xs text-gray-600">
+                  <div className="mt-2 text-xs text-muted">
                     The staff will use this email and password to sign in. They will be required to change the password on first login.
                   </div>
                 </div>
               ) : (
-                <div className="rounded-md border border-yellow-100 bg-yellow-50 p-3 text-sm text-yellow-800">
+                <Alert tone="neutral">
                   No user account will be created. You can create one later from the staff details.
-                </div>
+                </Alert>
               )}
             </div>
           )}
 
           <div className="mt-6 flex justify-end gap-2">
-            <button
+            <Button
+              variant="text"
               onClick={() => {
                 if (step === 2) {
                   setStep(1);
@@ -303,32 +303,24 @@ function AddStaffModal({
                 }
                 close();
               }}
-              className="rounded-md border px-4 py-2 hover:bg-gray-50"
               disabled={loading}
             >
               {step === 2 ? 'Back' : 'Cancel'}
-            </button>
+            </Button>
 
             {step === 1 ? (
-              <button
-                onClick={proceedToReview}
-                className="rounded-md bg-indigo-600 px-4 py-2 font-semibold text-white hover:bg-indigo-700 disabled:opacity-60"
-              >
+              <Button variant="primary" onClick={proceedToReview}>
                 Continue
-              </button>
+              </Button>
             ) : (
-              <button
-                onClick={submit}
-                disabled={loading}
-                className="rounded-md bg-indigo-600 px-4 py-2 font-semibold text-white hover:bg-indigo-700 disabled:opacity-60"
-              >
+              <Button variant="primary" onClick={submit} disabled={loading}>
                 {loading ? 'Saving…' : created ? 'Retry Account' : createAccount ? 'Create Staff & Account' : 'Create Staff'}
-              </button>
+              </Button>
             )}
           </div>
         </>
       ) : (
-        <div className="mt-4 rounded-md border border-green-100 bg-green-50 p-4 text-sm text-green-800">
+        <Alert tone="accent" className="mt-4">
           <div>Staff created{createdCreds.id ? ` (ID: ${createdCreds.id})` : ''}.</div>
           <div className="mt-2">
             <strong>Email:</strong> <code className="ml-1">{createdCreds.email}</code>
@@ -336,35 +328,28 @@ function AddStaffModal({
           <div className="mt-1">
             <strong>Password:</strong> <code className="ml-1">{createdCreds.password}</code>
           </div>
-          <div className="mt-2 text-xs text-gray-700">Credentials must be delivered to the staff member. They will be required to change the password on first login.</div>
+          <div className="mt-2 text-xs text-ink">Credentials must be delivered to the staff member. They will be required to change the password on first login.</div>
 
           <div className="mt-3 text-sm" role="status">
-            {copy === 'copied' && <span className="font-semibold text-green-700">Copied</span>}
-            {copy === 'failed' && <span className="font-semibold text-red-700">Copy failed, select the password</span>}
+            {copy === 'copied' && <span className="font-semibold text-accent">Copied</span>}
+            {copy === 'failed' && <span className="font-semibold text-danger">Copy failed, select the password</span>}
           </div>
           {copy !== 'copied' && (
-            <label className="mt-2 flex items-center gap-2 text-sm text-gray-700">
-              <input type="checkbox" checked={savedConfirmed} onChange={(e) => setSavedConfirmed(e.target.checked)} className="h-4 w-4" />
+            <label className="mt-2 flex items-center gap-2 text-sm text-ink">
+              <input type="checkbox" checked={savedConfirmed} onChange={(e) => setSavedConfirmed(e.target.checked)} className="accent-accent size-4" />
               I saved the password
             </label>
           )}
 
           <div className="mt-4 flex justify-end gap-2">
-            <button
-              onClick={close}
-              disabled={copy !== 'copied' && !savedConfirmed}
-              className="rounded-md border px-4 py-2 hover:bg-gray-50 disabled:opacity-50"
-            >
+            <Button variant="quiet" onClick={close} disabled={copy !== 'copied' && !savedConfirmed}>
               Done
-            </button>
-            <button
-              onClick={copyCreds}
-              className="rounded-md bg-indigo-600 px-4 py-2 font-semibold text-white hover:bg-indigo-700"
-            >
+            </Button>
+            <Button variant="primary" onClick={copyCreds}>
               Copy Credentials
-            </button>
+            </Button>
           </div>
-        </div>
+        </Alert>
       )}
     </Modal>
   );
@@ -434,20 +419,19 @@ function EditStaffModal({
 
   return (
     <Modal open={open} onClose={onClose} title="Edit Staff" size="md" locked={loading}>
-      <p className="mt-1 text-sm text-gray-500">Update staff member details</p>
+      <p className="mt-1 text-sm text-muted">Update staff member details</p>
 
       {err && (
-        <div className="mt-3 rounded-md border border-red-200 bg-red-50 px-3 py-2 text-sm text-red-700">
+        <Alert className="mt-3">
           {err}
-        </div>
+        </Alert>
       )}
 
       <div className="mt-4 space-y-3">
         <Field label="Full name">
           {(id) => (
-            <input
+            <Input
               id={id}
-              className="w-full rounded-md border px-3 py-2 outline-none focus:ring-2 focus:ring-indigo-500"
               value={name}
               onChange={(e) => setName(e.target.value)}
               placeholder="e.g. Sara Reception"
@@ -457,9 +441,8 @@ function EditStaffModal({
 
         <Field label="Role">
           {(id) => (
-            <select
+            <Select
               id={id}
-              className="w-full rounded-md border px-3 py-2 outline-none focus:ring-2 focus:ring-indigo-500"
               value={role}
               onChange={(e) => setRole(e.target.value)}
             >
@@ -469,15 +452,14 @@ function EditStaffModal({
                   {r}
                 </option>
               ))}
-            </select>
+            </Select>
           )}
         </Field>
 
         <Field label="Phone">
           {(id) => (
-            <input
+            <Input
               id={id}
-              className="w-full rounded-md border px-3 py-2 outline-none focus:ring-2 focus:ring-indigo-500"
               value={phone}
               onChange={(e) => setPhone(e.target.value)}
               placeholder="+251 9xx xxx xxx"
@@ -487,9 +469,8 @@ function EditStaffModal({
 
         <Field label="Emergency contact (optional)">
           {(id) => (
-            <input
+            <Input
               id={id}
-              className="w-full rounded-md border px-3 py-2 outline-none focus:ring-2 focus:ring-indigo-500"
               value={emergencyContact}
               onChange={(e) => setEmergencyContact(e.target.value)}
               placeholder="Name / Phone"
@@ -499,16 +480,12 @@ function EditStaffModal({
       </div>
 
       <div className="mt-6 flex justify-end gap-2">
-        <button onClick={onClose} className="rounded-md border px-4 py-2 hover:bg-gray-50">
+        <Button variant="text" onClick={onClose}>
           Cancel
-        </button>
-        <button
-          onClick={submit}
-          disabled={loading}
-          className="rounded-md bg-indigo-600 px-4 py-2 font-semibold text-white hover:bg-indigo-700 disabled:opacity-60"
-        >
+        </Button>
+        <Button variant="primary" onClick={submit} disabled={loading}>
           {loading ? 'Saving…' : 'Save Changes'}
-        </button>
+        </Button>
       </div>
     </Modal>
   );
@@ -532,24 +509,16 @@ function DeleteConfirmationModal({
 
   return (
     <Modal open={open} onClose={onClose} title="Confirm Deletion" size="md" locked={deleting}>
-      <p className="mt-1 text-sm text-gray-500">
+      <p className="mt-1 text-sm text-muted">
         Are you sure you want to delete <strong>{staffName}</strong> and their account? This action cannot be undone.
       </p>
       <div className="mt-6 flex justify-end gap-2">
-        <button
-          onClick={onClose}
-          disabled={deleting}
-          className="rounded-md border px-4 py-2 hover:bg-gray-50"
-        >
+        <Button variant="text" onClick={onClose} disabled={deleting}>
           Cancel
-        </button>
-        <button
-          onClick={onConfirm}
-          disabled={deleting}
-          className="rounded-md bg-red-600 px-4 py-2 font-semibold text-white hover:bg-red-700 disabled:opacity-60"
-        >
+        </Button>
+        <Button variant="danger" onClick={onConfirm} disabled={deleting}>
           Delete
-        </button>
+        </Button>
       </div>
     </Modal>
   );
@@ -568,67 +537,58 @@ function StaffTable({
   onDelete?: (s: Staff) => void;
 }) {
   return (
-    <table className="min-w-full border-collapse table-auto">
-      <thead className="bg-gray-100">
+    <Table className="border-collapse">
+      <thead>
         <tr>
-          <th className="px-4 py-3 text-left text-sm font-semibold text-gray-700">Name</th>
-          <th className="px-4 py-3 text-left text-sm font-semibold text-gray-700">Role</th>
-          <th className="px-4 py-3 text-left text-sm font-semibold text-gray-700">Phone</th>
-          <th className="px-4 py-3 text-left text-sm font-semibold text-gray-700">Emergency</th>
-          <th className="px-4 py-3 text-left text-sm font-semibold text-gray-700">Barcode</th>
-          <th className="px-4 py-3 text-left text-sm font-semibold text-gray-700">Account</th>
-          <th className="px-4 py-3 text-left text-sm font-semibold text-gray-700">Actions</th>
+          <th>Name</th>
+          <th>Role</th>
+          <th>Phone</th>
+          <th>Emergency</th>
+          <th>Barcode</th>
+          <th>Account</th>
+          <th>Actions</th>
         </tr>
       </thead>
       <tbody>
         {staff.map((s) => (
-          <tr key={s.id} className="border-t">
-            <td className="px-4 py-3">{s.name}</td>
-            <td className="px-4 py-3">{s.role}</td>
-            <td className="px-4 py-3">{s.phone}</td>
-            <td className="px-4 py-3">{s.emergencyContact || <span className="text-gray-400">—</span>}</td>
-            <td className="px-4 py-3 font-mono text-sm">{s.barcode}</td>
-            <td className="px-4 py-3">
+          <tr key={s.id}>
+            <td className="font-semibold">{s.name}</td>
+            <td>{s.role}</td>
+            <td>{s.phone}</td>
+            <td>{s.emergencyContact || <span className="text-muted">—</span>}</td>
+            <td className="font-mono text-sm tabular-nums">{s.barcode}</td>
+            <td>
               {s.user ? (
-                <span className="rounded bg-green-50 px-2 py-1 text-xs font-semibold text-green-700">
+                <Chip tone="accent">
                   {s.user.email}
-                </span>
+                </Chip>
               ) : (
-                <span className="text-gray-400">No account</span>
+                <span className="text-muted">No account</span>
               )}
             </td>
-            <td className="px-4 py-3">
+            <td>
               <div className="flex gap-2">
                 {s.id ? (
                   <>
-                    <button
-                      onClick={() => onPreview?.(s)}
-                      className="inline-block rounded bg-indigo-50 px-3 py-1 text-xs font-semibold text-indigo-700 hover:bg-indigo-100"
-                    >
+                    <Button size="sm" onClick={() => onPreview?.(s)}>
                       Preview / Download
-                    </button>
-                    <button
-                      onClick={() => onEdit?.(s)}
-                      className="inline-block rounded border px-3 py-1 text-xs font-semibold text-gray-700 hover:bg-gray-50"
-                    >
+                    </Button>
+                    <Button size="sm" onClick={() => onEdit?.(s)}>
                       Edit
-                    </button>
-                    <button
-                      onClick={() => onDelete?.(s)}
-                      className="inline-block rounded bg-red-50 px-3 py-1 text-xs font-semibold text-red-700 hover:bg-red-100"
-                    >
+                    </Button>
+                    <Button size="sm" variant="danger-quiet" onClick={() => onDelete?.(s)}>
                       Delete
-                    </button>
+                    </Button>
                   </>
                 ) : (
-                  <span className="text-gray-400">—</span>
+                  <span className="text-muted">—</span>
                 )}
               </div>
             </td>
           </tr>
         ))}
       </tbody>
-    </table>
+    </Table>
   );
 }
 
@@ -658,31 +618,28 @@ function PdfPreviewModal({
           <a
             href={url}
             download={filename}
-            className="rounded bg-indigo-600 px-3 py-1 text-xs font-semibold text-white hover:bg-indigo-700"
+            className={buttonClass('primary', 'sm')}
           >
             Download
           </a>
         )}
         {onPrint && !loading && (
-          <button
-            onClick={onPrint}
-            className="rounded bg-green-600 px-3 py-1 text-xs font-semibold text-white hover:bg-green-700"
-          >
+          <Button size="sm" onClick={onPrint}>
             Print
-          </button>
+          </Button>
         )}
-        <button onClick={onClose} className="rounded border px-3 py-1 text-sm">Close</button>
+        <Button size="sm" variant="text" onClick={onClose}>Close</Button>
       </div>
 
       <div className="mt-3 h-[70vh]">
         {loading ? (
-          <div className="grid h-full place-items-center text-gray-600">Preparing preview…</div>
+          <div className="grid h-full place-items-center text-muted">Preparing preview…</div>
         ) : error ? (
-          <div className="rounded-md border border-red-200 bg-red-50 p-4 text-sm text-red-700">{error}</div>
+          <Alert>{error}</Alert>
         ) : url ? (
           <iframe src={url} title="ID Preview" className="h-full w-full rounded" />
         ) : (
-          <div className="grid h-full place-items-center text-gray-500">No preview available</div>
+          <div className="grid h-full place-items-center text-muted">No preview available</div>
         )}
       </div>
     </Modal>
@@ -854,32 +811,29 @@ function StaffPageInner() {
   return (
     <Layout>
       <div className="mb-4 flex flex-wrap items-center gap-3">
-        <h1 className="text-2xl font-bold text-gray-800">Staff</h1>
+        <h1 className="text-2xl font-bold tracking-tight">Staff</h1>
         <div className="ml-auto flex flex-wrap items-center gap-2">
-          <input
+          <Input
             value={q}
             onChange={(e) => setQ(e.target.value)}
             placeholder="Search name, role, phone, barcode, email…"
-            className="w-64 rounded-md border px-3 py-2"
+            className="sm:w-64"
           />
-          <button
-            onClick={() => setModalOpen(true)}
-            className="rounded-md bg-indigo-600 px-4 py-2 font-semibold text-white hover:bg-indigo-700"
-          >
+          <Button variant="primary" icon={Plus} onClick={() => setModalOpen(true)}>
             Add Staff
-          </button>
+          </Button>
         </div>
       </div>
 
-      <div className="overflow-x-auto rounded-lg bg-white shadow">
+      <Panel className="overflow-x-auto">
         <ListState list={staffList} empty="No staff found.">
           {filtered.length === 0 ? (
-            <div className="p-6 text-gray-600">No staff found.</div>
+            <div className="p-6 text-muted">No staff found.</div>
           ) : (
             <StaffTable staff={filtered} onPreview={handlePreview} onEdit={handleEdit} onDelete={handleDelete} />
           )}
         </ListState>
-      </div>
+      </Panel>
 
       <AddStaffModal open={modalOpen} onClose={() => setModalOpen(false)} onCreated={onCreated} />
 
