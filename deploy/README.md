@@ -81,4 +81,30 @@ Check production CORS with an `Origin: https://manage.almishotel.com` request to
 
 Once admin access is available on the original repository, move these deployment commits there, disable Actions on the temporary fork, stop and remove the fork's runner registration, and register the host runner against the original repository. Both repositories must not deploy production concurrently. The host configuration, DNS, tunnel, and existing production database can stay in place. The installer deliberately refuses to silently reuse a registration belonging to another repository.
 
-Doppler remains optional. The only new secrets are generated per-PR credentials and the runner's local registration credentials. The existing tunnel token and production database/JWT secrets remain in the backend host deployment directory.
+## Secrets and Doppler
+
+Doppler is optional for this single-host setup. Private host files are sufficient
+to run it. A secrets manager becomes useful for shared administration, audited
+changes, rotation, and recovery. Keep an encrypted off-machine backup of production
+secrets; a secrets manager does not back up the Postgres database.
+
+If adopting Doppler, separate production, preview, and infrastructure access.
+
+| Secret | Scope | Current location or handling |
+| --- | --- | --- |
+| `POSTGRES_PASSWORD`, `DATABASE_URL`, `DIRECT_URL` | Production backend | `~/.local/share/almis/deploy/.env.production` |
+| `JWT_SECRET` | Production backend | Same backend environment file |
+| Cloudflare Tunnel token | Host connector only | Existing backend connector credential file |
+| Cloudflare DNS API credential | Host deployment process only | Existing authenticated `cf` profile; use a zone-scoped DNS token for unattended automation if replacing login |
+| Preview database passwords and URLs, `JWT_SECRET` | One PR only | Generated in `~/.local/share/bayne/frontend/previews/pr-N/.env` |
+| Preview admin password | One PR only | Generated in that PR's `admin.env` |
+| GitHub runner identity | Host runner only | Managed by GitHub's runner in its private directory |
+
+The runner registration token is short-lived and does not need permanent storage.
+Do not give application containers the Cloudflare credential or runner credentials.
+Do not reuse production secrets in previews. Ephemeral PR credentials can remain
+host-generated rather than creating a Doppler configuration for every PR.
+
+`NEXT_PUBLIC_API_BASE`, hostnames, zone/tunnel IDs, and image tags are public
+configuration. They do not need secret storage. No repository Actions secrets are
+required by this workflow, and no application secret belongs in `NEXT_PUBLIC_*`.
