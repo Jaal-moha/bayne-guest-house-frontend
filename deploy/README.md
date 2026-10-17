@@ -108,3 +108,13 @@ host-generated rather than creating a Doppler configuration for every PR.
 `NEXT_PUBLIC_API_BASE`, hostnames, zone/tunnel IDs, and image tags are public
 configuration. They do not need secret storage. No repository Actions secrets are
 required by this workflow, and no application secret belongs in `NEXT_PUBLIC_*`.
+
+## Dependency status
+
+The deployment update moves Next.js and its ESLint configuration from 15.4.6 to
+15.5.28 and refreshes compatible dependency fixes. On 2026-10-17,
+`npm audit --omit=dev` reports no critical findings and two remaining entries:
+a high-severity PostCSS dependency and a moderate Next.js entry caused by that
+dependency. The suggested complete fix requires Next.js 16, which needs separate
+migration testing. Development tooling also has unresolved advisories. No forced
+major dependency upgrade was applied.
