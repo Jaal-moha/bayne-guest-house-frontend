@@ -1,0 +1,74 @@
+# Each frontend PR has its own API, credentials, and disposable database.
+services:
+  app:
+    image: ${APP_IMAGE:?APP_IMAGE is required}
+    restart: unless-stopped
+    init: true
+    environment:
+      NODE_ENV: production
+      PORT: 3000
+      HOSTNAME: 0.0.0.0
+    networks: [edge]
+    labels:
+      - traefik.enable=true
+      - traefik.docker.network=${EDGE_NETWORK:-bayne-edge}
+      - traefik.http.routers.fe-pr-${PR_NUMBER:?PR_NUMBER is required}.rule=Host(`${PREVIEW_HOST:?PREVIEW_HOST is required}`)
+      - traefik.http.routers.fe-pr-${PR_NUMBER}.entrypoints=web
+      - traefik.http.services.fe-pr-${PR_NUMBER}.loadbalancer.server.port=3000
+    healthcheck:
+      test: [CMD, node, -e, "fetch('http://127.0.0.1:3000/login').then(r => process.exit(r.ok ? 0 : 1)).catch(() => process.exit(1))"]
+      interval: 10s
+      timeout: 5s
+      start_period: 15s
+      retries: 12
+  api:
+    image: ${BACKEND_IMAGE:?BACKEND_IMAGE is required}
+    restart: unless-stopped
+    init: true
+    command: [sh, -c, "npx prisma migrate deploy && node dist/src/main"]
+    env_file: ["${PREVIEW_ENV_FILE:?PREVIEW_ENV_FILE is required}"]
+    environment:
+      NODE_ENV: production
+      HOST: 0.0.0.0
+      PORT: 3000
+    depends_on:
+      db:
+        condition: service_healthy
+    networks: [edge, database]
+    labels:
+      - traefik.enable=true
+      - traefik.docker.network=${EDGE_NETWORK:-bayne-edge}
+      - traefik.http.routers.fe-pr-${PR_NUMBER}-api.rule=Host(`${PREVIEW_HOST}`) && (Path(`/api`) || PathPrefix(`/api/`))
+      - traefik.http.routers.fe-pr-${PR_NUMBER}-api.entrypoints=web
+      - traefik.http.routers.fe-pr-${PR_NUMBER}-api.priority=100
+      - traefik.http.routers.fe-pr-${PR_NUMBER}-api.middlewares=fe-pr-${PR_NUMBER}-strip
+      - traefik.http.middlewares.fe-pr-${PR_NUMBER}-strip.stripprefix.prefixes=/api
+      - traefik.http.services.fe-pr-${PR_NUMBER}-api.loadbalancer.server.port=3000
+    healthcheck:
+      test: [CMD, node, -e, "fetch('http://127.0.0.1:3000/health').then(r => process.exit(r.ok ? 0 : 1)).catch(() => process.exit(1))"]
+      interval: 10s
+      timeout: 5s
+      start_period: 30s
+      retries: 12
+  db:
+    image: postgres:16-alpine
+    restart: unless-stopped
+    environment:
+      POSTGRES_USER: ${POSTGRES_USER:?POSTGRES_USER is required}
+      POSTGRES_PASSWORD: ${POSTGRES_PASSWORD:?POSTGRES_PASSWORD is required}
+      POSTGRES_DB: ${POSTGRES_DB:?POSTGRES_DB is required}
+    volumes: [postgres:/var/lib/postgresql/data]
+    networks: [database]
+    healthcheck:
+      test: [CMD-SHELL, 'pg_isready -U "$$POSTGRES_USER" -d "$$POSTGRES_DB"']
+      interval: 5s
+      timeout: 3s
+      retries: 20
+networks:
+  edge:
+    external: true
+    name: ${EDGE_NETWORK:-bayne-edge}
+  database:
+    internal: true
+volumes:
+  postgres:

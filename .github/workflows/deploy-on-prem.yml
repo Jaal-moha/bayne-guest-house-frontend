@@ -1,0 +1,133 @@
+name: Deploy on-prem
+on:
+  push:
+    branches: [main]
+  pull_request:
+    branches: [main]
+    types: [opened, synchronize, reopened, closed]
+  workflow_dispatch:
+permissions:
+  contents: read
+jobs:
+  build:
+    if: >-
+      github.event_name != 'pull_request' ||
+      (github.event.action != 'closed' && github.event.pull_request.head.repo.full_name == github.repository)
+    runs-on: ubuntu-latest
+    timeout-minutes: 25
+    steps:
+      - uses: actions/checkout@v4
+        with:
+          persist-credentials: false
+      - uses: actions/setup-node@v4
+        with:
+          node-version: '24'
+          cache: npm
+      - run: npm ci
+      - name: Run existing tests
+        run: node --test lib/*.test.mjs
+      - name: Check preview isolation and DNS ownership
+        run: python3 -m unittest discover -s deploy -p 'test_*.py' -v
+      - name: Build deployment image
+        env:
+          API_BASE: ${{ github.event_name == 'pull_request' && '/api' || 'https://api.almishotel.com' }}
+        run: |
+          docker build --build-arg NEXT_PUBLIC_API_BASE="$API_BASE" -t "bayne-frontend:$GITHUB_SHA" .
+          docker save "bayne-frontend:$GITHUB_SHA" | gzip > "$RUNNER_TEMP/frontend-image.tar.gz"
+      - uses: actions/upload-artifact@v4
+        with:
+          name: frontend-${{ github.sha }}
+          path: ${{ runner.temp }}/frontend-image.tar.gz
+          retention-days: 1
+
+  deploy:
+    needs: build
+    runs-on: [self-hosted, linux, x64, bayne-frontend]
+    timeout-minutes: 20
+    permissions:
+      contents: read
+      actions: read
+      pull-requests: write
+    concurrency:
+      group: bayne-frontend-${{ github.event.pull_request.number || 'main' }}
+      cancel-in-progress: false
+    steps:
+      - name: Ignore obsolete deployments
+        id: current
+        uses: actions/github-script@v7
+        with:
+          script: |
+            if (context.eventName === 'pull_request') {
+              const {data: pr} = await github.rest.pulls.get({...context.repo, pull_number: context.issue.number});
+              core.setOutput('deploy', pr.state === 'open' && pr.head.sha === context.payload.pull_request.head.sha);
+            } else {
+              const {data: ref} = await github.rest.git.getRef({...context.repo, ref: 'heads/main'});
+              core.setOutput('deploy', ref.object.sha === context.sha);
+            }
+      # Only main may update the host deployment script. PR jobs never check out
+      # or execute PR shell/Python code on this persistent runner.
+      - uses: actions/checkout@v4
+        if: steps.current.outputs.deploy == 'true' && github.event_name != 'pull_request'
+        with:
+          ref: ${{ github.sha }}
+          persist-credentials: false
+      - name: Install deployment scripts from main
+        if: steps.current.outputs.deploy == 'true' && github.event_name != 'pull_request'
+        run: python3 deploy/manage.py prepare
+      - uses: actions/download-artifact@v4
+        if: steps.current.outputs.deploy == 'true'
+        with:
+          name: frontend-${{ github.sha }}
+          path: ${{ runner.temp }}/frontend-image
+      - name: Load and deploy image
+        if: steps.current.outputs.deploy == 'true'
+        env:
+          PR_NUMBER: ${{ github.event.pull_request.number }}
+          EVENT_NAME: ${{ github.event_name }}
+        run: |
+          gunzip -c "$RUNNER_TEMP/frontend-image/frontend-image.tar.gz" | docker load
+          if [[ "$EVENT_NAME" == pull_request ]]; then
+            python3 "$HOME/.local/share/bayne/frontend/manage.py" preview --pr "$PR_NUMBER" --image "bayne-frontend:$GITHUB_SHA"
+          else
+            python3 "$HOME/.local/share/bayne/frontend/manage.py" main --image "bayne-frontend:$GITHUB_SHA"
+          fi
+      - name: Publish preview URL
+        if: steps.current.outputs.deploy == 'true' && github.event_name == 'pull_request'
+        uses: actions/github-script@v7
+        with:
+          script: |
+            const marker = '<!-- bayne-frontend-preview -->';
+            const body = `${marker}\nPreview: https://pr-${context.issue.number}.almishotel.com\nUses a separate API and disposable database.`;
+            const comments = await github.paginate(github.rest.issues.listComments, {...context.repo, issue_number: context.issue.number});
+            const existing = comments.find(c => c.user.type === 'Bot' && c.body?.includes(marker));
+            if (existing) {
+              await github.rest.issues.updateComment({...context.repo, comment_id: existing.id, body});
+            } else {
+              await github.rest.issues.createComment({...context.repo, issue_number: context.issue.number, body});
+            }
+
+  cleanup:
+    if: >-
+      github.event_name == 'pull_request' && github.event.action == 'closed' &&
+      github.event.pull_request.head.repo.full_name == github.repository
+    runs-on: [self-hosted, linux, x64, bayne-frontend]
+    timeout-minutes: 10
+    permissions:
+      contents: read
+      pull-requests: read
+    concurrency:
+      group: bayne-frontend-${{ github.event.pull_request.number }}
+      cancel-in-progress: false
+    steps:
+      - name: Check that the PR is still closed
+        id: current
+        uses: actions/github-script@v7
+        with:
+          script: |
+            const {data: pr} = await github.rest.pulls.get({...context.repo, pull_number: context.issue.number});
+            core.setOutput('closed', pr.state === 'closed');
+      - name: Remove preview, DNS, credentials, and disposable database
+        if: steps.current.outputs.closed == 'true'
+        env:
+          PR_NUMBER: ${{ github.event.pull_request.number }}
+        run: python3 "$HOME/.local/share/bayne/frontend/manage.py" remove-preview --pr "$PR_NUMBER"
