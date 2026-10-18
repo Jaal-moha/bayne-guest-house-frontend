@@ -34,7 +34,11 @@ let failed = null;
 const events = [];
 let capture = null;
 let activeCaption = '';
-const ev = (type, extra = {}) => events.push({ t: Date.now() - (capture?.excludedMs ?? 0), type, box: null, caption: activeCaption, ...extra });
+const ev = (type, extra = {}) => {
+  const event = { t: Date.now() - (capture?.excludedMs ?? 0), type, box: null, caption: activeCaption, ...extra };
+  events.push(event);
+  return event;
+};
 
 function finish(browserClose) {
   const result = failed ? (spec.knownBug ? 'XFAIL' : 'FAIL') : (spec.knownBug ? 'XPASS' : 'PASS');
@@ -75,7 +79,11 @@ const browser = await chromium.launch({ executablePath: CHROME, ...(RECORDING &&
 const viewport = VIEWPORTS[report.viewport];
 const ctx = await browser.newContext({ viewport, ...(RECORDING && { deviceScaleFactor: 2 }) });
 if (RECORDING) {
-  await ctx.exposeBinding('__demoDialog', (_, box) => { if (capture && !capture.paused) ev('dialog', { box }); });
+  await ctx.exposeBinding('__demoDialog', (_, box) => {
+    if (!capture) return;
+    if (capture.paused) capture.pendingDialog = box;
+    else ev('dialog', { box });
+  });
   await ctx.addInitScript(demoOverlay);
 }
 await ctx.addInitScript((t) => {
@@ -108,7 +116,7 @@ function demoOverlay() {
     cursor.id = 'demo-cursor';
     cursor.innerHTML = '<svg width="26" height="26" viewBox="0 0 26 26"><path d="M3 2 L3 21 L8 16.5 L11.5 24 L15 22.5 L11.6 15.2 L18.5 15.2 Z" fill="#111827" stroke="#fff" stroke-width="1.6" stroke-linejoin="round"/></svg>';
     document.body.appendChild(cursor);
-    let pos = JSON.parse(store.getItem('demo-pos') || `[${innerWidth / 2},${innerHeight / 2}]`);
+    let pos = JSON.parse(store.getItem('demo-pos') || `[${innerWidth * 0.78},${innerHeight * 0.76}]`);
     let gliding = false;
     const set = (x, y) => { pos = [x, y]; cursor.style.transform = `translate(${x - 3}px,${y - 3}px)`; store.setItem('demo-pos', JSON.stringify(pos)); };
     set(...pos);
@@ -173,11 +181,13 @@ async function startCapture() {
   const cdp = await ctx.newCDPSession(page);
   const frameDir = join(dir, 'frames');
   mkdirSync(frameDir, { recursive: true });
-  const frames = [];
-  capture = { cdp, frames, frameDir, excludedMs: 0, paused: false };
+  const initial = join(frameDir, 'initial.jpg');
+  await page.screenshot({ path: initial, type: 'jpeg', quality: 90 });
+  const frames = [{ f: initial, t: Date.now() }];
+  capture = { cdp, frames, frameDir, excludedMs: 0, paused: false, startedAt: Date.now() };
   cdp.on('Page.screencastFrame', ({ data, metadata, sessionId }) => {
     cdp.send('Page.screencastFrameAck', { sessionId }).catch(() => {});
-    if (capture.paused) return;
+    if (capture.paused || metadata.timestamp * 1000 - capture.excludedMs <= frames.at(-1).t) return;
     const f = join(frameDir, `${String(frames.length).padStart(6, '0')}.jpg`);
     writeFileSync(f, Buffer.from(data, 'base64'));
     frames.push({ f, t: metadata.timestamp * 1000 - capture.excludedMs });
@@ -192,6 +202,7 @@ async function startCapture() {
 }
 async function stopCapture() {
   const end = Date.now() - capture.excludedMs;
+  const encodeStart = Date.now();
   await capture.cdp.send('Page.stopScreencast');
   const { frames, frameDir } = capture;
   const t0 = frames[0].t;
@@ -201,8 +212,9 @@ async function stopCapture() {
   execFileSync('ffmpeg', ['-loglevel', 'error', '-y', '-f', 'concat', '-safe', '0', '-i', join(frameDir, 'list.txt'),
     '-vf', 'fps=30,scale=trunc(iw/2)*2:trunc(ih/2)*2,format=yuv420p', '-c:v', 'libx264', '-threads', '2', '-preset', 'veryfast', '-crf', '14', '-f', 'matroska', DEMO_OUT]);
   writeFileSync(DEMO_OUT.replace(/\.src\.mkv$/, '.events.json'), JSON.stringify({ viewport, dsf: 2, fps: 30, frames: frames.length,
-    events: events.map((e) => ({ ...e, t: Math.max(0, e.t - t0) })), end: end - t0 }, null, 2));
+    events: events.map((e) => ({ ...e, t: Math.max(0, e.t - t0) })), end: end - t0, captureWallMs: Date.now() - capture.startedAt, sourceEncodeMs: Date.now() - encodeStart }, null, 2));
   rmSync(frameDir, { recursive: true });
+  console.log(`CAPTURE wall=${((Date.now() - capture.startedAt) / 1000).toFixed(2)}s sourceEncode=${((Date.now() - encodeStart) / 1000).toFixed(2)}s frames=${frames.length}`);
   await capture.cdp.detach();
 }
 async function boxOf(el) {
@@ -220,6 +232,8 @@ async function glideTo(el, verb, at) {
   if (!box) return;
   const to = at ? [box.x + at[0], box.y + at[1]] : [box.x + Math.min(box.width / 2, 120), box.y + box.height / 2];
   const ms = Math.round(Math.min(950, Math.max(380, 300 + Math.hypot(to[0] - mouse[0], to[1] - mouse[1]) * 0.7)));
+  const step = events.findLast((e) => e.type === 'step');
+  if (step) step.box = box;
   ev('glide', { verb, box, to, ms });
   await page.evaluate(([x, y, d]) => window.__demoGlide?.(x, y, d), [...to, ms]);
   await page.mouse.move(...to);
@@ -229,12 +243,12 @@ async function glideTo(el, verb, at) {
 const clearCaption = () => {
   if (activeCaption) { activeCaption = ''; ev('captionClear'); }
 };
-let mouse = [viewport.width / 2, viewport.height / 2];
+let mouse = [viewport.width * 0.78, viewport.height * 0.76];
 const PACE = 300;
 const deferred = [];
 let posterMarked = false;
 let secondPage = false;
-ctx.on('page', () => { secondPage = true; });
+if (RECORDING) ctx.on('page', () => { secondPage = true; });
 
 const apiPath = (url) => url.slice(API_URL.length) || '/';
 const failing = new Set(sub(spec.failApi ?? []));
@@ -424,12 +438,18 @@ for (const [i, raw] of steps.entries()) {
   const desc = `${verb} ${JSON.stringify(s[verb])}${'value' in s ? ` = ${JSON.stringify(s.value)}` : ''}`;
   try {
     if (!verb) throw new Error(`unknown step ${JSON.stringify(s)}`);
-    if (RECORDING) ev('step', { verb, n, header: await page.evaluate(() => document.querySelector('header')?.innerText ?? '') });
+    if (RECORDING) ev('step', { verb, n, ...(verb === 'caption' && { caption: s.caption }), header: await page.evaluate(() => document.querySelector('header')?.innerText ?? '') });
     const assertion = verb.startsWith('expect') || verb === 'apiCheck' || verb === 'screenshot' || verb === 'poster';
     const pauseStart = Date.now();
     if (capture && assertion) capture.paused = true;
     try { await actions[verb](s[verb], s); }
-    finally { if (capture && assertion) { capture.excludedMs += Date.now() - pauseStart; capture.paused = false; } }
+    finally {
+      if (capture && assertion) {
+        capture.excludedMs += Date.now() - pauseStart;
+        capture.paused = false;
+        if ('pendingDialog' in capture) { ev('dialog', { box: capture.pendingDialog }); delete capture.pendingDialog; }
+      }
+    }
     if (secondPage) throw new Error('demo opened a second page; only one page can be recorded');
     if (DEMO_OUT && PACED.has(verb)) await page.waitForTimeout(PACE);
     report.steps.push({ n, desc, ok: true });

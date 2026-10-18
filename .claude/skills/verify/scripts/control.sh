@@ -175,6 +175,7 @@ cmd_demo() {
     name="$(basename "$f" .json)"
     [[ -n "$filter" && "$name" != $filter ]] && continue
     out="$(DEMO_OUT="$DEMO_DIR/$name.src.mkv" cmd_drive "$f")"
+    grep '^CAPTURE ' <<<"$out"
     if grep -qx 'RESULT PASS' <<<"$out" &&
       python3 "$ROOT/.claude/skills/verify/scripts/demo-render.py" "$DEMO_DIR/$name.src.mkv" "$DEMO_DIR/$name.events.json" "$DEMO_DIR/$name.mp4" --width "${DEMO_WIDTH:-1920}" ${DEMO_NO_ZOOM:+--no-zoom} &&
       ffmpeg -loglevel error -y -i "$DEMO_DIR/$name.poster.png" -frames:v 1 -vf scale=640:-2 "$DEMO_DIR/$name.jpg"; then
