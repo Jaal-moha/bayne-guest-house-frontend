@@ -2,7 +2,7 @@
   "name": "login-admin",
   "role": "anon",
   "setup": [
-    { "as": "admin", "method": "GET", "path": "/auth/me", "expect": 200, "save": "ADMIN_NAME", "pick": ".name" }
+    { "as": "admin", "method": "GET", "path": "/auth/me", "expect": 200, "save": "ADMIN_NAME", "pick": ".user.name" }
   ],
   "steps": [
     { "goto": "/login" },
