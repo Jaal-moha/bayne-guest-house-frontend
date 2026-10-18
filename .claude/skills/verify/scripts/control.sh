@@ -68,7 +68,7 @@ cors_ok() {
 
 cmd_up() {
   if [[ -f "$STATE" ]]; then
-    if cmd_doctor >/dev/null && backend doctor | grep -q "^OK names=$([[ ${DEMO_NAMES:-0} == 1 ]] && echo demo || echo verify)$"; then load_state; echo "READY web=$WEB_URL api=$API_URL rev=$GIT_REV evidence=$EVIDENCE_DIR"; return 0; fi
+    if cmd_doctor >/dev/null && backend doctor | grep "^OK names=$([[ ${DEMO_NAMES:-0} == 1 ]] && echo demo || echo verify)$" >/dev/null; then load_state; echo "READY web=$WEB_URL api=$API_URL rev=$GIT_REV evidence=$EVIDENCE_DIR"; return 0; fi
     cmd_down >/dev/null
   fi
   [[ -x "$BACKEND_CTL" ]] || die "backend-missing want=$BACKEND_CTL (set BACKEND_DIR)"
