@@ -74,7 +74,5 @@ with tempfile.TemporaryDirectory(prefix='demo-render-') as tmp:
             path.write_text(textwrap.fill(caption, width=100))
             filters.append(f"drawtext=fontfile='{font}':textfile='{path}':expansion=none:fontsize={round(18 * args.width / vw)}:fontcolor=white:line_spacing=6:x=(w-text_w)/2:y={height}+(h-{height}-text_h)/2:enable='gte(t,{start:.4f})*lt(t,{end:.4f})'")
     filters.append('format=yuv420p')
-    graph = Path(tmp) / 'filter.txt'
-    graph.write_text(','.join(filters))
-    subprocess.run(['ffmpeg', '-loglevel', 'error', '-y', '-i', str(args.source), '-/filter:v', str(graph), '-an', '-c:v', 'libx264', '-threads', '2', '-preset', 'slow', '-crf', '20', '-movflags', '+faststart', str(args.output)], check=True)
+    subprocess.run(['ffmpeg', '-loglevel', 'error', '-y', '-i', str(args.source), '-vf', ','.join(filters), '-an', '-c:v', 'libx264', '-threads', '2', '-preset', 'slow', '-crf', '20', '-movflags', '+faststart', str(args.output)], check=True)
 print(f'RENDER {args.output} zoom={int(not args.no_zoom)} cameras={len(frames)} captions={len(captions)} wall={time.monotonic() - started:.2f}s bytes={args.output.stat().st_size}')

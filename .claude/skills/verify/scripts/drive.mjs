@@ -405,7 +405,7 @@ const actions = {
     if (off.length) throw new Error(`${off[0]} in a ${w[1]}px viewport`);
   },
   apiCheck: async (c) => {
-    if (RECORDING && capture) { deferred.push(c); return; }
+    if (RECORDING && capture) { deferred.push({ check: c, stepIndex: report.steps.length }); return; }
     try {
       const out = control('api', 'call', '--expect', String(c.expect ?? 200), c.as, 'GET', c.path);
       if (c.jq) jq(c.jq, responseBody(out));
@@ -415,20 +415,31 @@ const actions = {
 
 let steps = spec.steps;
 if (RECORDING) {
-  if (!spec.demo?.title || !steps[0]?.goto) throw new Error('a demo needs demo.title and a first goto step');
-  await actions.goto(sub(steps[0]).goto);
-  report.steps.push({ n: '01', desc: `goto ${JSON.stringify(sub(steps[0]).goto)}`, ok: true });
-  console.log('STEP 01 OK goto (before capture)');
-  steps = steps.slice(1);
-  await page.evaluate((h) => window.__demoCard?.(h), cardHtml(spec.demo));
-  await page.mouse.move(...mouse);
-  await page.evaluate(() => new Promise((r) => requestAnimationFrame(() => requestAnimationFrame(r))));
-  await startCapture();
-  ev('card');
-  await page.waitForTimeout(Math.min(2_400, 1_200 + (spec.demo.title.length + (spec.demo.summary ?? '').length) * 8));
-  await page.evaluate(() => window.__demoCardOut?.());
-  await page.waitForTimeout(500);
-  ev('cardOut');
+  try {
+    if (!spec.demo?.title || !steps[0]?.goto) throw new Error('a demo needs demo.title and a first goto step');
+    await actions.goto(sub(steps[0]).goto);
+    report.steps.push({ n: '01', desc: `goto ${JSON.stringify(sub(steps[0]).goto)}`, ok: true });
+    console.log('STEP 01 OK goto (before capture)');
+    steps = steps.slice(1);
+    await page.evaluate((h) => window.__demoCard?.(h), cardHtml(spec.demo));
+    await page.mouse.move(...mouse);
+    await page.evaluate(() => new Promise((r) => requestAnimationFrame(() => requestAnimationFrame(r))));
+    await startCapture();
+    ev('card');
+    await page.waitForTimeout(Math.min(2_400, 1_200 + (spec.demo.title.length + (spec.demo.summary ?? '').length) * 8));
+    await page.evaluate(() => window.__demoCardOut?.());
+    await page.waitForTimeout(500);
+    ev('cardOut');
+  } catch (error) {
+    failed = `recording setup: ${error.message.split('\n')[0]}`;
+    const first = report.steps[0] ?? { n: '01', desc: `goto ${JSON.stringify(sub(spec.steps[0]?.goto))}` };
+    first.ok = false;
+    first.error = failed;
+    if (!report.steps.length) report.steps.push(first);
+    console.log(`STEP 01 FAIL ${first.desc} :: ${failed}`);
+    await page.screenshot({ path: join(dir, 'failure.png') }).catch(() => {});
+    await finish(async () => { await ctx.close(); await browser.close(); });
+  }
 }
 const PACED = new Set(['goto', 'click', 'fill', 'select', 'press', 'upload']);
 for (const [i, raw] of steps.entries()) {
@@ -452,8 +463,9 @@ for (const [i, raw] of steps.entries()) {
     }
     if (secondPage) throw new Error('demo opened a second page; only one page can be recorded');
     if (DEMO_OUT && PACED.has(verb)) await page.waitForTimeout(PACE);
-    report.steps.push({ n, desc, ok: true });
-    console.log(`STEP ${n} OK ${desc}`);
+    const pending = RECORDING && capture && verb === 'apiCheck';
+    report.steps.push({ n, desc, ok: pending ? null : true });
+    if (!pending) console.log(`STEP ${n} OK ${desc}`);
   } catch (e) {
     failed = `step ${n} ${desc}: ${e.message.split('\n')[0]}`;
     report.steps.push({ n, desc, ok: false, error: e.message.split('\n')[0] });
@@ -470,9 +482,18 @@ if (RECORDING) {
 if (RECORDING && capture) {
   await stopCapture();
   capture = null;
-  for (const c of failed ? [] : deferred) {
-    try { await actions.apiCheck(c); console.log(`STEP -- OK apiCheck ${c.path} (after capture)`); }
-    catch (e) { failed = `deferred ${e.message}`; console.log(`STEP -- FAIL apiCheck :: ${e.message}`); }
+  for (const { check, stepIndex } of failed ? [] : deferred) {
+    const step = report.steps[stepIndex];
+    try {
+      await actions.apiCheck(check);
+      step.ok = true;
+      console.log(`STEP ${step.n} OK ${step.desc} (after capture)`);
+    } catch (error) {
+      failed = `step ${step.n} ${step.desc}: ${error.message}`;
+      step.ok = false;
+      step.error = error.message;
+      console.log(`STEP ${step.n} FAIL ${step.desc} :: ${error.message}`);
+    }
   }
 }
 await page.screenshot({ path: join(dir, failed ? 'failure.png' : 'final.png') }).catch(() => {});
