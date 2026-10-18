@@ -120,7 +120,7 @@ $S doctor
 $S demo 'reception-*'
 ```
 
-Each successful demo writes `<name>.mp4`, `<name>.jpg`, `<name>.src.mkv` and `<name>.events.json`. The source and event log are kept for independent rendering and performance comparisons. `scripts/demo-render.py` owns whole-dialog framing and the caption band. Dialog changes are observed while actions run, so close events start a short zoom-out immediately rather than waiting for a later step. The camera fits the whole dialog with padding and never follows individual fields. The gallery groups videos by `demo.group`.
+Each successful demo writes `<name>.mp4`, `<name>.jpg`, `<name>.src.mkv` and `<name>.events.json`. The source and event log are kept for independent rendering and performance comparisons. The source holds only the frames the screencast sent, at their real timestamps, and `demo-render.py` resamples it to 30 fps. `scripts/demo-render.py` owns whole-dialog framing and the caption band. Dialog changes are observed while actions run, so close events start a short zoom-out immediately rather than waiting for a later step. The camera fits the whole dialog with padding and never follows individual fields. The gallery groups videos by `demo.group`.
 
 Give a demo a `demo` block, `{"group": "reception", "title": "Create a booking", "summary": "One plain sentence."}`. Its first step must be `goto`. The driver loads that page before capture and paints the title card over it, then fades the card away. A sign-in demo can use `demo.as` to name the role it signs in as. The arrow is visible in the first frame and glides to clicks, offset clicks, inputs, selects, uploads and focused keyboard targets. Text uses 70 ms per key. Date fields receive their value after the cursor reaches them.
 

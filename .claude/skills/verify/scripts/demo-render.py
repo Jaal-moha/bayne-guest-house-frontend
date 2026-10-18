@@ -18,6 +18,7 @@ if args.width < 320 or args.width % 2:
     parser.error('--width must be an even integer of at least 320')
 log = json.loads(args.events.read_text())
 fps = log['fps']
+dsf = log.get('dsf', 2)
 vw, vh = log['viewport']['width'], log['viewport']['height']
 height = round(args.width * vh / vw / 2) * 2
 band = round(args.width / vw * 64 / 2) * 2
@@ -38,19 +39,19 @@ for event in log['events']:
         frames.append((t, x, y, zoom))
 
 
-def camera(index):
-    current = frames[0][index]
-    expression = f'{current:.6f}'
-    for i, (start, *_) in enumerate(frames[1:], 1):
-        previous = frames[i - 1][index]
-        target = frames[i][index]
-        duration = 0.28 if frames[i][3] == 1 else 0.55
+def camera(t):
+    x, y, zoom = frames[0][1:]
+    for i, (start, *target) in enumerate(frames[1:], 1):
+        duration = 0.28 if target[2] == 1 else 0.55
         if i + 1 < len(frames):
             duration = min(duration, max(0.001, frames[i + 1][0] - start))
-        u = f'clip((on/{fps}-{start:.4f})/{duration:.4f},0,1)'
-        eased = f'({u}*{u}*(3-2*{u}))'
-        expression = f'{expression}+({target - previous:.6f})*{eased}'
-    return expression
+        u = min(max((t - start) / duration, 0), 1)
+        eased = u * u * (3 - 2 * u)
+        x, y, zoom = (value + (to - origin) * eased for value, origin, to in zip((x, y, zoom), frames[i - 1][1:], target))
+    sw, sh = round(vw * dsf / zoom), round(vh * dsf / zoom)
+    sx = min(max(round(x * dsf - sw / 2), 0), vw * dsf - sw)
+    sy = min(max(round(y * dsf - sh / 2), 0), vh * dsf - sh)
+    return sw, sh, sx, sy
 
 
 captions = []
@@ -60,12 +61,18 @@ for i, event in enumerate(log['events']):
         captions.append((event['t'] / 1000, end / 1000, event['text']))
 started = time.monotonic()
 with tempfile.TemporaryDirectory(prefix='demo-render-') as tmp:
-    filters = []
+    filters = [f'fps={fps}']
     if not args.no_zoom and len(frames) > 1:
-        x, y, zoom = camera(1), camera(2), camera(3)
-        filters.append(f"zoompan=z='{zoom}':x='({x})*iw/{vw}-iw/zoom/2':y='({y})*ih/{vh}-ih/zoom/2':d=1:s={args.width}x{height}:fps={fps}")
-    else:
-        filters.append(f'scale={args.width}:{height}:flags=lanczos')
+        commands, last = [], None
+        for n in range(int(log['end'] / 1000 * fps) + 2):
+            crop = camera(n / fps)
+            if crop != last:
+                commands.append(f'{n / fps:.4f} ' + ', '.join(f'crop {k} {v}' for k, v in zip('whxy', crop)) + ';')
+                last = crop
+        path = Path(tmp) / 'camera.txt'
+        path.write_text('\n'.join(commands))
+        filters += [f"sendcmd=f='{path}'", 'crop=w=iw:h=ih:x=0:y=0:exact=1']
+    filters.append(f'scale={args.width}:{height}:flags=lanczos')
     filters.append(f'pad={args.width}:{height + band}:0:0:color=0x0f172a')
     if captions:
         font = subprocess.check_output(['fc-match', '-f', '%{file}', 'sans:semibold'], text=True)
@@ -73,6 +80,6 @@ with tempfile.TemporaryDirectory(prefix='demo-render-') as tmp:
             path = Path(tmp) / f'caption-{i}.txt'
             path.write_text(textwrap.fill(caption, width=100))
             filters.append(f"drawtext=fontfile='{font}':textfile='{path}':expansion=none:fontsize={round(18 * args.width / vw)}:fontcolor=white:line_spacing=6:x=(w-text_w)/2:y={height}+(h-{height}-text_h)/2:enable='gte(t,{start:.4f})*lt(t,{end:.4f})'")
-    filters.append('format=yuv420p')
-    subprocess.run(['ffmpeg', '-loglevel', 'error', '-y', '-i', str(args.source), '-vf', ','.join(filters), '-an', '-c:v', 'libx264', '-threads', '2', '-preset', 'slow', '-crf', '20', '-movflags', '+faststart', str(args.output)], check=True)
+    filters += ['mpdecimate=hi=0:lo=0:frac=0:max=30', 'format=yuv420p']
+    subprocess.run(['ffmpeg', '-loglevel', 'error', '-y', '-i', str(args.source), '-vf', ','.join(filters), '-fps_mode', 'vfr', '-an', '-c:v', 'libx264', '-preset', 'slow', '-crf', '20', '-movflags', '+faststart', str(args.output)], check=True)
 print(f'RENDER {args.output} zoom={int(not args.no_zoom)} cameras={len(frames)} captions={len(captions)} wall={time.monotonic() - started:.2f}s bytes={args.output.stat().st_size}')

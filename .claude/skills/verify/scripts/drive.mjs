@@ -210,7 +210,7 @@ async function stopCapture() {
   const list = frames.map((fr, i) => `file '${quote(fr.f)}'\nduration ${Math.max(0.001, ((frames[i + 1]?.t ?? end) - fr.t) / 1000).toFixed(4)}`);
   writeFileSync(join(frameDir, 'list.txt'), `ffconcat version 1.0\n${list.join('\n')}\nfile '${quote(frames.at(-1).f)}'\n`);
   execFileSync('ffmpeg', ['-loglevel', 'error', '-y', '-f', 'concat', '-safe', '0', '-i', join(frameDir, 'list.txt'),
-    '-vf', 'fps=30,scale=trunc(iw/2)*2:trunc(ih/2)*2,format=yuv420p', '-c:v', 'libx264', '-threads', '2', '-preset', 'veryfast', '-crf', '14', '-f', 'matroska', DEMO_OUT]);
+    '-vf', 'scale=trunc(iw/2)*2:trunc(ih/2)*2,format=yuv420p', '-fps_mode', 'passthrough', '-c:v', 'libx264', '-preset', 'veryfast', '-crf', '14', '-f', 'matroska', DEMO_OUT]);
   writeFileSync(DEMO_OUT.replace(/\.src\.mkv$/, '.events.json'), JSON.stringify({ viewport, dsf: 2, fps: 30, frames: frames.length,
     events: events.map((e) => ({ ...e, t: Math.max(0, e.t - t0) })), end: end - t0, captureWallMs: Date.now() - capture.startedAt, sourceEncodeMs: Date.now() - encodeStart }, null, 2));
   rmSync(frameDir, { recursive: true });
